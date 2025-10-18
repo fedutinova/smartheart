@@ -14,25 +14,25 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	appconfig "github.com/fedutinova/smartheart/internal/config"
 	"github.com/google/uuid"
-	appconfig "github.com/nuromirg/smartheart/internal/config"
 )
 
 type S3Storage struct {
-	client    *s3.Client
-	bucket    string
-	endpoint  string
-	region    string
+	client   *s3.Client
+	bucket   string
+	endpoint string
+	region   string
 }
 
 func NewS3Storage(ctx context.Context, cfg appconfig.Config) (*S3Storage, error) {
 	var awsCfg aws.Config
 	var err error
 
-	slog.Info("initializing S3 storage", 
-		"endpoint", cfg.S3Endpoint, 
-		"bucket", cfg.S3Bucket, 
-		"region", cfg.S3Region, 
+	slog.Info("initializing S3 storage",
+		"endpoint", cfg.S3Endpoint,
+		"bucket", cfg.S3Bucket,
+		"region", cfg.S3Region,
 		"access_key", cfg.AWSAccessKey,
 		"force_path_style", cfg.S3ForcePathStyle)
 
@@ -157,12 +157,12 @@ func (s *S3Storage) DeleteFile(ctx context.Context, key string) error {
 func (s *S3Storage) generateKey(filename string) string {
 	ext := filepath.Ext(filename)
 	basename := strings.TrimSuffix(filepath.Base(filename), ext)
-	
+
 	safeBasename := strings.ReplaceAll(basename, " ", "_")
 	safeBasename = strings.ReplaceAll(safeBasename, "/", "_")
-	
+
 	timestamp := time.Now().Format("2006/01/02")
 	uniqueID := uuid.New().String()[:8]
-	
+
 	return fmt.Sprintf("uploads/%s/%s_%s%s", timestamp, safeBasename, uniqueID, ext)
 }

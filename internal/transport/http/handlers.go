@@ -8,26 +8,26 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fedutinova/smartheart/internal/auth"
+	"github.com/fedutinova/smartheart/internal/config"
+	"github.com/fedutinova/smartheart/internal/gpt"
+	"github.com/fedutinova/smartheart/internal/job"
+	"github.com/fedutinova/smartheart/internal/memq"
+	"github.com/fedutinova/smartheart/internal/models"
+	"github.com/fedutinova/smartheart/internal/redis"
+	"github.com/fedutinova/smartheart/internal/repository"
+	"github.com/fedutinova/smartheart/internal/storage"
+	"github.com/fedutinova/smartheart/internal/validation"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/nuromirg/smartheart/internal/auth"
-	"github.com/nuromirg/smartheart/internal/config"
-	"github.com/nuromirg/smartheart/internal/gpt"
-	"github.com/nuromirg/smartheart/internal/job"
-	"github.com/nuromirg/smartheart/internal/memq"
-	"github.com/nuromirg/smartheart/internal/models"
-	"github.com/nuromirg/smartheart/internal/redis"
-	"github.com/nuromirg/smartheart/internal/repository"
-	"github.com/nuromirg/smartheart/internal/storage"
-	"github.com/nuromirg/smartheart/internal/validation"
 )
 
 type Handlers struct {
-	Q         memq.JobQueue
-	Repo      *repository.Repository
-	Storage   storage.Storage
-	Redis     *redis.Service
-	Config    config.Config
+	Q       memq.JobQueue
+	Repo    *repository.Repository
+	Storage storage.Storage
+	Redis   *redis.Service
+	Config  config.Config
 }
 
 func (h *Handlers) Routers(r chi.Router) {
@@ -168,7 +168,7 @@ func (h *Handlers) login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tokenHash := h.Repo.HashRefreshToken(tokens.RefreshToken)
-	
+
 	if err := h.Redis.StoreRefreshToken(r.Context(), user.ID.String(), tokenHash, h.Config.JWTTTLRefresh); err != nil {
 		slog.Error("failed to store refresh token", "error", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
@@ -311,7 +311,6 @@ func (h *Handlers) serveFiles(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) submitAnalyze(w http.ResponseWriter, r *http.Request) {
-	// TODO metadata from the start, file/S3 will add on the next step (octate-stream?)
 	var req struct {
 		ImageTempURL string `json:"image_temp_url"`
 		Notes        string `json:"notes,omitempty"`
@@ -320,7 +319,26 @@ func (h *Handlers) submitAnalyze(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
-	payload, _ := json.Marshal(req)
+
+	// Get user ID from JWT context
+	var userID string
+	if claims, ok := auth.FromContext(r.Context()); ok {
+		userID = claims.UserID
+	}
+
+	// Create EKG job payload with user ID
+	ekgPayload := map[string]interface{}{
+		"image_temp_url": req.ImageTempURL,
+		"notes":          req.Notes,
+		"user_id":        userID,
+	}
+
+	payload, err := json.Marshal(ekgPayload)
+	if err != nil {
+		slog.Error("failed to marshal EKG payload", "error", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
 
 	j := &job.Job{
 		Type:    job.TypeEKGAnalyze,
@@ -328,10 +346,22 @@ func (h *Handlers) submitAnalyze(w http.ResponseWriter, r *http.Request) {
 	}
 	id, err := h.Q.Enqueue(r.Context(), j)
 	if err != nil {
+		slog.Error("failed to enqueue EKG job", "error", err)
 		http.Error(w, "enqueue failed", http.StatusServiceUnavailable)
 		return
 	}
-	_ = json.NewEncoder(w).Encode(map[string]string{"job_id": id.String(), "status": string(j.Status)})
+
+	slog.Info("EKG analysis job enqueued",
+		"job_id", id,
+		"user_id", userID,
+		"image_url", req.ImageTempURL)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"job_id":  id.String(),
+		"status":  string(j.Status),
+		"message": "EKG analysis job submitted successfully",
+	})
 }
 
 func (h *Handlers) submitGPTRequest(w http.ResponseWriter, r *http.Request) {
@@ -347,7 +377,7 @@ func (h *Handlers) submitGPTRequest(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]any{
-			"error": "validation failed",
+			"error":   "validation failed",
 			"details": validationErrs,
 		})
 		return
@@ -443,9 +473,9 @@ func (h *Handlers) submitGPTRequest(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
-		"request_id": request.ID,
-		"job_id":     jobID,
-		"status":     request.Status,
+		"request_id":      request.ID,
+		"job_id":          jobID,
+		"status":          request.Status,
 		"files_processed": len(fileKeys),
 	})
 }
@@ -502,7 +532,7 @@ func (h *Handlers) getRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	perms := auth.PermsForRoles(claims.Roles)
-	
+
 	if _, hasAdminPerm := perms[auth.PermAdminAll]; !hasAdminPerm {
 		if _, hasReadAllPerm := perms[auth.PermJobReadAll]; !hasReadAllPerm {
 			userID, err := uuid.Parse(claims.UserID)

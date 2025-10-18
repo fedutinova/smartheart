@@ -3,7 +3,7 @@ package storage
 import (
 	"context"
 
-	appconfig "github.com/nuromirg/smartheart/internal/config"
+	appconfig "github.com/fedutinova/smartheart/internal/config"
 )
 
 func NewStorage(ctx context.Context, cfg appconfig.Config) (Storage, error) {

@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fedutinova/smartheart/internal/job"
 	"github.com/google/uuid"
-	"github.com/nuromirg/smartheart/internal/job"
 )
 
 type JobHandler func(ctx context.Context, j *job.Job) error

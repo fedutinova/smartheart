@@ -12,17 +12,18 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	appconfig "github.com/nuromirg/smartheart/internal/config"
-	"github.com/nuromirg/smartheart/internal/database"
-	"github.com/nuromirg/smartheart/internal/gpt"
-	"github.com/nuromirg/smartheart/internal/job"
-	"github.com/nuromirg/smartheart/internal/memq"
-	"github.com/nuromirg/smartheart/internal/redis"
-	"github.com/nuromirg/smartheart/internal/repository"
-	"github.com/nuromirg/smartheart/internal/server"
-	"github.com/nuromirg/smartheart/internal/storage"
-	httpapi "github.com/nuromirg/smartheart/internal/transport/http"
-	"github.com/nuromirg/smartheart/internal/workers"
+
+	appconfig "github.com/fedutinova/smartheart/internal/config"
+	"github.com/fedutinova/smartheart/internal/database"
+	"github.com/fedutinova/smartheart/internal/gpt"
+	"github.com/fedutinova/smartheart/internal/job"
+	"github.com/fedutinova/smartheart/internal/memq"
+	"github.com/fedutinova/smartheart/internal/redis"
+	"github.com/fedutinova/smartheart/internal/repository"
+	"github.com/fedutinova/smartheart/internal/server"
+	"github.com/fedutinova/smartheart/internal/storage"
+	httpapi "github.com/fedutinova/smartheart/internal/transport/http"
+	"github.com/fedutinova/smartheart/internal/workers"
 )
 
 func main() {
@@ -51,7 +52,7 @@ func main() {
 		slog.Error("failed to initialize storage", "err", err)
 		os.Exit(1)
 	}
-	
+
 	storageType := storage.GetStorageType(cfg)
 	slog.Info("storage initialized", "type", storageType)
 
@@ -67,6 +68,7 @@ func main() {
 
 	q := memq.NewMemoryQueue(cfg.QueueBuf, cfg.JobMaxDuration)
 	gptHandler := workers.NewGPTHandler(db, gptClient)
+	ekgHandler := workers.NewEKGHandler(db)
 
 	handlers := &httpapi.Handlers{
 		Q:       q,
@@ -80,7 +82,7 @@ func main() {
 	q.StartConsumers(ctx, cfg.QueueWorkers, func(ctx context.Context, j *job.Job) error {
 		switch j.Type {
 		case job.TypeEKGAnalyze:
-			return memq.SimulateEKGHandler(2*time.Second)(ctx, j)
+			return ekgHandler.HandleEKGJob(ctx, j)
 		case job.TypeGPTProcess:
 			return gptHandler.HandleGPTJob(ctx, j)
 		default:

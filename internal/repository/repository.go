@@ -6,9 +6,9 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/fedutinova/smartheart/internal/database"
+	"github.com/fedutinova/smartheart/internal/models"
 	"github.com/google/uuid"
-	"github.com/nuromirg/smartheart/internal/database"
-	"github.com/nuromirg/smartheart/internal/models"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -29,7 +29,7 @@ func (r *Repository) CreateRequest(ctx context.Context, req *models.Request) err
 		INSERT INTO requests (id, user_id, text_query, status, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, NOW(), NOW())
 	`
-	
+
 	var textQuery sql.NullString
 	if req.TextQuery != nil {
 		textQuery = sql.NullString{String: *req.TextQuery, Valid: true}
@@ -307,7 +307,7 @@ func (r *Repository) AssignRoleToUser(ctx context.Context, userID uuid.UUID, rol
 		SELECT $1, id FROM roles WHERE name = $2
 		ON CONFLICT (user_id, role_id) DO NOTHING
 	`
-	
+
 	_, err := r.db.Pool().Exec(ctx, query, userID, roleName)
 	return err
 }

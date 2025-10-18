@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"time"
 
+	httpapi "github.com/fedutinova/smartheart/internal/transport/http"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	httpapi "github.com/nuromirg/smartheart/internal/transport/http"
 )
 
 func NewRouter(h *httpapi.Handlers) http.Handler {

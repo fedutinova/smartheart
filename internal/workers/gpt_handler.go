@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/fedutinova/smartheart/internal/database"
+	"github.com/fedutinova/smartheart/internal/gpt"
+	"github.com/fedutinova/smartheart/internal/job"
+	"github.com/fedutinova/smartheart/internal/models"
 	"github.com/google/uuid"
-	"github.com/nuromirg/smartheart/internal/database"
-	"github.com/nuromirg/smartheart/internal/gpt"
-	"github.com/nuromirg/smartheart/internal/job"
-	"github.com/nuromirg/smartheart/internal/models"
 )
 
 type GPTHandler struct {
@@ -57,8 +57,8 @@ func (h *GPTHandler) HandleGPTJob(ctx context.Context, j *job.Job) error {
 		return fmt.Errorf("failed to update request status: %w", err)
 	}
 
-	slog.Info("GPT job completed successfully", 
-		"request_id", payload.RequestID, 
+	slog.Info("GPT job completed successfully",
+		"request_id", payload.RequestID,
 		"response_id", responseID,
 		"tokens_used", result.TokensUsed,
 		"processing_time_ms", result.ProcessingTimeMs,
@@ -79,7 +79,7 @@ func (h *GPTHandler) saveResponse(ctx context.Context, requestID uuid.UUID, resu
 		INSERT INTO responses (id, request_id, content, model, tokens_used, processing_time_ms, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6, NOW())
 	`
-	
+
 	_, err := h.db.Pool().Exec(ctx, query,
 		responseID,
 		requestID,
