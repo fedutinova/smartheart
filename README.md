@@ -115,6 +115,8 @@ OPENAI_API_KEY=your_openai_key
 STORAGE_MODE=local  # или s3
 LOCAL_STORAGE_DIR=./uploads
 
+# Для настройки S3 хранилища см. S3_SETUP.md
+
 # Queue
 QUEUE_WORKERS=4
 QUEUE_BUFFER=1024

@@ -203,12 +203,12 @@ export function Results() {
           </div>
         )}
 
-        {/* GPT Analysis Result */}
+        {/* Analysis Result */}
         {gptRequest?.response && (
           <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 shadow rounded-lg p-6 mb-6">
             <div className="flex items-center mb-4">
-              <span className="text-2xl mr-2">🤖</span>
-              <h2 className="text-xl font-bold text-gray-900">Заключение GPT</h2>
+              <span className="text-2xl mr-2">📒</span>
+              <h2 className="text-xl font-bold text-gray-900">Заключение</h2>
             </div>
             <div className="bg-white rounded-lg p-4 border border-purple-100">
               <ReactMarkdown className="prose prose-sm max-w-none prose-gray">
