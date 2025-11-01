@@ -1,6 +1,7 @@
 package workers
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,16 +10,25 @@ import (
 	"net/http"
 	"time"
 
+	"gocv.io/x/gocv"
+
 	"github.com/fedutinova/smartheart/internal/database"
 	"github.com/fedutinova/smartheart/internal/ekg"
+	"github.com/fedutinova/smartheart/internal/gpt"
 	"github.com/fedutinova/smartheart/internal/job"
+	"github.com/fedutinova/smartheart/internal/memq"
 	"github.com/fedutinova/smartheart/internal/models"
+	"github.com/fedutinova/smartheart/internal/repository"
+	"github.com/fedutinova/smartheart/internal/storage"
 	"github.com/google/uuid"
 )
 
 type EKGHandler struct {
 	db           *database.DB
 	preprocessor *ekg.EKGPreprocessor
+	queue        memq.JobQueue
+	storage      storage.Storage
+	repo         *repository.Repository
 }
 
 // EKGJobPayload represents the payload for EKG analysis jobs
@@ -26,12 +36,16 @@ type EKGJobPayload struct {
 	ImageTempURL string `json:"image_temp_url"`
 	Notes        string `json:"notes,omitempty"`
 	UserID       string `json:"user_id,omitempty"`
+	RequestID    string `json:"request_id,omitempty"`
 }
 
-func NewEKGHandler(db *database.DB) *EKGHandler {
+func NewEKGHandler(db *database.DB, queue memq.JobQueue, storageService storage.Storage, repo *repository.Repository) *EKGHandler {
 	return &EKGHandler{
 		db:           db,
 		preprocessor: ekg.NewEKGPreprocessor(),
+		queue:        queue,
+		storage:      storageService,
+		repo:         repo,
 	}
 }
 
@@ -66,7 +80,7 @@ func (h *EKGHandler) HandleEKGJob(ctx context.Context, j *job.Job) error {
 	defer result.Close() // Ensure resources are cleaned up
 
 	// Save results to database
-	if err := h.saveEKGResults(ctx, j.ID, result, payload); err != nil {
+	if err := h.saveEKGResults(ctx, j.ID, result, payload, imageData); err != nil {
 		return fmt.Errorf("failed to save EKG results: %w", err)
 	}
 
@@ -177,33 +191,53 @@ func isValidImageContentType(contentType string) bool {
 	return validTypes[contentType]
 }
 
-func (h *EKGHandler) saveEKGResults(ctx context.Context, jobID uuid.UUID, result *ekg.PreprocessingResult, payload EKGJobPayload) error {
+func (h *EKGHandler) saveEKGResults(ctx context.Context, jobID uuid.UUID, result *ekg.PreprocessingResult, payload EKGJobPayload, imageData []byte) error {
 	// Parse user ID
 	userUUID, err := uuid.Parse(payload.UserID)
 	if err != nil {
 		return fmt.Errorf("invalid user ID: %w", err)
 	}
 
-	// Create a request record for the EKG analysis
-	requestID := uuid.New()
-
-	query := `
-		INSERT INTO requests (id, user_id, text_query, status, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, NOW(), NOW())
-	`
-
-	_, err = h.db.Pool().Exec(ctx, query,
-		requestID,
-		userUUID,
-		payload.Notes,
-		models.StatusCompleted,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to create request record: %w", err)
+	// Get or create request ID
+	var requestID uuid.UUID
+	if payload.RequestID != "" {
+		requestID, err = uuid.Parse(payload.RequestID)
+		if err != nil {
+			return fmt.Errorf("invalid request ID: %w", err)
+		}
+		// Update request status to processing
+		if err := h.repo.UpdateRequestStatus(ctx, requestID, models.StatusProcessing); err != nil {
+			slog.Warn("failed to update request status to processing", "request_id", requestID, "error", err)
+		}
+	} else {
+		// Backward compatibility: create request if not provided
+		requestID = uuid.New()
+		query := `
+			INSERT INTO requests (id, user_id, text_query, status, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, NOW(), NOW())
+		`
+		_, err = h.db.Pool().Exec(ctx, query,
+			requestID,
+			userUUID,
+			payload.Notes,
+			models.StatusCompleted,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create request record: %w", err)
+		}
 	}
 
 	// Extract signal features for detailed analysis
 	features := h.preprocessor.ExtractSignalFeatures(result.SignalContour)
+
+	// Trigger GPT analysis workflow: save processed image and create GPT job
+	// We need to do this BEFORE saving EKG response to include gpt_request_id
+	gptRequestID, err := h.triggerGPTAnalysis(ctx, jobID, requestID, result, payload, userUUID, imageData)
+	if err != nil {
+		slog.Warn("Failed to trigger GPT analysis", "error", err, "job_id", jobID)
+		// Continue even if GPT trigger fails
+		gptRequestID = uuid.Nil
+	}
 
 	// Create comprehensive response content
 	responseContent := map[string]interface{}{
@@ -215,6 +249,10 @@ func (h *EKGHandler) saveEKGResults(ctx context.Context, jobID uuid.UUID, result
 		"notes":            payload.Notes,
 		"timestamp":        time.Now().UTC().Format(time.RFC3339),
 		"job_id":           jobID.String(),
+	}
+	if gptRequestID != uuid.Nil {
+		responseContent["gpt_request_id"] = gptRequestID.String()
+		responseContent["gpt_interpretation_status"] = "pending"
 	}
 
 	responseJSON, err := json.Marshal(responseContent)
@@ -248,7 +286,171 @@ func (h *EKGHandler) saveEKGResults(ctx context.Context, jobID uuid.UUID, result
 		"signal_length", result.SignalLength,
 		"contour_points", len(result.SignalContour))
 
+	// Update request status to completed
+	if err := h.repo.UpdateRequestStatus(ctx, requestID, models.StatusCompleted); err != nil {
+		slog.Warn("failed to update request status to completed", "request_id", requestID, "error", err)
+	}
+
 	return nil
+}
+
+// matToJPEGBytes converts gocv.Mat to JPEG bytes
+func (h *EKGHandler) matToJPEGBytes(mat gocv.Mat) ([]byte, error) {
+	if mat.Empty() {
+		return nil, fmt.Errorf("empty mat")
+	}
+
+	// gocv.IMEncode encodes Mat to image bytes and returns NativeByteBuffer
+	encoded, err := gocv.IMEncode(".jpg", mat)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode mat to JPEG: %w", err)
+	}
+	defer encoded.Close()
+
+	// GetBytes() returns the byte slice from NativeByteBuffer
+	jpegBytes := encoded.GetBytes()
+	if len(jpegBytes) == 0 {
+		return nil, fmt.Errorf("encoded image is empty")
+	}
+
+	// Make a copy to avoid issues with buffer lifetime
+	result := make([]byte, len(jpegBytes))
+	copy(result, jpegBytes)
+
+	return result, nil
+}
+
+// triggerGPTAnalysis creates a GPT job to analyze the EKG results
+// Returns the GPT request ID for linking
+func (h *EKGHandler) triggerGPTAnalysis(ctx context.Context, ekgJobID uuid.UUID, ekgRequestID uuid.UUID, result *ekg.PreprocessingResult, payload EKGJobPayload, userUUID uuid.UUID, imageData []byte) (uuid.UUID, error) {
+	// Use ORIGINAL image for GPT analysis
+	// Preprocessed image is too binary (black/white only) and GPT may not recognize it as a medical image
+	// Original image preserves all visual information that GPT needs to analyze
+	// The preprocessing is used only for signal extraction, not for GPT visualization
+	preprocessedImageData := imageData
+	slog.Info("using original image for GPT analysis (preprocessed image is for signal extraction only)",
+		"original_size", len(imageData))
+
+	// Save the preprocessed image to storage
+	filename := fmt.Sprintf("ekg_processed_%s.jpg", ekgJobID.String()[:8])
+	uploadResult, err := h.storage.UploadFile(ctx, filename, bytes.NewReader(preprocessedImageData), "image/jpeg")
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to upload processed image: %w", err)
+	}
+
+	// Create a new request for GPT analysis
+	gptRequestID := uuid.New()
+	features := h.preprocessor.ExtractSignalFeatures(result.SignalContour)
+
+	// Extract feature values with type assertions
+	signalWidth := 0
+	if sw, ok := features["signal_width"].(int); ok {
+		signalWidth = sw
+	}
+	amplitudeRange := 0
+	if ar, ok := features["amplitude_range"].(int); ok {
+		amplitudeRange = ar
+	}
+	baseline := 0.0
+	if bl, ok := features["baseline"].(float64); ok {
+		baseline = bl
+	}
+	stdDev := 0.0
+	if sd, ok := features["standard_deviation"].(float64); ok {
+		stdDev = sd
+	}
+
+	// Create comprehensive text query with EKG analysis results
+	// Write in English to match system prompt, and be explicit that this is an EKG image analysis
+	textQuery := fmt.Sprintf(`Please analyze this EKG (ECG) image. This is a medical electrocardiogram tracing.
+
+Preprocessing results:
+- Signal length: %.2f pixels
+- Contour points: %d
+- Signal width: %d pixels
+- Amplitude range: %d pixels
+- Baseline: %.2f
+- Standard deviation: %.2f
+
+Additional context:
+%s
+
+Please provide a medical interpretation of this EKG image, including:
+1. Image quality assessment
+2. Heart rate (bpm)
+3. Rhythm source and type
+4. Electrical axis direction
+5. PR, QRS, QTc intervals
+6. Any pathologies visible
+7. Final diagnostic conclusion
+
+This is a real EKG image that needs medical analysis. Please proceed with the analysis.`,
+		result.SignalLength,
+		len(result.SignalContour),
+		signalWidth,
+		amplitudeRange,
+		baseline,
+		stdDev,
+		payload.Notes)
+
+	gptRequest := &models.Request{
+		ID:        gptRequestID,
+		UserID:    userUUID,
+		TextQuery: &textQuery,
+		Status:    models.StatusPending,
+	}
+
+	if err := h.repo.CreateRequest(ctx, gptRequest); err != nil {
+		return uuid.Nil, fmt.Errorf("failed to create GPT request: %w", err)
+	}
+
+	// Create file record
+	fileModel := &models.File{
+		ID:               uuid.New(),
+		RequestID:        gptRequestID,
+		OriginalFilename: filename,
+		FileType:         "image/jpeg",
+		FileSize:         int64(len(imageData)),
+		S3Key:            uploadResult.Key,
+		S3URL:            uploadResult.URL,
+	}
+
+	if err := h.repo.CreateFile(ctx, fileModel); err != nil {
+		return uuid.Nil, fmt.Errorf("failed to create file record: %w", err)
+	}
+
+	// Create GPT job payload
+	gptPayload := gpt.GPTJobPayload{
+		RequestID: gptRequestID,
+		TextQuery: textQuery,
+		FileKeys:  []string{uploadResult.Key},
+		UserID:    payload.UserID,
+	}
+
+	payloadBytes, err := json.Marshal(gptPayload)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to marshal GPT payload: %w", err)
+	}
+
+	// Enqueue GPT job
+	gptJob := &job.Job{
+		Type:    job.TypeGPTProcess,
+		Payload: payloadBytes,
+	}
+
+	gptJobID, err := h.queue.Enqueue(ctx, gptJob)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to enqueue GPT job: %w", err)
+	}
+
+	slog.Info("GPT analysis job triggered after EKG preprocessing",
+		"ekg_job_id", ekgJobID,
+		"ekg_request_id", ekgRequestID,
+		"gpt_job_id", gptJobID,
+		"gpt_request_id", gptRequestID,
+		"image_key", uploadResult.Key)
+
+	return gptRequestID, nil
 }
 
 // ProcessImageFromBytes processes EKG image from raw bytes

@@ -415,3 +415,14 @@ func (r *Repository) GetRequestsByUserID(ctx context.Context, userID uuid.UUID) 
 
 	return requests, rows.Err()
 }
+
+func (r *Repository) UpdateRequestStatus(ctx context.Context, requestID uuid.UUID, status string) error {
+	query := `
+		UPDATE requests
+		SET status = $1, updated_at = NOW()
+		WHERE id = $2
+	`
+
+	_, err := r.db.Pool().Exec(ctx, query, status, requestID)
+	return err
+}

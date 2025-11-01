@@ -22,6 +22,39 @@ import (
 	"github.com/google/uuid"
 )
 
+// extractConclusion extracts only the conclusion section from GPT response
+// Looks for "### Заключение" or "### Заключение\n" and returns everything after it
+func extractConclusion(gptResponse string) string {
+	// Try different markers for conclusion
+	markers := []string{
+		"### Заключение\n",
+		"### Заключение",
+		"## Заключение\n",
+		"## Заключение",
+		"Заключение:\n",
+		"Заключение:",
+	}
+
+	for _, marker := range markers {
+		idx := strings.Index(gptResponse, marker)
+		if idx != -1 {
+			conclusion := strings.TrimSpace(gptResponse[idx+len(marker):])
+			// Remove any trailing sections (like numbered lists at the end)
+			// Keep everything until next ### or end
+			if nextSection := strings.Index(conclusion, "\n\n1."); nextSection != -1 {
+				conclusion = strings.TrimSpace(conclusion[:nextSection])
+			}
+			if nextSection := strings.Index(conclusion, "\n1."); nextSection != -1 {
+				conclusion = strings.TrimSpace(conclusion[:nextSection])
+			}
+			return strings.TrimSpace(conclusion)
+		}
+	}
+
+	// If no marker found, return full response
+	return strings.TrimSpace(gptResponse)
+}
+
 type Handlers struct {
 	Q       memq.JobQueue
 	Repo    *repository.Repository
@@ -326,11 +359,35 @@ func (h *Handlers) submitAnalyze(w http.ResponseWriter, r *http.Request) {
 		userID = claims.UserID
 	}
 
-	// Create EKG job payload with user ID
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		http.Error(w, "invalid user ID", http.StatusBadRequest)
+		return
+	}
+
+	// Create request record BEFORE enqueueing job so we can return request_id immediately
+	requestID := uuid.New()
+	request := &models.Request{
+		ID:     requestID,
+		UserID: userUUID,
+		Status: models.StatusPending,
+	}
+	if req.Notes != "" {
+		request.TextQuery = &req.Notes
+	}
+
+	if err := h.Repo.CreateRequest(r.Context(), request); err != nil {
+		slog.Error("failed to create request", "error", err)
+		http.Error(w, "failed to create request", http.StatusInternalServerError)
+		return
+	}
+
+	// Create EKG job payload with user ID and request ID
 	ekgPayload := map[string]interface{}{
 		"image_temp_url": req.ImageTempURL,
 		"notes":          req.Notes,
 		"user_id":        userID,
+		"request_id":     requestID.String(),
 	}
 
 	payload, err := json.Marshal(ekgPayload)
@@ -353,14 +410,16 @@ func (h *Handlers) submitAnalyze(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("EKG analysis job enqueued",
 		"job_id", id,
+		"request_id", requestID,
 		"user_id", userID,
 		"image_url", req.ImageTempURL)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"job_id":  id.String(),
-		"status":  string(j.Status),
-		"message": "EKG analysis job submitted successfully",
+		"job_id":     id.String(),
+		"request_id": requestID.String(),
+		"status":     string(j.Status),
+		"message":    "EKG analysis job submitted successfully",
 	})
 }
 
@@ -543,6 +602,90 @@ func (h *Handlers) getRequest(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Check if this is an EKG request with GPT interpretation
+	if request.Response != nil && request.Response.Model == "ekg_preprocessor_v1" {
+		// Parse EKG response to find gpt_request_id
+		var ekgResponseData map[string]interface{}
+		if err := json.Unmarshal([]byte(request.Response.Content), &ekgResponseData); err == nil {
+			if gptRequestIDStr, ok := ekgResponseData["gpt_request_id"].(string); ok && gptRequestIDStr != "" {
+				gptRequestID, err := uuid.Parse(gptRequestIDStr)
+				if err == nil {
+					// Get GPT request and its response
+					gptRequest, err := h.Repo.GetRequestByID(r.Context(), gptRequestID)
+					if err == nil {
+						// Check permissions for GPT request
+						hasAccess := false
+						if _, hasAdminPerm := perms[auth.PermAdminAll]; hasAdminPerm {
+							hasAccess = true
+						} else if _, hasReadAllPerm := perms[auth.PermJobReadAll]; hasReadAllPerm {
+							hasAccess = true
+						} else {
+							userID, _ := uuid.Parse(claims.UserID)
+							hasAccess = (gptRequest.UserID == userID)
+						}
+
+						if hasAccess {
+							// Update status and add GPT interpretation to EKG response
+							ekgResponseData["gpt_interpretation_status"] = gptRequest.Status
+							if gptRequest.Status == "completed" && gptRequest.Response != nil {
+								// Extract only the conclusion section from GPT response
+								gptContent := gptRequest.Response.Content
+								conclusion := extractConclusion(gptContent)
+								ekgResponseData["gpt_interpretation"] = conclusion
+								// Also keep full interpretation for reference
+								ekgResponseData["gpt_full_response"] = gptContent
+							} else if gptRequest.Status == "failed" {
+								ekgResponseData["gpt_interpretation"] = "GPT analysis failed"
+							} else {
+								ekgResponseData["gpt_interpretation"] = nil
+							}
+
+							// Update the response content with GPT data
+							if updatedContent, err := json.Marshal(ekgResponseData); err == nil {
+								request.Response.Content = string(updatedContent)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Parse response content for EKG requests to make it more accessible
+	if request.Response != nil && request.Response.Model == "ekg_preprocessor_v1" {
+		var contentData map[string]interface{}
+		if err := json.Unmarshal([]byte(request.Response.Content), &contentData); err == nil {
+			// Create response with parsed content
+			responseWithParsed := map[string]interface{}{
+				"id":                 request.Response.ID,
+				"request_id":         request.Response.RequestID,
+				"content":            request.Response.Content, // Keep original string for compatibility
+				"content_parsed":     contentData,              // Parsed object for easy access
+				"model":              request.Response.Model,
+				"tokens_used":        request.Response.TokensUsed,
+				"processing_time_ms": request.Response.ProcessingTimeMs,
+				"created_at":         request.Response.CreatedAt,
+			}
+			request.Response = nil // Clear original to replace with custom structure
+			requestCustom := map[string]interface{}{
+				"id":         request.ID,
+				"user_id":    request.UserID,
+				"text_query": request.TextQuery,
+				"status":     request.Status,
+				"created_at": request.CreatedAt,
+				"updated_at": request.UpdatedAt,
+				"files":      request.Files,
+				"response":   responseWithParsed,
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			if err := json.NewEncoder(w).Encode(requestCustom); err != nil {
+				slog.Warn("encode request", "err", err)
+			}
+			return
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(request); err != nil {
 		slog.Warn("encode request", "err", err)
@@ -561,6 +704,7 @@ func (h *Handlers) getJob(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(j); err != nil {
 		slog.Warn("encode job", "err", err)
 	}

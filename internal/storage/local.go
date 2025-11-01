@@ -13,8 +13,8 @@ import (
 )
 
 type LocalStorage struct {
-	baseDir  string
-	baseURL  string
+	baseDir string
+	baseURL string
 }
 
 func NewLocalStorage(baseDir, baseURL string) (*LocalStorage, error) {
@@ -63,7 +63,7 @@ func (s *LocalStorage) GetPresignedURL(ctx context.Context, key string, expirati
 
 func (s *LocalStorage) DeleteFile(ctx context.Context, key string) error {
 	filePath := filepath.Join(s.baseDir, key)
-	
+
 	if err := os.Remove(filePath); err != nil {
 		return fmt.Errorf("failed to delete file: %w", err)
 	}
@@ -72,14 +72,63 @@ func (s *LocalStorage) DeleteFile(ctx context.Context, key string) error {
 	return nil
 }
 
+func (s *LocalStorage) GetFile(ctx context.Context, key string) (io.ReadCloser, string, error) {
+	filePath := filepath.Join(s.baseDir, key)
+	
+	// Check if file exists
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			slog.Error("file not found in local storage", "key", key, "path", filePath)
+			return nil, "", fmt.Errorf("file not found: %s (path: %s)", key, filePath)
+		}
+		return nil, "", fmt.Errorf("failed to stat file: %w", err)
+	}
+
+	if fileInfo.Size() == 0 {
+		return nil, "", fmt.Errorf("file is empty: %s", key)
+	}
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to open file: %w", err)
+	}
+
+	// Detect content type from extension
+	contentType := "application/octet-stream"
+	ext := filepath.Ext(key)
+	switch ext {
+	case ".jpg", ".jpeg":
+		contentType = "image/jpeg"
+	case ".png":
+		contentType = "image/png"
+	case ".gif":
+		contentType = "image/gif"
+	case ".webp":
+		contentType = "image/webp"
+	case ".bmp":
+		contentType = "image/bmp"
+	case ".tiff", ".tif":
+		contentType = "image/tiff"
+	}
+
+	slog.Debug("file opened from local storage",
+		"key", key,
+		"path", filePath,
+		"size", fileInfo.Size(),
+		"content_type", contentType)
+
+	return file, contentType, nil
+}
+
 func (s *LocalStorage) generateKey(filename string) string {
 	ext := filepath.Ext(filename)
 	basename := filename[:len(filename)-len(ext)]
-	
+
 	safeBasename := filepath.Base(basename)
-	
+
 	timestamp := time.Now().Format("2006/01/02")
 	uniqueID := uuid.New().String()[:8]
-	
+
 	return fmt.Sprintf("uploads/%s/%s_%s%s", timestamp, safeBasename, uniqueID, ext)
 }

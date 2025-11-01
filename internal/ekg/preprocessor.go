@@ -146,20 +146,19 @@ func (p *EKGPreprocessor) findLongestContour(img gocv.Mat) ([]image.Point, float
 	contours := gocv.FindContours(img, gocv.RetrievalExternal, gocv.ChainApproxSimple)
 	defer contours.Close()
 
-	var longestContour gocv.PointVector
 	maxLength := 0.0
 	longestIndex := -1
 
 	// Find the contour with maximum arc length
+	// Note: contours.At(i) returns a reference that belongs to contours
+	// We should NOT close individual contours as they are managed by contours.Close()
 	for i := 0; i < contours.Size(); i++ {
 		contour := contours.At(i)
 		arcLength := gocv.ArcLength(contour, true)
 		if arcLength > maxLength {
 			maxLength = arcLength
-			longestContour = contour
 			longestIndex = i
 		}
-		contour.Close()
 	}
 
 	if longestIndex == -1 {
@@ -167,7 +166,9 @@ func (p *EKGPreprocessor) findLongestContour(img gocv.Mat) ([]image.Point, float
 		return []image.Point{}, 0.0
 	}
 
-	// Convert contour to Go points
+	// Get the longest contour and convert to Go points
+	// Must do this before contours.Close() is called via defer
+	longestContour := contours.At(longestIndex)
 	points := make([]image.Point, longestContour.Size())
 	for i := 0; i < longestContour.Size(); i++ {
 		point := longestContour.At(i)
@@ -179,6 +180,9 @@ func (p *EKGPreprocessor) findLongestContour(img gocv.Mat) ([]image.Point, float
 		"total_contours", contours.Size(),
 		"arc_length", maxLength,
 		"points_count", len(points))
+
+	// Note: longestContour is owned by contours and will be closed
+	// when contours.Close() is called via defer. Do NOT close it explicitly.
 
 	return points, maxLength
 }

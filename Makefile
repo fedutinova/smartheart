@@ -1,15 +1,16 @@
 # SmartHeart Makefile
 
-.PHONY: help test test-unit test-integration test-ekg test-coverage test-race build run clean docker-build docker-run lint fmt vet
+.PHONY: help test test-unit test-integration test-ekg test-coverage test-race build run clean docker-build docker-run lint fmt vet check-deps
 
 # Default target
 help:
 	@echo "Available targets:"
+	@echo "  check-deps        - Check system dependencies (g++, OpenCV, etc.)"
 	@echo "  test              - Run all tests"
 	@echo "  test-unit         - Run unit tests only"
 	@echo "  test-integration  - Run integration tests only"
 	@echo "  test-ekg          - Run EKG-specific tests"
-	@echo "  test-coverage     - Run tests with coverage report"
+	@echo "  test-coverage    - Run tests with coverage report"
 	@echo "  test-race         - Run tests with race detection"
 	@echo "  build             - Build the application"
 	@echo "  run               - Run the application"
@@ -19,6 +20,11 @@ help:
 	@echo "  lint              - Run linter"
 	@echo "  fmt               - Format code"
 	@echo "  vet               - Run go vet"
+
+# Dependency check
+check-deps:
+	@echo "Checking system dependencies..."
+	@./scripts/install-dependencies.sh || true
 
 # Test targets
 test: test-unit test-integration
@@ -46,17 +52,17 @@ test-race:
 	go test -v -race ./...
 
 # Build targets
-build:
+build: check-deps
 	@echo "Building application..."
-	CGO_ENABLED=1 go build -o bin/smartheart ./cmd
+	@CGO_ENABLED=1 go build -o bin/smartheart ./cmd
 
 build-static:
 	@echo "Building static binary..."
-	CGO_ENABLED=0 go build -a -installsuffix cgo -o bin/smartheart ./cmd
+	@CGO_ENABLED=0 go build -a -installsuffix cgo -o bin/smartheart ./cmd
 
-run:
+run: check-deps
 	@echo "Running application..."
-	go run ./cmd
+	@CGO_ENABLED=1 go run ./cmd
 
 # Docker targets
 docker-build:

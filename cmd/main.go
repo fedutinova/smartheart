@@ -10,9 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
-
 	appconfig "github.com/fedutinova/smartheart/internal/config"
 	"github.com/fedutinova/smartheart/internal/database"
 	"github.com/fedutinova/smartheart/internal/gpt"
@@ -40,13 +37,6 @@ func main() {
 	}
 	defer db.Close()
 
-	awsConfig, err := config.LoadDefaultConfig(ctx)
-	if err != nil {
-		slog.Error("failed to load AWS config", "err", err)
-		os.Exit(1)
-	}
-
-	s3Client := s3.NewFromConfig(awsConfig)
 	storageService, err := storage.NewStorage(ctx, cfg)
 	if err != nil {
 		slog.Error("failed to initialize storage", "err", err)
@@ -63,12 +53,12 @@ func main() {
 	}
 	defer redisService.Close()
 
-	gptClient := gpt.NewClient(cfg.OpenAIAPIKey, cfg.S3Bucket, s3Client)
+	gptClient := gpt.NewClient(cfg.OpenAIAPIKey, storageService)
 	repo := repository.New(db)
 
 	q := memq.NewMemoryQueue(cfg.QueueBuf, cfg.JobMaxDuration)
 	gptHandler := workers.NewGPTHandler(db, gptClient)
-	ekgHandler := workers.NewEKGHandler(db)
+	ekgHandler := workers.NewEKGHandler(db, q, storageService, repo)
 
 	handlers := &httpapi.Handlers{
 		Q:       q,

@@ -154,6 +154,23 @@ func (s *S3Storage) DeleteFile(ctx context.Context, key string) error {
 	return nil
 }
 
+func (s *S3Storage) GetFile(ctx context.Context, key string) (io.ReadCloser, string, error) {
+	result, err := s.client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: &s.bucket,
+		Key:    &key,
+	})
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to get file from S3: %w", err)
+	}
+
+	contentType := "application/octet-stream"
+	if result.ContentType != nil {
+		contentType = *result.ContentType
+	}
+
+	return result.Body, contentType, nil
+}
+
 func (s *S3Storage) generateKey(filename string) string {
 	ext := filepath.Ext(filename)
 	basename := strings.TrimSuffix(filepath.Base(filename), ext)
