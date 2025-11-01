@@ -24,9 +24,14 @@ export function Results() {
   let gptRequestId: string | null = null;
   if (request?.response?.content) {
     try {
-      ekgResult = JSON.parse(request.response.content);
-      gptRequestId = ekgResult?.gpt_request_id || null;
+      const parsed = JSON.parse(request.response.content);
+      // Check if this is actually an EKG result (has analysis_type or signal_features)
+      if (parsed?.analysis_type === 'ekg_preprocessing' || parsed?.signal_features) {
+        ekgResult = parsed as EKGAnalysisResult;
+        gptRequestId = ekgResult?.gpt_request_id || null;
+      }
     } catch (err) {
+      // If parsing fails or it's not an EKG result, it's likely a GPT response
       console.error('Failed to parse EKG result:', err);
     }
   }
@@ -200,52 +205,71 @@ export function Results() {
                 <p className="text-sm text-gray-600">{ekgResult.notes}</p>
               </div>
             )}
+
+            {/* EKG Processing Info */}
+            {request.response && request.response.model === 'ekg_preprocessor_v1' && (
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <h3 className="text-sm font-medium text-gray-700 mb-4">Информация об обработке</h3>
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-2">
+                  {request.response.model && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Модель</label>
+                      <p className="mt-1 text-sm text-gray-900">{request.response.model}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Analysis Result */}
-        {gptRequest?.response && (
+        {/* Analysis Result - GPT from linked request or direct GPT request */}
+        {(gptRequest?.response || (!ekgResult && request.response && request.response.model !== 'ekg_preprocessor_v1')) && (
           <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 shadow rounded-lg p-6 mb-6">
             <div className="flex items-center mb-4">
               <span className="text-2xl mr-2">📒</span>
               <h2 className="text-xl font-bold text-gray-900">Заключение</h2>
             </div>
-            <div className="bg-white rounded-lg p-4 border border-purple-100">
+            <div className="bg-white rounded-lg p-4 border border-purple-100 mb-4">
               <ReactMarkdown className="prose prose-sm max-w-none prose-gray">
-                {gptRequest.response.content}
+                {(gptRequest?.response?.content || request.response?.content) || ''}
               </ReactMarkdown>
             </div>
+            {/* GPT Processing Info */}
+            {(gptRequest?.response || request.response) && (
+              <div className="bg-white rounded-lg p-4 border border-purple-100">
+                <h3 className="text-sm font-medium text-gray-700 mb-4">Информация об обработке</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {(gptRequest?.response?.model || request.response?.model) && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Модель</label>
+                      <p className="mt-1 text-sm text-gray-900">
+                        {gptRequest?.response?.model || request.response?.model}
+                      </p>
+                    </div>
+                  )}
+                  {(gptRequest?.response?.tokens_used !== undefined || request.response?.tokens_used !== undefined) && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Токены</label>
+                      <p className="mt-1 text-sm text-gray-900">
+                        {gptRequest?.response?.tokens_used ?? request.response?.tokens_used}
+                      </p>
+                    </div>
+                  )}
+                  {(gptRequest?.response?.processing_time_ms !== undefined || request.response?.processing_time_ms !== undefined) && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Время обработки</label>
+                      <p className="mt-1 text-sm text-gray-900">
+                        {(gptRequest?.response?.processing_time_ms ?? request.response?.processing_time_ms)}ms
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Processing Info */}
-        {request.response && (
-          <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Информация об обработке</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {request.response.model && (
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Модель</label>
-                  <p className="mt-1 text-sm text-gray-900">{request.response.model}</p>
-                </div>
-              )}
-              {request.response.tokens_used && (
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Токены</label>
-                  <p className="mt-1 text-sm text-gray-900">{request.response.tokens_used}</p>
-                </div>
-              )}
-              {request.response.processing_time_ms && (
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Время обработки</label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {request.response.processing_time_ms}ms
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
     </Layout>
   );

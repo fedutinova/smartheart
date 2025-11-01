@@ -12,7 +12,9 @@ export function Dashboard() {
     queryFn: () => requestAPI.getUserRequests(),
   });
 
-  const recentRequests = requests?.slice(0, 5) || [];
+  // Filter out EKG Analysis requests (requests with text_query) - only show GPT requests
+  const gptRequests = requests?.filter((request) => !request.text_query) || [];
+  const recentRequests = gptRequests.slice(0, 5);
 
   return (
     <Layout>

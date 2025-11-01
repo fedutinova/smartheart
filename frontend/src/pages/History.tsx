@@ -10,6 +10,9 @@ export function History() {
     queryFn: () => requestAPI.getUserRequests(),
   });
 
+  // Filter out EKG Analysis requests (requests with text_query)
+  const filteredRequests = requests?.filter((request) => !request.text_query) || [];
+
   return (
     <Layout>
       <div className="px-4 sm:px-0">
@@ -23,7 +26,7 @@ export function History() {
               <div className="px-6 py-8 text-center text-red-500">
                 Ошибка при загрузке данных
               </div>
-            ) : !requests || requests.length === 0 ? (
+            ) : !filteredRequests || filteredRequests.length === 0 ? (
               <div className="px-6 py-8 text-center text-gray-500">
                 <p>История пуста</p>
               </div>
@@ -52,7 +55,7 @@ export function History() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {requests.map((request) => (
+                  {filteredRequests.map((request) => (
                     <tr key={request.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500">
                         {request.id.slice(0, 8)}...
