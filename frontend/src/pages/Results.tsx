@@ -1,5 +1,6 @@
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import ReactMarkdown from 'react-markdown';
 import { requestAPI } from '@/services/api';
 import { formatDate, formatStatus, getStatusColor } from '@/utils/format';
 import { Layout } from '@/components/Layout';
@@ -12,6 +13,29 @@ export function Results() {
     queryKey: ['request', id],
     queryFn: () => requestAPI.getRequest(id!),
     enabled: !!id,
+    refetchInterval: (query) => {
+      // Poll if request is still pending or processing
+      const data = query.state.data;
+      return data?.status === 'pending' || data?.status === 'processing' ? 2000 : false;
+    },
+  });
+
+  let ekgResult: EKGAnalysisResult | null = null;
+  let gptRequestId: string | null = null;
+  if (request?.response?.content) {
+    try {
+      ekgResult = JSON.parse(request.response.content);
+      gptRequestId = ekgResult?.gpt_request_id || null;
+    } catch (err) {
+      console.error('Failed to parse EKG result:', err);
+    }
+  }
+
+  // Fetch GPT analysis result if available
+  const { data: gptRequest } = useQuery({
+    queryKey: ['request', gptRequestId],
+    queryFn: () => requestAPI.getRequest(gptRequestId!),
+    enabled: !!gptRequestId,
   });
 
   if (isLoading) {
@@ -34,15 +58,6 @@ export function Results() {
         </div>
       </Layout>
     );
-  }
-
-  let ekgResult: EKGAnalysisResult | null = null;
-  if (request.response?.content) {
-    try {
-      ekgResult = JSON.parse(request.response.content);
-    } catch (err) {
-      console.error('Failed to parse EKG result:', err);
-    }
   }
 
   return (
@@ -185,6 +200,21 @@ export function Results() {
                 <p className="text-sm text-gray-600">{ekgResult.notes}</p>
               </div>
             )}
+          </div>
+        )}
+
+        {/* GPT Analysis Result */}
+        {gptRequest?.response && (
+          <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 shadow rounded-lg p-6 mb-6">
+            <div className="flex items-center mb-4">
+              <span className="text-2xl mr-2">🤖</span>
+              <h2 className="text-xl font-bold text-gray-900">Заключение GPT</h2>
+            </div>
+            <div className="bg-white rounded-lg p-4 border border-purple-100">
+              <ReactMarkdown className="prose prose-sm max-w-none prose-gray">
+                {gptRequest.response.content}
+              </ReactMarkdown>
+            </div>
           </div>
         )}
 

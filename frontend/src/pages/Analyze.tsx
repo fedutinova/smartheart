@@ -15,7 +15,8 @@ export function Analyze() {
     mutationFn: (data: { image_temp_url: string; notes?: string }) =>
       ekgAPI.submitAnalysis(data),
     onSuccess: (response) => {
-      navigate(`${ROUTES.HISTORY}?job_id=${response.job_id}`);
+      // Navigate to results page using request_id
+      navigate(`/results/${response.request_id}`);
     },
     onError: (err: any) => {
       setError(err.response?.data?.error || 'Ошибка при отправке анализа');
@@ -35,7 +36,7 @@ export function Analyze() {
   return (
     <Layout>
       <div className="max-w-3xl mx-auto px-4 sm:px-0">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Анализ EKG</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">Анализ ЭКГ</h1>
 
         <div className="bg-white shadow rounded-lg p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -47,7 +48,7 @@ export function Analyze() {
 
             <div>
               <label htmlFor="imageUrl" className="block text-sm font-medium text-gray-700 mb-2">
-                URL изображения EKG *
+                URL изображения ЭКГ *
               </label>
               <input
                 id="imageUrl"
@@ -89,7 +90,7 @@ export function Analyze() {
                 id="notes"
                 rows={4}
                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                placeholder="Дополнительная информация о пациенте или EKG..."
+                placeholder="Дополнительная информация о пациенте или ЭКГ..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />

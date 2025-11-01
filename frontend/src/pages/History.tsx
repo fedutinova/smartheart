@@ -58,7 +58,7 @@ export function History() {
                         {request.id.slice(0, 8)}...
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {request.text_query ? 'EKG Analysis' : 'GPT Request'}
+                        {request.text_query ? 'ЭКГ Анализ' : 'GPT Запрос'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span

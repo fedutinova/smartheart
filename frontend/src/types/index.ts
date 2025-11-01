@@ -100,5 +100,7 @@ export interface EKGAnalysisResult {
   notes?: string;
   timestamp: string;
   job_id: string;
+  gpt_request_id?: string;
+  gpt_interpretation_status?: string;
 }
 

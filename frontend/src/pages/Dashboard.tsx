@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { requestAPI } from '@/services/api';
-import { formatDate, formatRelative, formatStatus, getStatusColor } from '@/utils/format';
+import { formatRelative, formatStatus, getStatusColor } from '@/utils/format';
 import { ROUTES } from '@/config';
 import { Layout } from '@/components/Layout';
 import type { Request } from '@/types';
@@ -30,7 +29,7 @@ export function Dashboard() {
                 <span className="text-4xl">📊</span>
               </div>
               <div className="ml-4">
-                <h2 className="text-2xl font-bold">Новый анализ EKG</h2>
+                <h2 className="text-2xl font-bold">Новый анализ ЭКГ</h2>
                 <p className="text-blue-100 mt-1">Загрузите изображение для анализа</p>
               </div>
             </div>

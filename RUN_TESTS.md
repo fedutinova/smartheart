@@ -12,7 +12,7 @@ go run ./testdata/setup.go
 make test
 ```
 
-### 3. Запуск только EKG тестов
+### 3. Запуск только ЭКГ тестов
 ```bash
 make test-ekg
 ```
@@ -65,7 +65,7 @@ make test-race
 
 ## Примеры тестовых запросов
 
-### Валидный EKG запрос
+### Валидный ЭКГ запрос
 ```bash
 curl -X POST http://localhost:8080/v1/ekg/analyze \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -96,7 +96,7 @@ go run ./testdata/setup.go
 ```
 
 ### Типы тестовых изображений
-- **test_ekg.jpg** - Синтетический EKG сигнал
+- **test_ekg.jpg** - Синтетический ЭКГ сигнал
 - **test_image.png** - Простое цветное изображение
 - **large_image.jpg** - Большое изображение для тестирования лимитов
 - **corrupted_image.jpg** - Поврежденное изображение для тестирования ошибок

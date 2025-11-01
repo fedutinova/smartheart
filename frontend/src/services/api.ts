@@ -71,7 +71,7 @@ export const authAPI = {
 
 export const ekgAPI = {
   submitAnalysis: async (data: EKGAnalysisRequest) => {
-    const response = await api.post<{ job_id: string; status: string; message: string }>(
+    const response = await api.post<{ job_id: string; request_id: string; status: string; message: string }>(
       '/v1/ekg/analyze',
       data
     );
