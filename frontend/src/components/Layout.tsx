@@ -69,6 +69,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 >
                   История
                 </Link>
+                <Link
+                  to={ROUTES.KNOWLEDGE_BASE}
+                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${
+                    isActive(ROUTES.KNOWLEDGE_BASE)
+                      ? 'text-blue-600 border-b-2 border-blue-600'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  База знаний
+                </Link>
               </div>
             </div>
             <div className="flex items-center">

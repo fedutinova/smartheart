@@ -8,6 +8,7 @@ export const ROUTES = {
   DASHBOARD: '/dashboard',
   ANALYZE: '/analyze',
   HISTORY: '/history',
+  KNOWLEDGE_BASE: '/knowledge-base',
   RESULTS: '/results/:id',
 };
 

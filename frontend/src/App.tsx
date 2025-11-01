@@ -6,6 +6,7 @@ import { Register } from '@/pages/Register';
 import { Dashboard } from '@/pages/Dashboard';
 import { Analyze } from '@/pages/Analyze';
 import { History } from '@/pages/History';
+import { KnowledgeBase } from '@/pages/KnowledgeBase';
 import { Results } from '@/pages/Results';
 
 function App() {
@@ -36,6 +37,14 @@ function App() {
         element={
           <ProtectedRoute>
             <History />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={ROUTES.KNOWLEDGE_BASE}
+        element={
+          <ProtectedRoute>
+            <KnowledgeBase />
           </ProtectedRoute>
         }
       />
