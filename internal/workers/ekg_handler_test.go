@@ -93,7 +93,6 @@ func TestCreateMockEKGJob(t *testing.T) {
 	}
 
 	job := TestJob{
-		ID:      uuid.New().String(),
 		Type:    "ekg_analyze",
 		Payload: payloadBytes,
 	}

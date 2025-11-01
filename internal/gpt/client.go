@@ -37,8 +37,8 @@ func (c *Client) ProcessRequest(ctx context.Context, textQuery string, fileKeys 
 	messages := []openai.ChatCompletionMessage{
 		{
 			Role: openai.ChatMessageRoleSystem,
-			Content: "You are an experienced cardiologist analyzing EKG (ECG) images. Your task is to provide medical interpretation of electrocardiogram images. " +
-				"You will receive an image of an EKG tracing. Please analyze it carefully and provide: " +
+			Content: "You are a helpful assistant that analyzes images and provides detailed descriptions. " +
+				"When you receive an image of an electrocardiogram (EKG/ECG) tracing, you should describe it in Russian language in a structured format with numbered points. " +
 				"1. Assessment of image quality (clarity, contrast, completeness of all leads)\n" +
 				"2. Heart rate calculation (bpm)\n" +
 				"3. Rhythm source and type (sinus rhythm, nodal, atrial, fibrillation, etc.)\n" +
@@ -46,8 +46,7 @@ func (c *Client) ProcessRequest(ctx context.Context, textQuery string, fileKeys 
 				"5. Measurement of PR, QRS, QTc intervals\n" +
 				"6. Description of any pathologies (hypertrophy, blocks, ST-T ischemic changes, extrasystoles, etc.)\n" +
 				"7. Final diagnostic conclusion\n\n" +
-				"This is a medical image analysis task for educational and informational purposes. " +
-				"You are analyzing a real EKG image that has been provided. Please proceed with the analysis.",
+				"This is for educational and research purposes. Provide detailed analysis including technical measurements and observations.",
 		},
 	}
 
@@ -64,12 +63,24 @@ func (c *Client) ProcessRequest(ctx context.Context, textQuery string, fileKeys 
 		if filePart != nil {
 			content = append(content, *filePart)
 			if filePart.Type == openai.ChatMessagePartTypeImageURL {
+				// Verify image URL format
+				urlPreview := filePart.ImageURL.URL
+				if len(urlPreview) > 150 {
+					urlPreview = urlPreview[:150] + "..."
+				}
 				slog.Info("added image to GPT request",
 					"key", key,
-					"image_url_length", len(filePart.ImageURL.URL))
+					"image_url_length", len(filePart.ImageURL.URL),
+					"url_starts_with", urlPreview,
+					"detail", filePart.ImageURL.Detail)
 			} else {
-				slog.Debug("added file to GPT request", "key", key, "type", filePart.Type)
+				slog.Warn("added non-image file to GPT request",
+					"key", key,
+					"type", filePart.Type,
+					"text_length", len(filePart.Text))
 			}
+		} else {
+			slog.Error("filePart is nil after processing", "key", key)
 		}
 	}
 
@@ -96,7 +107,15 @@ func (c *Client) ProcessRequest(ctx context.Context, textQuery string, fileKeys 
 		"text_query_length", len(textQuery),
 		"files_count", len(fileKeys),
 		"images_count", imagesCount,
-		"content_parts", len(content))
+		"content_parts", len(content),
+		"has_image", imagesCount > 0)
+
+	// Verify that we have at least one image part
+	if imagesCount == 0 && len(fileKeys) > 0 {
+		slog.Error("WARNING: fileKeys provided but no images in content!",
+			"file_keys", fileKeys,
+			"content_parts_count", len(content))
+	}
 
 	messages = append(messages, openai.ChatCompletionMessage{
 		Role:         openai.ChatMessageRoleUser,

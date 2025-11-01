@@ -22,10 +22,18 @@ import (
 	"github.com/google/uuid"
 )
 
-// extractConclusion extracts only the conclusion section from GPT response
-// Looks for "### Заключение" or "### Заключение\n" and returns everything after it
+// extractConclusion extracts structured conclusion from GPT response
+// Returns the full response if it's already structured with bullet points or numbered list
 func extractConclusion(gptResponse string) string {
-	// Try different markers for conclusion
+	response := strings.TrimSpace(gptResponse)
+
+	// Check if response is already structured (starts with number or bullet point)
+	if strings.HasPrefix(response, "1.") || strings.HasPrefix(response, "•") ||
+		strings.HasPrefix(response, "-") || strings.HasPrefix(response, "*") {
+		return response
+	}
+
+	// Try to find conclusion section
 	markers := []string{
 		"### Заключение\n",
 		"### Заключение",
@@ -33,26 +41,30 @@ func extractConclusion(gptResponse string) string {
 		"## Заключение",
 		"Заключение:\n",
 		"Заключение:",
+		"Заключение\n",
 	}
 
 	for _, marker := range markers {
-		idx := strings.Index(gptResponse, marker)
+		idx := strings.Index(response, marker)
 		if idx != -1 {
-			conclusion := strings.TrimSpace(gptResponse[idx+len(marker):])
-			// Remove any trailing sections (like numbered lists at the end)
-			// Keep everything until next ### or end
-			if nextSection := strings.Index(conclusion, "\n\n1."); nextSection != -1 {
-				conclusion = strings.TrimSpace(conclusion[:nextSection])
+			conclusion := strings.TrimSpace(response[idx+len(marker):])
+			// Remove disclaimer at the end if present
+			disclaimers := []string{
+				"\n\nИнтерпретация носит информационный характер",
+				"\nИнтерпретация носит информационный характер",
+				"\n\nThis is for informational purposes",
 			}
-			if nextSection := strings.Index(conclusion, "\n1."); nextSection != -1 {
-				conclusion = strings.TrimSpace(conclusion[:nextSection])
+			for _, disclaimer := range disclaimers {
+				if idx := strings.Index(conclusion, disclaimer); idx != -1 {
+					conclusion = strings.TrimSpace(conclusion[:idx])
+				}
 			}
 			return strings.TrimSpace(conclusion)
 		}
 	}
 
-	// If no marker found, return full response
-	return strings.TrimSpace(gptResponse)
+	// If no marker found, return full response (it should already be structured)
+	return response
 }
 
 type Handlers struct {

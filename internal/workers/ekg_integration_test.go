@@ -188,25 +188,6 @@ func TestEKGHandler_Integration_ConcurrentProcessing(t *testing.T) {
 	}
 }
 
-// Helper function to check if error message contains a substring
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) &&
-		(s == substr ||
-			(len(s) > len(substr) &&
-				(s[:len(substr)] == substr ||
-					s[len(s)-len(substr):] == substr ||
-					containsSubstring(s, substr))))
-}
-
-func containsSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}
-
 // Benchmark integration tests
 func BenchmarkEKGHandler_Integration_ContentTypeValidation(b *testing.B) {
 	server := createTestImageServer()
