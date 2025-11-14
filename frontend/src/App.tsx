@@ -7,6 +7,7 @@ import { Dashboard } from '@/pages/Dashboard';
 import { Analyze } from '@/pages/Analyze';
 import { History } from '@/pages/History';
 import { KnowledgeBase } from '@/pages/KnowledgeBase';
+import { Contacts } from '@/pages/Contacts';
 import { Results } from '@/pages/Results';
 
 function App() {
@@ -45,6 +46,14 @@ function App() {
         element={
           <ProtectedRoute>
             <KnowledgeBase />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={ROUTES.CONTACTS}
+        element={
+          <ProtectedRoute>
+            <Contacts />
           </ProtectedRoute>
         }
       />

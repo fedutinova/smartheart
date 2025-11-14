@@ -100,6 +100,72 @@ export function Results() {
           </div>
         </div>
 
+        {/* Original Image */}
+        {request.files && request.files.length > 0 && request.files[0].s3_url && (
+          <div className="bg-white shadow rounded-lg p-6 mb-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Исходное изображение</h2>
+            <div className="flex justify-center">
+              <img
+                src={request.files[0].s3_url}
+                alt="Исходное ЭКГ изображение"
+                className="max-w-full h-auto rounded-lg shadow-md"
+                onError={(e) => {
+                  // Fallback if image fails to load
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Analysis Result - GPT from linked request or direct GPT request */}
+        {(gptRequest?.response || (!ekgResult && request.response && request.response.model !== 'ekg_preprocessor_v1')) && (
+          <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 shadow rounded-lg p-6 mb-6">
+            <div className="flex items-center mb-4">
+              <span className="text-2xl mr-2">📒</span>
+              <h2 className="text-xl font-bold text-gray-900">Заключение</h2>
+            </div>
+            <div className="bg-white rounded-lg p-4 border border-purple-100 mb-4">
+              <ReactMarkdown className="prose prose-sm max-w-none prose-gray">
+                {(gptRequest?.response?.content || request.response?.content) || ''}
+              </ReactMarkdown>
+            </div>
+            {/* GPT Processing Info */}
+            {(gptRequest?.response || request.response) && (
+              <div className="bg-white rounded-lg p-4 border border-purple-100">
+                <h3 className="text-sm font-medium text-gray-700 mb-4">Информация об обработке</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {(gptRequest?.response?.model || request.response?.model) && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Модель</label>
+                      <p className="mt-1 text-sm text-gray-900">
+                        {gptRequest?.response?.model || request.response?.model}
+                      </p>
+                    </div>
+                  )}
+                  {(gptRequest?.response?.tokens_used !== undefined || request.response?.tokens_used !== undefined) && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Токены</label>
+                      <p className="mt-1 text-sm text-gray-900">
+                        {gptRequest?.response?.tokens_used ?? request.response?.tokens_used}
+                      </p>
+                    </div>
+                  )}
+                  {(gptRequest?.response?.processing_time_ms !== undefined || request.response?.processing_time_ms !== undefined) && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Время обработки</label>
+                      <p className="mt-1 text-sm text-gray-900">
+                        {(gptRequest?.response?.processing_time_ms ?? request.response?.processing_time_ms)}ms
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* EKG Result */}
         {ekgResult && (
           <div className="bg-white shadow rounded-lg p-6 mb-6">
@@ -215,53 +281,6 @@ export function Results() {
                     <div>
                       <label className="text-sm font-medium text-gray-500">Модель</label>
                       <p className="mt-1 text-sm text-gray-900">{request.response.model}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Analysis Result - GPT from linked request or direct GPT request */}
-        {(gptRequest?.response || (!ekgResult && request.response && request.response.model !== 'ekg_preprocessor_v1')) && (
-          <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 shadow rounded-lg p-6 mb-6">
-            <div className="flex items-center mb-4">
-              <span className="text-2xl mr-2">📒</span>
-              <h2 className="text-xl font-bold text-gray-900">Заключение</h2>
-            </div>
-            <div className="bg-white rounded-lg p-4 border border-purple-100 mb-4">
-              <ReactMarkdown className="prose prose-sm max-w-none prose-gray">
-                {(gptRequest?.response?.content || request.response?.content) || ''}
-              </ReactMarkdown>
-            </div>
-            {/* GPT Processing Info */}
-            {(gptRequest?.response || request.response) && (
-              <div className="bg-white rounded-lg p-4 border border-purple-100">
-                <h3 className="text-sm font-medium text-gray-700 mb-4">Информация об обработке</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {(gptRequest?.response?.model || request.response?.model) && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Модель</label>
-                      <p className="mt-1 text-sm text-gray-900">
-                        {gptRequest?.response?.model || request.response?.model}
-                      </p>
-                    </div>
-                  )}
-                  {(gptRequest?.response?.tokens_used !== undefined || request.response?.tokens_used !== undefined) && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Токены</label>
-                      <p className="mt-1 text-sm text-gray-900">
-                        {gptRequest?.response?.tokens_used ?? request.response?.tokens_used}
-                      </p>
-                    </div>
-                  )}
-                  {(gptRequest?.response?.processing_time_ms !== undefined || request.response?.processing_time_ms !== undefined) && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Время обработки</label>
-                      <p className="mt-1 text-sm text-gray-900">
-                        {(gptRequest?.response?.processing_time_ms ?? request.response?.processing_time_ms)}ms
-                      </p>
                     </div>
                   )}
                 </div>

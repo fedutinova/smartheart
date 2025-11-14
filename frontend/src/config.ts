@@ -9,6 +9,7 @@ export const ROUTES = {
   ANALYZE: '/analyze',
   HISTORY: '/history',
   KNOWLEDGE_BASE: '/knowledge-base',
+  CONTACTS: '/contacts',
   RESULTS: '/results/:id',
 };
 

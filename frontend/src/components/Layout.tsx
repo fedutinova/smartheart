@@ -36,7 +36,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex justify-between h-16">
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
-                <span className="text-2xl font-bold text-blue-600">❤️ SmartHeart</span>
+                <span className="text-2xl font-bold text-blue-600">❤️ Умное сердце</span>
               </div>
               <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
                 <Link
@@ -78,6 +78,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   }`}
                 >
                   База знаний
+                </Link>
+                <Link
+                  to={ROUTES.CONTACTS}
+                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${
+                    isActive(ROUTES.CONTACTS)
+                      ? 'text-blue-600 border-b-2 border-blue-600'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Контакты
                 </Link>
               </div>
             </div>
