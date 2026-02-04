@@ -12,7 +12,6 @@ import (
 	"github.com/fedutinova/smartheart/internal/job"
 	"github.com/fedutinova/smartheart/internal/models"
 	"github.com/fedutinova/smartheart/internal/repository"
-	"github.com/google/uuid"
 )
 
 type GPTHandler struct {
@@ -39,7 +38,7 @@ func (h *GPTHandler) HandleGPTJob(ctx context.Context, j *job.Job) error {
 		return fmt.Errorf("failed to unmarshal job payload: %w", err)
 	}
 
-	if err := h.updateRequestStatus(ctx, payload.RequestID, models.StatusProcessing); err != nil {
+	if err := h.repo.UpdateRequestStatus(ctx, payload.RequestID, models.StatusProcessing); err != nil {
 		return fmt.Errorf("failed to update request status: %w", err)
 	}
 
@@ -57,7 +56,7 @@ func (h *GPTHandler) HandleGPTJob(ctx context.Context, j *job.Job) error {
 				ProcessingTimeMs: 0,
 			}
 		} else {
-			if updateErr := h.updateRequestStatus(ctx, payload.RequestID, models.StatusFailed); updateErr != nil {
+			if updateErr := h.repo.UpdateRequestStatus(ctx, payload.RequestID, models.StatusFailed); updateErr != nil {
 				slog.Error("failed to update request status to failed", "request_id", payload.RequestID, "error", updateErr)
 			}
 			return fmt.Errorf("GPT processing failed: %w", err)
@@ -109,51 +108,36 @@ func (h *GPTHandler) HandleGPTJob(ctx context.Context, j *job.Job) error {
 		}
 	}
 
-	responseID, err := h.saveResponse(ctx, payload.RequestID, result)
-	if err != nil {
-		return fmt.Errorf("failed to save response: %w", err)
-	}
+	// Save response and update status in a transaction
+	err = h.db.WithTx(ctx, func(tx database.Tx) error {
+		txRepo := h.repo.WithTx(tx)
 
-	if err := h.updateRequestStatus(ctx, payload.RequestID, models.StatusCompleted); err != nil {
-		return fmt.Errorf("failed to update request status: %w", err)
-	}
+		response := &models.Response{
+			RequestID:        payload.RequestID,
+			Content:          result.Content,
+			Model:            result.Model,
+			TokensUsed:       result.TokensUsed,
+			ProcessingTimeMs: result.ProcessingTimeMs,
+		}
+		if err := txRepo.CreateResponse(ctx, response); err != nil {
+			return fmt.Errorf("failed to save response: %w", err)
+		}
 
-	slog.Info("GPT job completed successfully",
-		"request_id", payload.RequestID,
-		"response_id", responseID,
-		"tokens_used", result.TokensUsed,
-		"processing_time_ms", result.ProcessingTimeMs,
-	)
+		if err := txRepo.UpdateRequestStatus(ctx, payload.RequestID, models.StatusCompleted); err != nil {
+			return fmt.Errorf("failed to update request status: %w", err)
+		}
 
-	return nil
-}
+		slog.Info("GPT job completed successfully",
+			"request_id", payload.RequestID,
+			"response_id", response.ID,
+			"tokens_used", result.TokensUsed,
+			"processing_time_ms", result.ProcessingTimeMs,
+		)
 
-func (h *GPTHandler) updateRequestStatus(ctx context.Context, requestID uuid.UUID, status string) error {
-	query := `UPDATE requests SET status = $1, updated_at = NOW() WHERE id = $2`
-	_, err := h.db.Pool().Exec(ctx, query, status, requestID)
+		return nil
+	})
+
 	return err
-}
-
-func (h *GPTHandler) saveResponse(ctx context.Context, requestID uuid.UUID, result *gpt.ProcessResult) (uuid.UUID, error) {
-	responseID := uuid.New()
-	query := `
-		INSERT INTO responses (id, request_id, content, model, tokens_used, processing_time_ms, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, NOW())
-	`
-
-	_, err := h.db.Pool().Exec(ctx, query,
-		responseID,
-		requestID,
-		result.Content,
-		result.Model,
-		result.TokensUsed,
-		result.ProcessingTimeMs,
-	)
-	if err != nil {
-		return uuid.Nil, err
-	}
-
-	return responseID, nil
 }
 
 // createFallbackResponse creates a response from EKG analysis data when GPT fails or refuses

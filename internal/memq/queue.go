@@ -18,6 +18,7 @@ type JobQueue interface {
 	Status(ctx context.Context, id uuid.UUID) (*job.Job, bool)
 	StartConsumers(ctx context.Context, n int, handler JobHandler)
 	Len() int
+	Close() error
 }
 
 type memQueue struct {
@@ -96,6 +97,11 @@ func (q *memQueue) StartConsumers(ctx context.Context, n int, handler JobHandler
 
 func (q *memQueue) Len() int {
 	return len(q.buf)
+}
+
+func (q *memQueue) Close() error {
+	// In-memory queue doesn't need cleanup
+	return nil
 }
 
 func SimulateEKGHandler(delay time.Duration) JobHandler {

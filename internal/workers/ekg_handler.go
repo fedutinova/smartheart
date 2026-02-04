@@ -203,26 +203,8 @@ func (h *EKGHandler) saveEKGResults(ctx context.Context, jobID uuid.UUID, result
 		if err != nil {
 			return fmt.Errorf("invalid request ID: %w", err)
 		}
-		// Update request status to processing
-		if err := h.repo.UpdateRequestStatus(ctx, requestID, models.StatusProcessing); err != nil {
-			slog.Warn("failed to update request status to processing", "request_id", requestID, "error", err)
-		}
 	} else {
-		// Backward compatibility: create request if not provided
 		requestID = uuid.New()
-		query := `
-			INSERT INTO requests (id, user_id, text_query, status, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, NOW(), NOW())
-		`
-		_, err = h.db.Pool().Exec(ctx, query,
-			requestID,
-			userUUID,
-			payload.Notes,
-			models.StatusCompleted,
-		)
-		if err != nil {
-			return fmt.Errorf("failed to create request record: %w", err)
-		}
 	}
 
 	// Extract signal features for detailed analysis
@@ -258,38 +240,59 @@ func (h *EKGHandler) saveEKGResults(ctx context.Context, jobID uuid.UUID, result
 		return fmt.Errorf("failed to marshal response content: %w", err)
 	}
 
-	// Save EKG analysis results as a response
-	responseID := uuid.New()
-	responseQuery := `
-		INSERT INTO responses (id, request_id, content, model, tokens_used, processing_time_ms, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, NOW())
-	`
+	// Use transaction to ensure atomicity
+	err = h.db.WithTx(ctx, func(tx database.Tx) error {
+		txRepo := h.repo.WithTx(tx)
 
-	_, err = h.db.Pool().Exec(ctx, responseQuery,
-		responseID,
-		requestID,
-		string(responseJSON),
-		"ekg_preprocessor_v1",
-		0, // No tokens used for image processing
-		0, // TODO: Calculate actual processing time
-	)
-	if err != nil {
-		return fmt.Errorf("failed to save EKG response: %w", err)
-	}
+		// Update request status to processing (or create if backward compatibility)
+		if payload.RequestID != "" {
+			if err := txRepo.UpdateRequestStatus(ctx, requestID, models.StatusProcessing); err != nil {
+				return fmt.Errorf("failed to update request status to processing: %w", err)
+			}
+		} else {
+			// Backward compatibility: create request if not provided
+			request := &models.Request{
+				ID:     requestID,
+				UserID: userUUID,
+				Status: models.StatusCompleted,
+			}
+			if payload.Notes != "" {
+				request.TextQuery = &payload.Notes
+			}
+			if err := txRepo.CreateRequest(ctx, request); err != nil {
+				return fmt.Errorf("failed to create request record: %w", err)
+			}
+		}
 
-	slog.Info("Saved EKG analysis results",
-		"job_id", jobID,
-		"request_id", requestID,
-		"response_id", responseID,
-		"signal_length", result.SignalLength,
-		"contour_points", len(result.SignalContour))
+		// Save EKG analysis results as a response
+		response := &models.Response{
+			ID:               uuid.New(),
+			RequestID:        requestID,
+			Content:          string(responseJSON),
+			Model:            "ekg_preprocessor_v1",
+			TokensUsed:       0,
+			ProcessingTimeMs: 0, // TODO: Calculate actual processing time
+		}
+		if err := txRepo.CreateResponse(ctx, response); err != nil {
+			return fmt.Errorf("failed to save EKG response: %w", err)
+		}
 
-	// Update request status to completed
-	if err := h.repo.UpdateRequestStatus(ctx, requestID, models.StatusCompleted); err != nil {
-		slog.Warn("failed to update request status to completed", "request_id", requestID, "error", err)
-	}
+		// Update request status to completed
+		if err := txRepo.UpdateRequestStatus(ctx, requestID, models.StatusCompleted); err != nil {
+			return fmt.Errorf("failed to update request status to completed: %w", err)
+		}
 
-	return nil
+		slog.Info("Saved EKG analysis results",
+			"job_id", jobID,
+			"request_id", requestID,
+			"response_id", response.ID,
+			"signal_length", result.SignalLength,
+			"contour_points", len(result.SignalContour))
+
+		return nil
+	})
+
+	return err
 }
 
 // triggerGPTAnalysis creates a GPT job to analyze the EKG results

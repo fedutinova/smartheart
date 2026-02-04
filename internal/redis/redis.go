@@ -31,6 +31,11 @@ func (s *Service) Close() error {
 	return s.client.Close()
 }
 
+// Client returns the underlying Redis client
+func (s *Service) Client() *redis.Client {
+	return s.client
+}
+
 func (s *Service) StoreRefreshToken(ctx context.Context, userID, tokenHash string, ttl time.Duration) error {
 	key := fmt.Sprintf("refresh_token:%s", tokenHash)
 	return s.client.Set(ctx, key, userID, ttl).Err()

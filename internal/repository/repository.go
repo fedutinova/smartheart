@@ -4,20 +4,41 @@ import (
 	"context"
 	"crypto/sha256"
 	"database/sql"
+	"errors"
 	"fmt"
+	"strings"
 
+	"github.com/fedutinova/smartheart/internal/common"
 	"github.com/fedutinova/smartheart/internal/database"
 	"github.com/fedutinova/smartheart/internal/models"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type Repository struct {
 	db *database.DB
+	q  database.Querier // can be pool or transaction
 }
 
 func New(db *database.DB) *Repository {
-	return &Repository{db: db}
+	return &Repository{
+		db: db,
+		q:  db.Pool(),
+	}
+}
+
+// WithTx creates a new Repository that uses the given transaction
+func (r *Repository) WithTx(tx pgx.Tx) *Repository {
+	return &Repository{
+		db: r.db,
+		q:  tx,
+	}
+}
+
+// DB returns the underlying database connection
+func (r *Repository) DB() *database.DB {
+	return r.db
 }
 
 func (r *Repository) CreateRequest(ctx context.Context, req *models.Request) error {
@@ -35,7 +56,7 @@ func (r *Repository) CreateRequest(ctx context.Context, req *models.Request) err
 		textQuery = sql.NullString{String: *req.TextQuery, Valid: true}
 	}
 
-	_, err := r.db.Pool().Exec(ctx, query, req.ID, req.UserID, textQuery, req.Status)
+	_, err := r.q.Exec(ctx, query, req.ID, req.UserID, textQuery, req.Status)
 	return err
 }
 
@@ -49,7 +70,7 @@ func (r *Repository) CreateFile(ctx context.Context, file *models.File) error {
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
 	`
 
-	_, err := r.db.Pool().Exec(ctx, query,
+	_, err := r.q.Exec(ctx, query,
 		file.ID,
 		file.RequestID,
 		file.OriginalFilename,
@@ -72,7 +93,7 @@ func (r *Repository) GetRequestByID(ctx context.Context, id uuid.UUID) (*models.
 	var req models.Request
 	var textQuery sql.NullString
 
-	err := r.db.Pool().QueryRow(ctx, query, id).Scan(
+	err := r.q.QueryRow(ctx, query, id).Scan(
 		&req.ID,
 		&req.UserID,
 		&textQuery,
@@ -81,7 +102,10 @@ func (r *Repository) GetRequestByID(ctx context.Context, id uuid.UUID) (*models.
 		&req.UpdatedAt,
 	)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, common.ErrRequestNotFound
+		}
+		return nil, fmt.Errorf("failed to get request: %w", err)
 	}
 
 	if textQuery.Valid {
@@ -111,7 +135,7 @@ func (r *Repository) GetFilesByRequestID(ctx context.Context, requestID uuid.UUI
 		ORDER BY created_at
 	`
 
-	rows, err := r.db.Pool().Query(ctx, query, requestID)
+	rows, err := r.q.Query(ctx, query, requestID)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +174,7 @@ func (r *Repository) GetResponseByRequestID(ctx context.Context, requestID uuid.
 	`
 
 	var resp models.Response
-	err := r.db.Pool().QueryRow(ctx, query, requestID).Scan(
+	err := r.q.QueryRow(ctx, query, requestID).Scan(
 		&resp.ID,
 		&resp.RequestID,
 		&resp.Content,
@@ -160,7 +184,10 @@ func (r *Repository) GetResponseByRequestID(ctx context.Context, requestID uuid.
 		&resp.CreatedAt,
 	)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil // No response yet is not an error
+		}
+		return nil, fmt.Errorf("failed to get response: %w", err)
 	}
 
 	return &resp, nil
@@ -176,8 +203,25 @@ func (r *Repository) CreateUser(ctx context.Context, user *models.User) error {
 		VALUES ($1, $2, $3, $4, NOW(), NOW())
 	`
 
-	_, err := r.db.Pool().Exec(ctx, query, user.ID, user.Username, user.Email, user.PasswordHash)
-	return err
+	_, err := r.q.Exec(ctx, query, user.ID, user.Username, user.Email, user.PasswordHash)
+	if err != nil {
+		if isUniqueViolation(err) {
+			return fmt.Errorf("user with this email or username %w", common.ErrConflict)
+		}
+		return fmt.Errorf("failed to create user: %w", err)
+	}
+	return nil
+}
+
+// isUniqueViolation checks if the error is a unique constraint violation
+func isUniqueViolation(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	return strings.Contains(errStr, "unique constraint") ||
+		strings.Contains(errStr, "duplicate key") ||
+		strings.Contains(errStr, "UNIQUE constraint")
 }
 
 func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
@@ -188,7 +232,7 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*models.
 	`
 
 	var user models.User
-	err := r.db.Pool().QueryRow(ctx, query, email).Scan(
+	err := r.q.QueryRow(ctx, query, email).Scan(
 		&user.ID,
 		&user.Username,
 		&user.Email,
@@ -197,7 +241,10 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*models.
 		&user.UpdatedAt,
 	)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, common.ErrUserNotFound
+		}
+		return nil, fmt.Errorf("failed to get user by email: %w", err)
 	}
 
 	roles, err := r.GetUserRoles(ctx, user.ID)
@@ -217,7 +264,7 @@ func (r *Repository) GetUserByID(ctx context.Context, userID uuid.UUID) (*models
 	`
 
 	var user models.User
-	err := r.db.Pool().QueryRow(ctx, query, userID).Scan(
+	err := r.q.QueryRow(ctx, query, userID).Scan(
 		&user.ID,
 		&user.Username,
 		&user.Email,
@@ -226,7 +273,10 @@ func (r *Repository) GetUserByID(ctx context.Context, userID uuid.UUID) (*models
 		&user.UpdatedAt,
 	)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, common.ErrUserNotFound
+		}
+		return nil, fmt.Errorf("failed to get user by ID: %w", err)
 	}
 
 	roles, err := r.GetUserRoles(ctx, user.ID)
@@ -247,7 +297,7 @@ func (r *Repository) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]mode
 		ORDER BY r.name
 	`
 
-	rows, err := r.db.Pool().Query(ctx, query, userID)
+	rows, err := r.q.Query(ctx, query, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -282,7 +332,7 @@ func (r *Repository) GetRolePermissions(ctx context.Context, roleID int) ([]mode
 		ORDER BY p.name
 	`
 
-	rows, err := r.db.Pool().Query(ctx, query, roleID)
+	rows, err := r.q.Query(ctx, query, roleID)
 	if err != nil {
 		return nil, err
 	}
@@ -308,7 +358,7 @@ func (r *Repository) AssignRoleToUser(ctx context.Context, userID uuid.UUID, rol
 		ON CONFLICT (user_id, role_id) DO NOTHING
 	`
 
-	_, err := r.db.Pool().Exec(ctx, query, userID, roleName)
+	_, err := r.q.Exec(ctx, query, userID, roleName)
 	return err
 }
 
@@ -332,7 +382,7 @@ func (r *Repository) CreateRefreshToken(ctx context.Context, token *models.Refre
 		VALUES ($1, $2, $3, $4, NOW())
 	`
 
-	_, err := r.db.Pool().Exec(ctx, query, token.ID, token.UserID, token.TokenHash, token.ExpiresAt)
+	_, err := r.q.Exec(ctx, query, token.ID, token.UserID, token.TokenHash, token.ExpiresAt)
 	return err
 }
 
@@ -344,7 +394,7 @@ func (r *Repository) GetRefreshToken(ctx context.Context, tokenHash string) (*mo
 	`
 
 	var token models.RefreshToken
-	err := r.db.Pool().QueryRow(ctx, query, tokenHash).Scan(
+	err := r.q.QueryRow(ctx, query, tokenHash).Scan(
 		&token.ID,
 		&token.UserID,
 		&token.TokenHash,
@@ -353,7 +403,10 @@ func (r *Repository) GetRefreshToken(ctx context.Context, tokenHash string) (*mo
 		&token.RevokedAt,
 	)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, common.ErrInvalidToken
+		}
+		return nil, fmt.Errorf("failed to get refresh token: %w", err)
 	}
 
 	return &token, nil
@@ -366,7 +419,7 @@ func (r *Repository) RevokeRefreshToken(ctx context.Context, tokenHash string) e
 		WHERE token_hash = $1
 	`
 
-	_, err := r.db.Pool().Exec(ctx, query, tokenHash)
+	_, err := r.q.Exec(ctx, query, tokenHash)
 	return err
 }
 
@@ -383,7 +436,7 @@ func (r *Repository) GetRequestsByUserID(ctx context.Context, userID uuid.UUID) 
 		ORDER BY created_at DESC
 	`
 
-	rows, err := r.db.Pool().Query(ctx, query, userID)
+	rows, err := r.q.Query(ctx, query, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -423,6 +476,28 @@ func (r *Repository) UpdateRequestStatus(ctx context.Context, requestID uuid.UUI
 		WHERE id = $2
 	`
 
-	_, err := r.db.Pool().Exec(ctx, query, status, requestID)
+	_, err := r.q.Exec(ctx, query, status, requestID)
+	return err
+}
+
+// CreateResponse creates a new response record
+func (r *Repository) CreateResponse(ctx context.Context, resp *models.Response) error {
+	if resp.ID == uuid.Nil {
+		resp.ID = uuid.New()
+	}
+
+	query := `
+		INSERT INTO responses (id, request_id, content, model, tokens_used, processing_time_ms, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW())
+	`
+
+	_, err := r.q.Exec(ctx, query,
+		resp.ID,
+		resp.RequestID,
+		resp.Content,
+		resp.Model,
+		resp.TokensUsed,
+		resp.ProcessingTimeMs,
+	)
 	return err
 }

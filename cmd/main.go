@@ -15,6 +15,7 @@ import (
 	"github.com/fedutinova/smartheart/internal/gpt"
 	"github.com/fedutinova/smartheart/internal/job"
 	"github.com/fedutinova/smartheart/internal/memq"
+	"github.com/fedutinova/smartheart/internal/queue"
 	"github.com/fedutinova/smartheart/internal/redis"
 	"github.com/fedutinova/smartheart/internal/repository"
 	"github.com/fedutinova/smartheart/internal/server"
@@ -56,7 +57,29 @@ func main() {
 	gptClient := gpt.NewClient(cfg.OpenAIAPIKey, storageService)
 	repo := repository.New(db)
 
-	q := memq.NewMemoryQueue(cfg.QueueBuf, cfg.JobMaxDuration)
+	// Initialize job queue based on configuration
+	var q memq.JobQueue
+	switch cfg.QueueMode {
+	case "redis":
+		redisQueue, err := queue.NewRedisQueue(redisService.Client(), queue.RedisQueueConfig{
+			Stream:        cfg.QueueStream,
+			Group:         cfg.QueueGroup,
+			MaxJobTime:    cfg.JobMaxDuration,
+			ClaimInterval: 10 * time.Second,
+			ClaimTimeout:  cfg.JobClaimTimeout,
+		})
+		if err != nil {
+			slog.Error("failed to create Redis queue", "err", err)
+			os.Exit(1)
+		}
+		q = redisQueue
+		slog.Info("using Redis Streams queue", "stream", cfg.QueueStream, "group", cfg.QueueGroup)
+	default:
+		q = memq.NewMemoryQueue(cfg.QueueBuf, cfg.JobMaxDuration)
+		slog.Warn("using in-memory queue (not recommended for production)")
+	}
+	defer q.Close()
+
 	gptHandler := workers.NewGPTHandler(db, gptClient)
 	ekgHandler := workers.NewEKGHandler(db, q, storageService, repo)
 
@@ -67,9 +90,10 @@ func main() {
 		Redis:   redisService,
 		Config:  cfg,
 	}
-	r := server.NewRouter(handlers)
+	r := server.NewRouter(handlers, cfg)
 
-	q.StartConsumers(ctx, cfg.QueueWorkers, func(ctx context.Context, j *job.Job) error {
+	// Job handler function
+	jobHandler := func(ctx context.Context, j *job.Job) error {
 		switch j.Type {
 		case job.TypeEKGAnalyze:
 			return ekgHandler.HandleEKGJob(ctx, j)
@@ -78,7 +102,10 @@ func main() {
 		default:
 			return fmt.Errorf("unknown job type: %s", j.Type)
 		}
-	})
+	}
+
+	// Start queue consumers
+	q.StartConsumers(ctx, cfg.QueueWorkers, jobHandler)
 
 	srv := &http.Server{
 		Addr:         cfg.HTTPAddr,

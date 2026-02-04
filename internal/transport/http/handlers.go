@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/fedutinova/smartheart/internal/auth"
+	"github.com/fedutinova/smartheart/internal/common"
 	"github.com/fedutinova/smartheart/internal/config"
 	"github.com/fedutinova/smartheart/internal/gpt"
 	"github.com/fedutinova/smartheart/internal/job"
@@ -76,6 +77,10 @@ type Handlers struct {
 }
 
 func (h *Handlers) Routers(r chi.Router) {
+	// Health check endpoints (no auth required)
+	r.Get("/health", h.Health)
+	r.Get("/ready", h.Ready)
+
 	r.Group(func(r chi.Router) {
 		r.Post("/v1/auth/register", h.register)
 		r.Post("/v1/auth/login", h.login)
@@ -142,7 +147,7 @@ func (h *Handlers) register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Repo.CreateUser(r.Context(), user); err != nil {
-		if strings.Contains(err.Error(), "unique constraint") || strings.Contains(err.Error(), "duplicate key") {
+		if common.IsConflict(err) {
 			http.Error(w, "username or email already exists", http.StatusConflict)
 			return
 		}
@@ -182,8 +187,13 @@ func (h *Handlers) login(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.Repo.GetUserByEmail(r.Context(), req.Email)
 	if err != nil {
-		slog.Warn("login attempt with invalid email", "email", req.Email)
-		http.Error(w, "invalid credentials", http.StatusUnauthorized)
+		if common.IsNotFound(err) {
+			slog.Warn("login attempt with invalid email", "email", req.Email)
+			http.Error(w, "invalid credentials", http.StatusUnauthorized)
+			return
+		}
+		slog.Error("failed to get user", "email", req.Email, "error", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
@@ -593,7 +603,7 @@ func (h *Handlers) getRequest(w http.ResponseWriter, r *http.Request) {
 
 	request, err := h.Repo.GetRequestByID(r.Context(), id)
 	if err != nil {
-		if err.Error() == "no rows in result set" {
+		if common.IsNotFound(err) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}

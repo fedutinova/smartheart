@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -16,7 +17,11 @@ type Config struct {
 	JWTIssuer        string
 	QueueWorkers     int
 	QueueBuf         int
+	QueueMode        string // "memory" or "redis"
+	QueueStream      string // Redis stream name
+	QueueGroup       string // Redis consumer group name
 	JobMaxDuration   time.Duration
+	JobClaimTimeout  time.Duration // Time before stuck job is reclaimed
 	DatabaseURL      string
 	StorageMode      string
 	S3Bucket         string
@@ -31,6 +36,10 @@ type Config struct {
 	RedisURL         string
 	JWTTTLAccess     time.Duration
 	JWTTTLRefresh    time.Duration
+	CORSOrigins      []string // Allowed CORS origins
+	CORSCredentials  bool     // Allow credentials in CORS
+	RateLimitRPS     int      // Rate limit requests per second per IP
+	RateLimitBurst   int      // Rate limit burst size
 }
 
 func getenv(key, def string) string {
@@ -71,6 +80,23 @@ func mustDuration(key string, def time.Duration) time.Duration {
 			return d
 		}
 		slog.Warn("bad duration env, using default", "key", key, "value", v)
+	}
+	return def
+}
+
+func getStringList(key string, def []string) []string {
+	if v := os.Getenv(key); v != "" {
+		parts := strings.Split(v, ",")
+		var result []string
+		for _, p := range parts {
+			p = strings.TrimSpace(p)
+			if p != "" {
+				result = append(result, p)
+			}
+		}
+		if len(result) > 0 {
+			return result
+		}
 	}
 	return def
 }
@@ -130,7 +156,11 @@ func Load() Config {
 		JWTIssuer:        getenv("JWT_ISSUER", "smartheart"),
 		QueueWorkers:     mustInt("QUEUE_WORKERS", 4),
 		QueueBuf:         mustInt("QUEUE_BUFFER", 1024),
+		QueueMode:        getenv("QUEUE_MODE", "redis"), // "memory" or "redis"
+		QueueStream:      getenv("QUEUE_STREAM", "smartheart:jobs"),
+		QueueGroup:       getenv("QUEUE_GROUP", "workers"),
 		JobMaxDuration:   mustDuration("JOB_MAX_DURATION", 30*time.Second),
+		JobClaimTimeout:  mustDuration("JOB_CLAIM_TIMEOUT", 60*time.Second),
 		DatabaseURL:      getenv("DATABASE_URL", "postgres://user:password@localhost:5432/smartheart?sslmode=disable"),
 		StorageMode:      getenv("STORAGE_MODE", "local"),
 		S3Bucket:         getenv("S3_BUCKET", "smartheart-files"),
@@ -145,5 +175,9 @@ func Load() Config {
 		RedisURL:         getenv("REDIS_URL", "redis://localhost:6379"),
 		JWTTTLAccess:     mustDuration("JWT_TTL_ACCESS", 15*time.Minute),
 		JWTTTLRefresh:    mustDuration("JWT_TTL_REFRESH", 7*24*time.Hour),
+		CORSOrigins:      getStringList("CORS_ORIGINS", []string{"http://localhost:3000", "http://localhost:5173"}),
+		CORSCredentials:  getBool("CORS_CREDENTIALS", true),
+		RateLimitRPS:     mustInt("RATE_LIMIT_RPS", 100),     // 100 requests per minute per IP
+		RateLimitBurst:   mustInt("RATE_LIMIT_BURST", 20),   // Allow burst of 20 requests
 	}
 }
