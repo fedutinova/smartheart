@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/fedutinova/smartheart/internal/config"
-	httpapi "github.com/fedutinova/smartheart/internal/transport/http"
+	"github.com/fedutinova/smartheart/internal/handler"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"
 )
 
-func NewRouter(h *httpapi.Handlers, cfg config.Config) http.Handler {
+func NewRouter(h *handler.Handlers, cfg config.Config) http.Handler {
 	r := chi.NewRouter()
 
 	// CORS middleware - must be first
@@ -38,7 +38,7 @@ func NewRouter(h *httpapi.Handlers, cfg config.Config) http.Handler {
 		))
 	}
 
-	h.Routers(r)
+	h.RegisterRoutes(r)
 	return r
 }
 

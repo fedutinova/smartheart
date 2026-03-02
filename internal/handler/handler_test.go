@@ -1,4 +1,4 @@
-package http
+package handler
 
 import (
 	"encoding/json"
@@ -159,3 +159,4 @@ func BenchmarkHandlers_UUIDParsing(b *testing.B) {
 		uuid.Parse(validUUID)
 	}
 }
+

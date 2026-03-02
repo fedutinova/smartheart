@@ -1,4 +1,4 @@
-package http
+package handler
 
 import "testing"
 
@@ -27,3 +27,4 @@ func TestExtractConclusion_NoMarkerReturnsTrimmed(t *testing.T) {
 		t.Fatalf("expected %q, got %q", exp, out)
 	}
 }
+

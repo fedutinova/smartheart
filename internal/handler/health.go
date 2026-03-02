@@ -1,4 +1,4 @@
-package http
+package handler
 
 import (
 	"context"
@@ -11,11 +11,11 @@ import (
 
 // HealthStatus represents the health check response
 type HealthStatus struct {
-	Status    string            `json:"status"`
-	Timestamp string            `json:"timestamp"`
-	Version   string            `json:"version,omitempty"`
-	Checks    map[string]Check  `json:"checks,omitempty"`
-	System    *SystemInfo       `json:"system,omitempty"`
+	Status    string           `json:"status"`
+	Timestamp string           `json:"timestamp"`
+	Version   string           `json:"version,omitempty"`
+	Checks    map[string]Check `json:"checks,omitempty"`
+	System    *SystemInfo      `json:"system,omitempty"`
 }
 
 // Check represents a single health check result
@@ -86,7 +86,7 @@ func (h *Handlers) Ready(w http.ResponseWriter, r *http.Request) {
 		GoVersion:    runtime.Version(),
 		NumGoroutine: runtime.NumGoroutine(),
 		NumCPU:       runtime.NumCPU(),
-		MemAlloc:     memStats.Alloc / 1024 / 1024, // Convert to MB
+		MemAlloc:     memStats.Alloc / 1024 / 1024,
 	}
 
 	status := HealthStatus{
@@ -131,7 +131,6 @@ func (h *Handlers) checkDatabase(ctx context.Context) Check {
 func (h *Handlers) checkRedis(ctx context.Context) Check {
 	start := time.Now()
 
-	// Use the Client() method we added
 	err := h.Redis.Client().Ping(ctx).Err()
 	duration := time.Since(start)
 

@@ -18,9 +18,9 @@ import (
 	"github.com/fedutinova/smartheart/internal/queue"
 	"github.com/fedutinova/smartheart/internal/redis"
 	"github.com/fedutinova/smartheart/internal/repository"
+	"github.com/fedutinova/smartheart/internal/handler"
 	"github.com/fedutinova/smartheart/internal/server"
 	"github.com/fedutinova/smartheart/internal/storage"
-	httpapi "github.com/fedutinova/smartheart/internal/transport/http"
 	"github.com/fedutinova/smartheart/internal/workers"
 )
 
@@ -83,7 +83,7 @@ func main() {
 	gptHandler := workers.NewGPTHandler(db, gptClient)
 	ekgHandler := workers.NewEKGHandler(db, q, storageService, repo)
 
-	handlers := &httpapi.Handlers{
+	handlers := &handler.Handlers{
 		Q:       q,
 		Repo:    repo,
 		Storage: storageService,
