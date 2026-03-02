@@ -4,74 +4,70 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/fedutinova/smartheart/internal/job"
+	"github.com/fedutinova/smartheart/internal/models"
 	"github.com/google/uuid"
 )
 
 // Simple test for HTTP handlers without complex mocks
 func TestHandlers_SubmitAnalyze_RequestValidation(t *testing.T) {
-	// Test valid request data
-	validReqData := map[string]interface{}{
-		"image_temp_url": "http://example.com/test.jpg",
-		"notes":          "Test EKG analysis",
+	original := job.EKGJobPayload{
+		ImageTempURL: "http://example.com/test.jpg",
+		Notes:        "Test EKG analysis",
 	}
 
-	reqBody, err := json.Marshal(validReqData)
+	reqBody, err := json.Marshal(original)
 	if err != nil {
 		t.Fatalf("Failed to marshal request: %v", err)
 	}
 
-	// Test JSON unmarshaling
-	var testData map[string]interface{}
-	err = json.Unmarshal(reqBody, &testData)
+	var decoded job.EKGJobPayload
+	err = json.Unmarshal(reqBody, &decoded)
 	if err != nil {
 		t.Fatalf("Failed to unmarshal request: %v", err)
 	}
 
-	if testData["image_temp_url"] != validReqData["image_temp_url"] {
-		t.Errorf("Expected image_temp_url %s, got %s", validReqData["image_temp_url"], testData["image_temp_url"])
+	if decoded.ImageTempURL != original.ImageTempURL {
+		t.Errorf("Expected image_temp_url %s, got %s", original.ImageTempURL, decoded.ImageTempURL)
 	}
 
-	if testData["notes"] != validReqData["notes"] {
-		t.Errorf("Expected notes %s, got %s", validReqData["notes"], testData["notes"])
+	if decoded.Notes != original.Notes {
+		t.Errorf("Expected notes %s, got %s", original.Notes, decoded.Notes)
 	}
 }
 
 func TestHandlers_SubmitAnalyze_InvalidJSON(t *testing.T) {
-	// Test invalid JSON
 	invalidJSON := []byte(`{"image_temp_url": "http://example.com/test.jpg", "notes": "Test EKG analysis"`)
 
-	var testData map[string]interface{}
-	err := json.Unmarshal(invalidJSON, &testData)
+	var decoded job.EKGJobPayload
+	err := json.Unmarshal(invalidJSON, &decoded)
 	if err == nil {
 		t.Error("Expected error for invalid JSON")
 	}
 }
 
 func TestHandlers_SubmitAnalyze_EmptyImageURL(t *testing.T) {
-	// Test empty image URL
-	reqData := map[string]interface{}{
-		"image_temp_url": "",
-		"notes":          "Test EKG analysis",
+	original := job.EKGJobPayload{
+		ImageTempURL: "",
+		Notes:        "Test EKG analysis",
 	}
 
-	reqBody, _ := json.Marshal(reqData)
+	reqBody, _ := json.Marshal(original)
 
-	var testData map[string]interface{}
-	err := json.Unmarshal(reqBody, &testData)
+	var decoded job.EKGJobPayload
+	err := json.Unmarshal(reqBody, &decoded)
 	if err != nil {
 		t.Fatalf("Failed to unmarshal request: %v", err)
 	}
 
-	if testData["image_temp_url"] != "" {
+	if decoded.ImageTempURL != "" {
 		t.Error("Expected empty image_temp_url")
 	}
 }
 
 func TestHandlers_JobID_Validation(t *testing.T) {
-	// Test valid UUID
 	validUUID := uuid.New().String()
 
-	// Test UUID parsing
 	parsedUUID, err := uuid.Parse(validUUID)
 	if err != nil {
 		t.Fatalf("Failed to parse valid UUID: %v", err)
@@ -81,7 +77,6 @@ func TestHandlers_JobID_Validation(t *testing.T) {
 		t.Errorf("Expected UUID %s, got %s", validUUID, parsedUUID.String())
 	}
 
-	// Test invalid UUID
 	invalidUUID := "invalid-uuid"
 	_, err = uuid.Parse(invalidUUID)
 	if err == nil {
@@ -90,57 +85,60 @@ func TestHandlers_JobID_Validation(t *testing.T) {
 }
 
 func TestHandlers_ResponseFormat(t *testing.T) {
-	// Test response format
-	responseData := map[string]interface{}{
-		"job_id":  uuid.New().String(),
-		"status":  "queued",
-		"message": "EKG analysis job submitted successfully",
+	resp := models.SubmitEKGResponse{
+		JobID:     uuid.New().String(),
+		RequestID: uuid.New().String(),
+		Status:    "queued",
+		Message:   "EKG analysis job submitted successfully",
 	}
 
-	responseJSON, err := json.Marshal(responseData)
+	responseJSON, err := json.Marshal(resp)
 	if err != nil {
 		t.Fatalf("Failed to marshal response: %v", err)
 	}
 
-	var testResponse map[string]interface{}
-	err = json.Unmarshal(responseJSON, &testResponse)
+	var decoded models.SubmitEKGResponse
+	err = json.Unmarshal(responseJSON, &decoded)
 	if err != nil {
 		t.Fatalf("Failed to unmarshal response: %v", err)
 	}
 
-	requiredFields := []string{"job_id", "status", "message"}
-	for _, field := range requiredFields {
-		if testResponse[field] == nil {
-			t.Errorf("Expected field %s in response", field)
-		}
+	if decoded.JobID == "" {
+		t.Error("Expected non-empty job_id")
+	}
+	if decoded.Status != "queued" {
+		t.Errorf("Expected status 'queued', got %s", decoded.Status)
+	}
+	if decoded.Message == "" {
+		t.Error("Expected non-empty message")
 	}
 }
 
 // Benchmark tests
 func BenchmarkHandlers_RequestMarshaling(b *testing.B) {
-	reqData := map[string]interface{}{
-		"image_temp_url": "http://example.com/test.jpg",
-		"notes":          "Test EKG analysis",
+	payload := job.EKGJobPayload{
+		ImageTempURL: "http://example.com/test.jpg",
+		Notes:        "Test EKG analysis",
 	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		json.Marshal(reqData)
+		json.Marshal(payload)
 	}
 }
 
 func BenchmarkHandlers_RequestUnmarshaling(b *testing.B) {
-	reqData := map[string]interface{}{
-		"image_temp_url": "http://example.com/test.jpg",
-		"notes":          "Test EKG analysis",
+	payload := job.EKGJobPayload{
+		ImageTempURL: "http://example.com/test.jpg",
+		Notes:        "Test EKG analysis",
 	}
 
-	reqBody, _ := json.Marshal(reqData)
+	reqBody, _ := json.Marshal(payload)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		var testData map[string]interface{}
-		json.Unmarshal(reqBody, &testData)
+		var decoded job.EKGJobPayload
+		json.Unmarshal(reqBody, &decoded)
 	}
 }
 
@@ -159,4 +157,3 @@ func BenchmarkHandlers_UUIDParsing(b *testing.B) {
 		uuid.Parse(validUUID)
 	}
 }
-

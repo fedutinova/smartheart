@@ -25,9 +25,9 @@ func NewRouter(h *handler.Handlers, cfg config.Config) http.Handler {
 	r.Use(middleware.Timeout(60 * time.Second))
 
 	// Rate limiting by IP address
-	if cfg.RateLimitRPS > 0 {
+	if cfg.RateLimitRPM > 0 {
 		r.Use(httprate.Limit(
-			cfg.RateLimitRPS,
+			cfg.RateLimitRPM,
 			time.Minute,
 			httprate.WithKeyFuncs(httprate.KeyByIP),
 			httprate.WithLimitHandler(func(w http.ResponseWriter, r *http.Request) {

@@ -54,14 +54,12 @@ func (h *Handlers) SubmitEKGAnalyze(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create EKG job payload with user ID and request ID
-	ekgPayload := map[string]any{
-		"image_temp_url": req.ImageTempURL,
-		"notes":          req.Notes,
-		"user_id":        userID,
-		"request_id":     requestID.String(),
-	}
-
-	payload, err := json.Marshal(ekgPayload)
+	payload, err := json.Marshal(job.EKGJobPayload{
+		ImageTempURL: req.ImageTempURL,
+		Notes:        req.Notes,
+		UserID:       userID,
+		RequestID:    requestID.String(),
+	})
 	if err != nil {
 		slog.Error("failed to marshal EKG payload", "error", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
@@ -86,11 +84,11 @@ func (h *Handlers) SubmitEKGAnalyze(w http.ResponseWriter, r *http.Request) {
 		"image_url", req.ImageTempURL)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{
-		"job_id":     id.String(),
-		"request_id": requestID.String(),
-		"status":     string(j.Status),
-		"message":    "EKG analysis job submitted successfully",
+	json.NewEncoder(w).Encode(models.SubmitEKGResponse{
+		JobID:     id.String(),
+		RequestID: requestID.String(),
+		Status:    string(j.Status),
+		Message:   "EKG analysis job submitted successfully",
 	})
 }
 

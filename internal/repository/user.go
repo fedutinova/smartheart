@@ -5,13 +5,13 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/fedutinova/smartheart/internal/common"
 	"github.com/fedutinova/smartheart/internal/models"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -72,7 +72,7 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*models.
 // GetUserByID retrieves a user by ID
 func (r *Repository) GetUserByID(ctx context.Context, userID uuid.UUID) (*models.User, error) {
 	query := `
-		SELECT id, username, email, password_hash, created_at, updated_at
+		SELECT id, username, email, created_at, updated_at
 		FROM users
 		WHERE id = $1
 	`
@@ -82,7 +82,6 @@ func (r *Repository) GetUserByID(ctx context.Context, userID uuid.UUID) (*models
 		&user.ID,
 		&user.Username,
 		&user.Email,
-		&user.PasswordHash,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -195,14 +194,37 @@ func (r *Repository) HashRefreshToken(token string) string {
 	return fmt.Sprintf("%x", hash)
 }
 
-// isUniqueViolation checks if the error is a unique constraint violation
-func isUniqueViolation(err error) bool {
-	if err == nil {
-		return false
+// LoadRolePermissions returns the role->permissions mapping from the database,
+// suitable for passing to auth.InitPermsFromDB.
+func (r *Repository) LoadRolePermissions(ctx context.Context) (map[string][]string, error) {
+	query := `
+		SELECT r.name, p.name
+		FROM roles r
+		INNER JOIN role_permissions rp ON r.id = rp.role_id
+		INNER JOIN permissions p ON rp.permission_id = p.id
+		ORDER BY r.name, p.name
+	`
+
+	rows, err := r.q.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load role permissions: %w", err)
 	}
-	errStr := err.Error()
-	return strings.Contains(errStr, "unique constraint") ||
-		strings.Contains(errStr, "duplicate key") ||
-		strings.Contains(errStr, "UNIQUE constraint")
+	defer rows.Close()
+
+	mapping := make(map[string][]string)
+	for rows.Next() {
+		var roleName, permName string
+		if err := rows.Scan(&roleName, &permName); err != nil {
+			return nil, err
+		}
+		mapping[roleName] = append(mapping[roleName], permName)
+	}
+	return mapping, rows.Err()
+}
+
+// isUniqueViolation checks if the error is a unique constraint violation (PostgreSQL code 23505)
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
 

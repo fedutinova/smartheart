@@ -38,8 +38,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   initialize: () => {
-    const accessToken = storage.get<string>(JWT_STORAGE_KEY);
-    const refreshToken = storage.get<string>(REFRESH_TOKEN_KEY);
+    const accessToken = storage.get(JWT_STORAGE_KEY);
+    const refreshToken = storage.get(REFRESH_TOKEN_KEY);
     if (accessToken && refreshToken) {
       set({
         accessToken,

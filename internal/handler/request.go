@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/fedutinova/smartheart/internal/auth"
@@ -15,7 +16,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// GetUserRequests returns all requests for the authenticated user
+// GetUserRequests returns requests for the authenticated user with pagination.
+// Query params: ?limit=N&offset=N (defaults: limit=50, offset=0)
 func (h *Handlers) GetUserRequests(w http.ResponseWriter, r *http.Request) {
 	claims, ok := auth.FromContext(r.Context())
 	if !ok {
@@ -29,7 +31,20 @@ func (h *Handlers) GetUserRequests(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	requests, err := h.Repo.GetRequestsByUserID(r.Context(), userID)
+	limit := 50
+	offset := 0
+	if v := r.URL.Query().Get("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 200 {
+			limit = n
+		}
+	}
+	if v := r.URL.Query().Get("offset"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			offset = n
+		}
+	}
+
+	requests, err := h.Repo.GetRequestsByUserID(r.Context(), userID, limit, offset)
 	if err != nil {
 		slog.Error("failed to get user requests", "user_id", userID, "error", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
@@ -82,7 +97,7 @@ func (h *Handlers) GetRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Enrich and parse EKG responses
-	if request.Response != nil && request.Response.Model == "ekg_preprocessor_v1" {
+	if request.Response != nil && request.Response.Model == models.EKGModelDirect {
 		h.enrichEKGResponse(r, request, claims, perms)
 
 		if parsed, err := request.Response.ParseContent(); err == nil {
@@ -102,17 +117,12 @@ func (h *Handlers) GetRequest(w http.ResponseWriter, r *http.Request) {
 
 // enrichEKGResponse adds GPT interpretation to EKG response
 func (h *Handlers) enrichEKGResponse(r *http.Request, request *models.Request, claims *auth.Claims, perms map[string]struct{}) {
-	var ekgResponseData map[string]any
-	if err := json.Unmarshal([]byte(request.Response.Content), &ekgResponseData); err != nil {
+	ekg, err := models.ParseEKGContent(request.Response.Content)
+	if err != nil || ekg == nil || ekg.GPTRequestID == "" {
 		return
 	}
 
-	gptRequestIDStr, ok := ekgResponseData["gpt_request_id"].(string)
-	if !ok || gptRequestIDStr == "" {
-		return
-	}
-
-	gptRequestID, err := uuid.Parse(gptRequestIDStr)
+	gptRequestID, err := uuid.Parse(ekg.GPTRequestID)
 	if err != nil {
 		return
 	}
@@ -137,20 +147,19 @@ func (h *Handlers) enrichEKGResponse(r *http.Request, request *models.Request, c
 		return
 	}
 
-	ekgResponseData["gpt_interpretation_status"] = gptRequest.Status
-	if gptRequest.Status == "completed" && gptRequest.Response != nil {
+	ekg.GPTInterpretationStatus = gptRequest.Status
+	if gptRequest.Status == models.StatusCompleted && gptRequest.Response != nil {
 		gptContent := gptRequest.Response.Content
 		conclusion := extractConclusion(gptContent)
-		ekgResponseData["gpt_interpretation"] = conclusion
-		ekgResponseData["gpt_full_response"] = gptContent
-	} else if gptRequest.Status == "failed" {
-		ekgResponseData["gpt_interpretation"] = "GPT analysis failed"
-	} else {
-		ekgResponseData["gpt_interpretation"] = nil
+		ekg.GPTInterpretation = &conclusion
+		ekg.GPTFullResponse = &gptContent
+	} else if gptRequest.Status == models.StatusFailed {
+		failed := "GPT analysis failed"
+		ekg.GPTInterpretation = &failed
 	}
 
-	if updatedContent, err := json.Marshal(ekgResponseData); err == nil {
-		request.Response.Content = string(updatedContent)
+	if updatedContent, err := ekg.Marshal(); err == nil {
+		request.Response.Content = updatedContent
 	}
 }
 
@@ -182,7 +191,7 @@ func (h *Handlers) GetJob(w http.ResponseWriter, r *http.Request) {
 			var payload struct {
 				UserID string `json:"user_id"`
 			}
-			if err := json.Unmarshal(j.Payload, &payload); err == nil && payload.UserID != claims.UserID {
+			if err := json.Unmarshal(j.Payload, &payload); err != nil || payload.UserID != claims.UserID {
 				http.Error(w, "forbidden", http.StatusForbidden)
 				return
 			}

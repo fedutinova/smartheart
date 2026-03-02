@@ -68,18 +68,17 @@ func (c *Client) ProcessRequest(ctx context.Context, textQuery string, fileKeys 
 	messages := []openai.ChatCompletionMessage{
 		{
 			Role: openai.ChatMessageRoleSystem,
-			Content: "You are a helpful image analysis assistant that analyzes waveform graphs and technical data visualizations. " +
-				"You will receive an image showing a waveform graph with lines and patterns. " +
-				"Your task is to describe what you see in the image in Russian language. " +
-				"Analyze the image as you would analyze any technical graph or chart.\n\n" +
+			Content: "You are an expert assistant for analyzing ECG/EKG (electrocardiogram) images. " +
+				"You will receive an image of an ECG recording. " +
+				"Your task is to describe what you observe in Russian language.\n\n" +
 				"Provide a structured analysis in Russian:\n" +
-				"1. Описание качества изображения: четкость, контрастность, видимость всех элементов\n" +
-				"2. Описание формы графика: какие линии видны, их направление, паттерны\n" +
-				"3. Измерения на графике: если есть разметка, опишите видимые значения\n" +
-				"4. Особенности визуализации: любые заметные особенности или изменения в паттерне\n" +
-				"5. Технические характеристики: опишите технические параметры, если они видны или указаны\n\n" +
+				"1. Качество изображения: четкость, наличие артефактов, видимость отведений и калибровки\n" +
+				"2. Ритм: регулярный/нерегулярный, приблизительная ЧСС если видна разметка\n" +
+				"3. Зубцы и интервалы: P, QRS, T — форма, амплитуда, длительность\n" +
+				"4. Сегменты: ST-сегмент, PR-интервал, QT-интервал\n" +
+				"5. Особенности: отклонения от нормального синусового ритма\n\n" +
 				"This is a technical image analysis task for educational purposes. " +
-				"Simply describe what you observe in the image without making any diagnostic conclusions. " +
+				"Describe what you observe without making diagnostic conclusions. " +
 				"If you cannot see certain details or measurements, state that clearly.",
 		},
 	}
@@ -161,50 +160,37 @@ func (c *Client) ProcessRequest(ctx context.Context, textQuery string, fileKeys 
 		MaxTokens: 2000, // Increased for detailed medical analysis
 	})
 	if err != nil {
-		// Detailed error logging
-		errorStr := err.Error()
-		errorDetails := map[string]interface{}{
-			"error":         errorStr,
-			"model":         openai.GPT4o,
-			"messages":      len(messages),
-			"content_parts": len(content),
+		logAttrs := []any{
+			"error", err.Error(),
+			"model", string(openai.GPT4o),
+			"messages", len(messages),
+			"content_parts", len(content),
 		}
+		errorStr := err.Error()
 
 		// Check for specific error types
 		if strings.Contains(errorStr, "insufficient_quota") || strings.Contains(errorStr, "quota") {
-			slog.Error("OpenAI API error: Insufficient quota/tokens",
-				"error_details", errorDetails,
-				"hint", "Check your OpenAI account balance and usage limits")
+			slog.Error("OpenAI API error: Insufficient quota/tokens", append(logAttrs, "hint", "Check your OpenAI account balance and usage limits")...)
 			return nil, fmt.Errorf("OpenAI API quota exceeded: %w", err)
 		}
 		if strings.Contains(errorStr, "invalid_api_key") || strings.Contains(errorStr, "authentication") {
-			slog.Error("OpenAI API error: Invalid API key",
-				"error_details", errorDetails,
-				"hint", "Check OPENAI_API_KEY environment variable")
+			slog.Error("OpenAI API error: Invalid API key", append(logAttrs, "hint", "Check OPENAI_API_KEY environment variable")...)
 			return nil, fmt.Errorf("OpenAI API authentication failed: %w", err)
 		}
 		if strings.Contains(errorStr, "rate_limit") {
-			slog.Error("OpenAI API error: Rate limit exceeded",
-				"error_details", errorDetails,
-				"hint", "Too many requests, please retry later")
+			slog.Error("OpenAI API error: Rate limit exceeded", append(logAttrs, "hint", "Too many requests, please retry later")...)
 			return nil, fmt.Errorf("OpenAI API rate limit exceeded: %w", err)
 		}
 		if strings.Contains(errorStr, "content_filter") || strings.Contains(errorStr, "safety") {
-			slog.Error("OpenAI API error: Content filtered/safety",
-				"error_details", errorDetails,
-				"hint", "Request was filtered by content moderation")
+			slog.Error("OpenAI API error: Content filtered/safety", append(logAttrs, "hint", "Request was filtered by content moderation")...)
 			return nil, fmt.Errorf("OpenAI API content filtered: %w", err)
 		}
 		if reqCtx.Err() == context.DeadlineExceeded {
-			slog.Error("OpenAI API error: Timeout",
-				"error_details", errorDetails,
-				"timeout", c.timeout)
+			slog.Error("OpenAI API error: Timeout", append(logAttrs, "timeout", c.timeout)...)
 			return nil, fmt.Errorf("OpenAI API request timeout: %w", err)
 		}
 
-		slog.Error("OpenAI API error: Unknown error",
-			"error_details", errorDetails,
-			"full_error", err)
+		slog.Error("OpenAI API error: Unknown error", logAttrs...)
 		return nil, fmt.Errorf("OpenAI API error: %w", err)
 	}
 
@@ -219,26 +205,7 @@ func (c *Client) ProcessRequest(ctx context.Context, textQuery string, fileKeys 
 
 	responseContent := resp.Choices[0].Message.Content
 
-	// Check for refusal messages (in English and Russian)
-	refusalPatterns := []string{
-		"i'm sorry",
-		"i cannot",
-		"can't assist",
-		"unable to",
-		"not able",
-		"не могу",
-		"извините",
-		"не в состоянии",
-	}
-	isRefusal := false
-	for _, pattern := range refusalPatterns {
-		if strings.Contains(strings.ToLower(responseContent), pattern) {
-			isRefusal = true
-			break
-		}
-	}
-
-	if isRefusal {
+	if IsRefusal(responseContent) {
 		slog.Warn("OpenAI returned refusal message",
 			"response_length", len(responseContent),
 			"response_preview", func() string {

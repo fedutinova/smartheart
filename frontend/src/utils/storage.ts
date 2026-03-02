@@ -1,9 +1,7 @@
 export const storage = {
-  get: <T>(key: string): T | null => {
+  get: (key: string): string | null => {
     try {
-      const item = localStorage.getItem(key);
-      if (!item) return null;
-      return item as T;
+      return localStorage.getItem(key);
     } catch {
       return null;
     }

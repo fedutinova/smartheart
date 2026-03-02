@@ -31,14 +31,14 @@ func (h *Handlers) RegisterRoutes(r chi.Router) {
 		r.Post("/v1/auth/refresh", h.Refresh)
 	})
 
-	// Static file serving for local storage
-	if h.Config.StorageMode == "local" || h.Config.StorageMode == "filesystem" {
-		r.Get("/files/*", h.ServeFiles)
-	}
-
 	// Protected endpoints
 	r.Group(func(r chi.Router) {
-		r.Use(auth.JWTMiddleware(h.Config.JWTSecret, h.Config.JWTIssuer))
+		r.Use(auth.JWTMiddleware(h.Config.JWTSecret, h.Config.JWTIssuer, auth.WithBlacklist(h.Redis)))
+
+		// Static file serving for local storage (requires auth)
+		if h.Config.StorageMode == "local" || h.Config.StorageMode == "filesystem" {
+			r.Get("/files/*", h.ServeFiles)
+		}
 
 		r.Post("/v1/auth/logout", h.Logout)
 

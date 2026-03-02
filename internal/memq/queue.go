@@ -70,28 +70,54 @@ func (q *memQueue) StartConsumers(ctx context.Context, n int, handler JobHandler
 				case <-ctx.Done():
 					return
 				case j := <-q.buf:
-					now := time.Now()
-					j.Status = job.StatusRunning
-					j.Started = &now
+					j.SetRunning()
 
 					runCtx, cancel := context.WithTimeout(ctx, q.maxWait)
 					err := handler(runCtx, j)
 					cancel()
 
-					fin := time.Now()
-					j.Finished = &fin
+					j.SetFinished(err)
 
 					if err != nil {
-						j.Status = job.StatusFailed
-						j.Error = err.Error()
 						slog.Error("job failed", "id", j.ID, "type", j.Type, "err", err, "worker", workerID)
 					} else {
-						j.Status = job.StatusSucceeded
 						slog.Info("job done", "id", j.ID, "type", j.Type, "worker", workerID)
 					}
 				}
 			}
 		}(i + 1)
+	}
+
+	// Periodically clean up finished jobs older than 30 minutes
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				q.cleanupFinishedJobs(30 * time.Minute)
+			}
+		}
+	}()
+}
+
+// cleanupFinishedJobs removes completed/failed jobs older than maxAge from the cache
+func (q *memQueue) cleanupFinishedJobs(maxAge time.Duration) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	cutoff := time.Now().Add(-maxAge)
+	removed := 0
+	for id, j := range q.jobs {
+		if j.Finished != nil && j.Finished.Before(cutoff) {
+			delete(q.jobs, id)
+			removed++
+		}
+	}
+	if removed > 0 {
+		slog.Debug("cleaned up finished jobs from cache", "removed", removed, "remaining", len(q.jobs))
 	}
 }
 

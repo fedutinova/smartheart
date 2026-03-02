@@ -81,22 +81,6 @@ export interface Response {
 
 export interface EKGAnalysisResult {
   analysis_type: string;
-  signal_length: number;
-  signal_features: {
-    points_count: number;
-    signal_width: number;
-    amplitude_range: number;
-    baseline: number;
-    standard_deviation: number;
-    bounding_box: {
-      min_x: number;
-      max_x: number;
-      min_y: number;
-      max_y: number;
-    };
-  };
-  processing_steps: string[];
-  contour_points: number;
   notes?: string;
   timestamp: string;
   job_id: string;

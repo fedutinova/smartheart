@@ -2,7 +2,9 @@ package auth
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -21,7 +23,16 @@ func FromContext(ctx context.Context) (*Claims, bool) {
 	return cl, ok
 }
 
-func JWTMiddleware(secret, issuer string) func(http.Handler) http.Handler {
+// TokenBlacklistChecker checks whether a token hash has been blacklisted.
+type TokenBlacklistChecker interface {
+	IsTokenBlacklisted(ctx context.Context, tokenHash string) (bool, error)
+}
+
+func JWTMiddleware(secret, issuer string, opts ...func(*jwtMWConfig)) func(http.Handler) http.Handler {
+	cfg := jwtMWConfig{}
+	for _, o := range opts {
+		o(&cfg)
+	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			raw := r.Header.Get("Authorization")
@@ -45,10 +56,34 @@ func JWTMiddleware(secret, issuer string) func(http.Handler) http.Handler {
 				http.Error(w, "invalid issuer", http.StatusUnauthorized)
 				return
 			}
+
+			// Check token blacklist (for logged-out tokens)
+			if cfg.blacklist != nil {
+				tokenHash := hashToken(tokenStr)
+				if blacklisted, err := cfg.blacklist.IsTokenBlacklisted(r.Context(), tokenHash); err == nil && blacklisted {
+					http.Error(w, "token has been revoked", http.StatusUnauthorized)
+					return
+				}
+			}
+
 			ctx := context.WithValue(r.Context(), ctxKeyClaims, cl)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+type jwtMWConfig struct {
+	blacklist TokenBlacklistChecker
+}
+
+// WithBlacklist configures the JWT middleware to check a token blacklist.
+func WithBlacklist(bl TokenBlacklistChecker) func(*jwtMWConfig) {
+	return func(c *jwtMWConfig) { c.blacklist = bl }
+}
+
+func hashToken(token string) string {
+	h := sha256.Sum256([]byte(token))
+	return fmt.Sprintf("%x", h)
 }
 
 func RequirePerm(required string) func(http.Handler) http.Handler {

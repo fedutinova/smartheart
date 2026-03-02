@@ -9,6 +9,7 @@ import (
 
 	"github.com/fedutinova/smartheart/internal/auth"
 	"github.com/fedutinova/smartheart/internal/common"
+	"github.com/fedutinova/smartheart/internal/database"
 	"github.com/fedutinova/smartheart/internal/models"
 	"github.com/google/uuid"
 )
@@ -58,7 +59,13 @@ func (h *Handlers) Register(w http.ResponseWriter, r *http.Request) {
 		PasswordHash: passwordHash,
 	}
 
-	if err := h.Repo.CreateUser(r.Context(), user); err != nil {
+	if err := h.Repo.DB().WithTx(r.Context(), func(tx database.Tx) error {
+		txRepo := h.Repo.WithTx(tx)
+		if err := txRepo.CreateUser(r.Context(), user); err != nil {
+			return err
+		}
+		return txRepo.AssignRoleToUser(r.Context(), user.ID, auth.RoleUser)
+	}); err != nil {
 		if common.IsConflict(err) {
 			http.Error(w, "username or email already exists", http.StatusConflict)
 			return
@@ -68,16 +75,10 @@ func (h *Handlers) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.Repo.AssignRoleToUser(r.Context(), user.ID, "user"); err != nil {
-		slog.Error("failed to assign role to user", "error", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{
-		"message": "user registered successfully",
-		"user_id": user.ID,
+	json.NewEncoder(w).Encode(models.RegisterResponse{
+		Message: "user registered successfully",
+		UserID:  user.ID,
 	})
 }
 
@@ -100,9 +101,20 @@ func (h *Handlers) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Brute-force protection: max 10 failed attempts per 15 minutes
+	const maxAttempts int64 = 10
+	const lockoutWindow = 15 * time.Minute
+
+	attempts, err := h.Redis.GetLoginAttempts(r.Context(), req.Email)
+	if err == nil && attempts >= maxAttempts {
+		http.Error(w, "too many login attempts, try again later", http.StatusTooManyRequests)
+		return
+	}
+
 	user, err := h.Repo.GetUserByEmail(r.Context(), req.Email)
 	if err != nil {
 		if common.IsNotFound(err) {
+			h.Redis.IncrLoginAttempts(r.Context(), req.Email, lockoutWindow)
 			slog.Warn("login attempt with invalid email", "email", req.Email)
 			http.Error(w, "invalid credentials", http.StatusUnauthorized)
 			return
@@ -113,10 +125,13 @@ func (h *Handlers) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !h.Repo.CheckPassword(req.Password, user.PasswordHash) {
+		h.Redis.IncrLoginAttempts(r.Context(), req.Email, lockoutWindow)
 		slog.Warn("login attempt with invalid password", "email", req.Email)
 		http.Error(w, "invalid credentials", http.StatusUnauthorized)
 		return
 	}
+
+	h.Redis.ResetLoginAttempts(r.Context(), req.Email)
 
 	roleNames := make([]string, len(user.Roles))
 	for i, role := range user.Roles {
@@ -263,6 +278,21 @@ func (h *Handlers) Logout(w http.ResponseWriter, r *http.Request) {
 		}
 		if err := h.Repo.RevokeRefreshToken(r.Context(), tokenHash); err != nil {
 			slog.Error("failed to revoke refresh token in db", "error", err)
+		}
+	}
+
+	// Blacklist the current access token so it can't be reused after logout
+	if claims, ok := auth.FromContext(r.Context()); ok {
+		raw := r.Header.Get("Authorization")
+		if len(raw) > 7 {
+			tokenStr := raw[7:] // strip "Bearer "
+			tokenHash := h.Repo.HashRefreshToken(tokenStr)
+			ttl := time.Until(claims.ExpiresAt.Time)
+			if ttl > 0 {
+				if err := h.Redis.StoreBlacklistedToken(r.Context(), tokenHash, ttl); err != nil {
+					slog.Error("failed to blacklist access token", "error", err)
+				}
+			}
 		}
 	}
 

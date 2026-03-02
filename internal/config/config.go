@@ -38,7 +38,7 @@ type Config struct {
 	JWTTTLRefresh    time.Duration
 	CORSOrigins      []string // Allowed CORS origins
 	CORSCredentials  bool     // Allow credentials in CORS
-	RateLimitRPS     int      // Rate limit requests per second per IP
+	RateLimitRPM     int      // Rate limit: max requests per minute per IP
 	RateLimitBurst   int      // Rate limit burst size
 }
 
@@ -150,9 +150,22 @@ func loadEnvFiles() {
 
 func Load() Config {
 	loadEnvFiles()
+
+	jwtSecret := getenv("JWT_SECRET", "")
+	if jwtSecret == "" {
+		slog.Warn("JWT_SECRET is not set, using insecure default — DO NOT use in production")
+		jwtSecret = "dev-secret-change-me"
+	}
+
+	dbURL := getenv("DATABASE_URL", "")
+	if dbURL == "" {
+		slog.Warn("DATABASE_URL is not set, using insecure default — DO NOT use in production")
+		dbURL = "postgres://user:password@localhost:5432/smartheart?sslmode=disable"
+	}
+
 	return Config{
 		HTTPAddr:         getenv("HTTP_ADDR", ":8080"),
-		JWTSecret:        getenv("JWT_SECRET", "dev-secret-change-me"),
+		JWTSecret:        jwtSecret,
 		JWTIssuer:        getenv("JWT_ISSUER", "smartheart"),
 		QueueWorkers:     mustInt("QUEUE_WORKERS", 4),
 		QueueBuf:         mustInt("QUEUE_BUFFER", 1024),
@@ -161,13 +174,13 @@ func Load() Config {
 		QueueGroup:       getenv("QUEUE_GROUP", "workers"),
 		JobMaxDuration:   mustDuration("JOB_MAX_DURATION", 30*time.Second),
 		JobClaimTimeout:  mustDuration("JOB_CLAIM_TIMEOUT", 60*time.Second),
-		DatabaseURL:      getenv("DATABASE_URL", "postgres://user:password@localhost:5432/smartheart?sslmode=disable"),
+		DatabaseURL:      dbURL,
 		StorageMode:      getenv("STORAGE_MODE", "local"),
 		S3Bucket:         getenv("S3_BUCKET", "smartheart-files"),
 		S3Endpoint:       getenv("S3_ENDPOINT", "http://localhost:4566"),
 		S3Region:         getenv("S3_REGION", "us-east-1"),
-		AWSAccessKey:     getenv("AWS_ACCESS_KEY_ID", "test"),
-		AWSSecretKey:     getenv("AWS_SECRET_ACCESS_KEY", "test"),
+		AWSAccessKey:     getenv("AWS_ACCESS_KEY_ID", ""),
+		AWSSecretKey:     getenv("AWS_SECRET_ACCESS_KEY", ""),
 		S3ForcePathStyle: getBool("S3_FORCE_PATH_STYLE", true),
 		LocalStorageDir:  getenv("LOCAL_STORAGE_DIR", "./uploads"),
 		LocalStorageURL:  getenv("LOCAL_STORAGE_URL", "http://localhost:8080/files"),
@@ -177,7 +190,7 @@ func Load() Config {
 		JWTTTLRefresh:    mustDuration("JWT_TTL_REFRESH", 7*24*time.Hour),
 		CORSOrigins:      getStringList("CORS_ORIGINS", []string{"http://localhost:3000", "http://localhost:5173"}),
 		CORSCredentials:  getBool("CORS_CREDENTIALS", true),
-		RateLimitRPS:     mustInt("RATE_LIMIT_RPS", 100),     // 100 requests per minute per IP
+		RateLimitRPM:     mustInt("RATE_LIMIT_RPM", 100),     // max requests per minute per IP
 		RateLimitBurst:   mustInt("RATE_LIMIT_BURST", 20),   // Allow burst of 20 requests
 	}
 }

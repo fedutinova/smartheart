@@ -11,7 +11,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
 
   const handleLogout = async () => {
-    const refreshToken = storage.get<string>(REFRESH_TOKEN_KEY);
+    const refreshToken = storage.get(REFRESH_TOKEN_KEY);
     if (refreshToken) {
       try {
         await authAPI.logout(refreshToken);

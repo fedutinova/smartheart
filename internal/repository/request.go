@@ -77,16 +77,17 @@ func (r *Repository) GetRequestByID(ctx context.Context, id uuid.UUID) (*models.
 	return &req, nil
 }
 
-// GetRequestsByUserID retrieves all requests for a user
-func (r *Repository) GetRequestsByUserID(ctx context.Context, userID uuid.UUID) ([]models.Request, error) {
+// GetRequestsByUserID retrieves requests for a user with pagination.
+func (r *Repository) GetRequestsByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]models.Request, error) {
 	query := `
 		SELECT id, user_id, text_query, status, created_at, updated_at
 		FROM requests
 		WHERE user_id = $1
 		ORDER BY created_at DESC
+		LIMIT $2 OFFSET $3
 	`
 
-	rows, err := r.q.Query(ctx, query, userID)
+	rows, err := r.q.Query(ctx, query, userID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +128,13 @@ func (r *Repository) UpdateRequestStatus(ctx context.Context, requestID uuid.UUI
 		WHERE id = $2
 	`
 
-	_, err := r.q.Exec(ctx, query, status, requestID)
-	return err
+	tag, err := r.q.Exec(ctx, query, status, requestID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return common.ErrRequestNotFound
+	}
+	return nil
 }
 

@@ -5,7 +5,7 @@
 # Default target
 help:
 	@echo "Available targets:"
-	@echo "  check-deps        - Check system dependencies (g++, OpenCV, etc.)"
+	@echo "  check-deps        - Check system dependencies"
 	@echo "  test              - Run all tests"
 	@echo "  test-unit         - Run unit tests only"
 	@echo "  test-integration  - Run integration tests only"
@@ -39,7 +39,7 @@ test-integration:
 
 test-ekg:
 	@echo "Running EKG tests..."
-	go test -v -race ./internal/ekg/... ./internal/workers/...
+	go test -v -race ./internal/workers/...
 
 test-coverage:
 	@echo "Running tests with coverage..."
@@ -52,17 +52,17 @@ test-race:
 	go test -v -race ./...
 
 # Build targets
-build: check-deps
+build:
 	@echo "Building application..."
-	@CGO_ENABLED=1 go build -o bin/smartheart ./cmd
+	@CGO_ENABLED=0 go build -o bin/smartheart ./cmd
 
 build-static:
 	@echo "Building static binary..."
 	@CGO_ENABLED=0 go build -a -installsuffix cgo -o bin/smartheart ./cmd
 
-run: check-deps
+run:
 	@echo "Running application..."
-	@CGO_ENABLED=1 go run ./cmd
+	@CGO_ENABLED=0 go run ./cmd
 
 # Docker targets
 docker-build:
@@ -130,7 +130,7 @@ benchmark:
 
 benchmark-ekg:
 	@echo "Running EKG benchmarks..."
-	go test -bench=. -benchmem ./internal/ekg/... ./internal/workers/...
+	go test -bench=. -benchmem ./internal/workers/...
 
 # Security testing
 security:
@@ -150,7 +150,7 @@ ci-test:
 
 ci-build:
 	@echo "Building for CI..."
-	CGO_ENABLED=1 go build -o bin/smartheart ./cmd
+	CGO_ENABLED=0 go build -o bin/smartheart ./cmd
 
 # Environment setup
 env-setup:
@@ -173,7 +173,5 @@ test-full: fmt vet lint test-coverage security
 # Help for specific test packages
 test-help:
 	@echo "Test package examples:"
-	@echo "  make test-ekg                    - EKG preprocessing tests"
-	@echo "  go test ./internal/ekg/...       - EKG package only"
+	@echo "  make test-ekg                    - EKG worker tests"
 	@echo "  go test ./internal/workers/...   - Workers package only"
-	@echo "  go test -run TestPreprocessImage - Specific test function"

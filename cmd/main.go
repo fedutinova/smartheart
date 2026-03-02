@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/fedutinova/smartheart/internal/auth"
 	appconfig "github.com/fedutinova/smartheart/internal/config"
 	"github.com/fedutinova/smartheart/internal/database"
 	"github.com/fedutinova/smartheart/internal/gpt"
@@ -56,6 +57,14 @@ func main() {
 
 	gptClient := gpt.NewClient(cfg.OpenAIAPIKey, storageService)
 	repo := repository.New(db)
+
+	// Load role→permissions mapping from DB so auth middleware uses DB as source of truth
+	if rolePerms, err := repo.LoadRolePermissions(ctx); err != nil {
+		slog.Warn("failed to load role permissions from DB, using defaults", "err", err)
+	} else if len(rolePerms) > 0 {
+		auth.InitPermsFromDB(rolePerms)
+		slog.Info("loaded role permissions from DB", "roles", len(rolePerms))
+	}
 
 	// Initialize job queue based on configuration
 	var q memq.JobQueue
@@ -115,16 +124,22 @@ func main() {
 		IdleTimeout:  90 * time.Second,
 	}
 
+	errCh := make(chan error, 1)
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			slog.Error("server error", "err", err)
-			os.Exit(1)
+			errCh <- err
 		}
 	}()
 
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
-	<-ch
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+
+	select {
+	case sig := <-sigCh:
+		slog.Info("received signal", "signal", sig)
+	case err := <-errCh:
+		slog.Error("server error", "err", err)
+	}
 	slog.Info("shutting down")
 
 	shCtx, shCancel := context.WithTimeout(context.Background(), 10*time.Second)

@@ -29,9 +29,9 @@ func (h *Handlers) SubmitGPTRequest(w http.ResponseWriter, r *http.Request) {
 	if validationErrs := validation.ValidateGPTRequest(textQuery, files); len(validationErrs) > 0 {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{
-			"error":   "validation failed",
-			"details": validationErrs,
+		json.NewEncoder(w).Encode(models.APIError{
+			Error:   "validation failed",
+			Details: validationErrs,
 		})
 		return
 	}
@@ -62,17 +62,24 @@ func (h *Handlers) SubmitGPTRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var fileKeys []string
+	var uploadErrors []string
 	for _, fileHeader := range files {
 		key, err := h.processUploadedFile(r, request.ID, fileHeader)
 		if err != nil {
 			slog.Error("failed to process file", "filename", fileHeader.Filename, "error", err)
+			uploadErrors = append(uploadErrors, fmt.Sprintf("%s: %s", fileHeader.Filename, err.Error()))
 			continue
 		}
 		fileKeys = append(fileKeys, key)
 	}
 
 	if len(fileKeys) == 0 {
-		http.Error(w, "no files successfully processed", http.StatusBadRequest)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(models.APIError{
+			Error:        "no files successfully processed",
+			UploadErrors: uploadErrors,
+		})
 		return
 	}
 
@@ -102,11 +109,12 @@ func (h *Handlers) SubmitGPTRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{
-		"request_id":      request.ID,
-		"job_id":          jobID,
-		"status":          request.Status,
-		"files_processed": len(fileKeys),
+	json.NewEncoder(w).Encode(models.SubmitGPTResponse{
+		RequestID:      request.ID,
+		JobID:          jobID,
+		Status:         request.Status,
+		FilesProcessed: len(fileKeys),
+		UploadErrors:   uploadErrors,
 	})
 }
 

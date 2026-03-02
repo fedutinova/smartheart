@@ -47,19 +47,12 @@ func (e ValidationErrors) Error() string {
 func ValidateGPTRequest(textQuery string, files []*multipart.FileHeader) ValidationErrors {
 	var errors ValidationErrors
 
-	if textQuery == "" && len(files) == 0 {
-		errors = append(errors, ValidationError{
-			Field:   "request",
-			Message: "either text_query or files must be provided",
-		})
-		return errors
-	}
-
 	if len(files) == 0 {
 		errors = append(errors, ValidationError{
 			Field:   "files",
 			Message: "at least one file must be provided",
 		})
+		return errors
 	}
 
 	if textQuery != "" && len(textQuery) > MaxTextLength {

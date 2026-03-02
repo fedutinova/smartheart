@@ -59,23 +59,64 @@ func (s *Service) RevokeRefreshToken(ctx context.Context, tokenHash string) erro
 }
 
 func (s *Service) RevokeAllUserTokens(ctx context.Context, userID string) error {
-	pattern := "refresh_token:*"
-	keys, err := s.client.Keys(ctx, pattern).Result()
-	if err != nil {
-		return fmt.Errorf("failed to get refresh token keys: %w", err)
-	}
-
-	for _, key := range keys {
-		storedUserID, err := s.client.Get(ctx, key).Result()
+	var cursor uint64
+	for {
+		keys, nextCursor, err := s.client.Scan(ctx, cursor, "refresh_token:*", 100).Result()
 		if err != nil {
-			continue
+			return fmt.Errorf("failed to scan refresh token keys: %w", err)
 		}
-		if storedUserID == userID {
-			s.client.Del(ctx, key)
+
+		for _, key := range keys {
+			storedUserID, err := s.client.Get(ctx, key).Result()
+			if err != nil {
+				continue
+			}
+			if storedUserID == userID {
+				s.client.Del(ctx, key)
+			}
+		}
+
+		cursor = nextCursor
+		if cursor == 0 {
+			break
 		}
 	}
 
 	return nil
+}
+
+// IncrLoginAttempts increments the failed login counter for a given email
+// and returns the current count. The counter expires after the given window.
+func (s *Service) IncrLoginAttempts(ctx context.Context, email string, window time.Duration) (int64, error) {
+	key := fmt.Sprintf("login_attempts:%s", email)
+	count, err := s.client.Incr(ctx, key).Result()
+	if err != nil {
+		return 0, fmt.Errorf("failed to increment login attempts: %w", err)
+	}
+	// Set expiry only on first attempt (count == 1)
+	if count == 1 {
+		s.client.Expire(ctx, key, window)
+	}
+	return count, nil
+}
+
+// ResetLoginAttempts clears the failed login counter after successful login.
+func (s *Service) ResetLoginAttempts(ctx context.Context, email string) {
+	key := fmt.Sprintf("login_attempts:%s", email)
+	s.client.Del(ctx, key)
+}
+
+// GetLoginAttempts returns the current failed login count for an email.
+func (s *Service) GetLoginAttempts(ctx context.Context, email string) (int64, error) {
+	key := fmt.Sprintf("login_attempts:%s", email)
+	count, err := s.client.Get(ctx, key).Int64()
+	if err == redis.Nil {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("failed to get login attempts: %w", err)
+	}
+	return count, nil
 }
 
 func (s *Service) StoreBlacklistedToken(ctx context.Context, tokenHash string, ttl time.Duration) error {

@@ -33,7 +33,6 @@ func NewS3Storage(ctx context.Context, cfg appconfig.Config) (*S3Storage, error)
 		"endpoint", cfg.S3Endpoint,
 		"bucket", cfg.S3Bucket,
 		"region", cfg.S3Region,
-		"access_key", cfg.AWSAccessKey,
 		"force_path_style", cfg.S3ForcePathStyle)
 
 	if cfg.S3Endpoint != "" && (strings.Contains(cfg.S3Endpoint, "localstack") || strings.Contains(cfg.S3Endpoint, "localhost:4566") || strings.Contains(cfg.S3Endpoint, "4566")) {
@@ -109,9 +108,7 @@ func (s *S3Storage) UploadFile(ctx context.Context, filename string, content io.
 	}
 
 	var url string
-	if s.endpoint != "" && (strings.Contains(s.endpoint, "localstack") || strings.Contains(s.endpoint, "localhost:4566") || strings.Contains(s.endpoint, "4566")) {
-		url = fmt.Sprintf("%s/%s/%s", s.endpoint, s.bucket, key)
-	} else if s.endpoint != "" {
+	if s.endpoint != "" {
 		url = fmt.Sprintf("%s/%s/%s", s.endpoint, s.bucket, key)
 	} else {
 		url = fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", s.bucket, s.region, key)

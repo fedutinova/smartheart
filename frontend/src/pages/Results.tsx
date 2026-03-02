@@ -25,8 +25,8 @@ export function Results() {
   if (request?.response?.content) {
     try {
       const parsed = JSON.parse(request.response.content);
-      // Check if this is actually an EKG result (has analysis_type or signal_features)
-      if (parsed?.analysis_type === 'ekg_preprocessing' || parsed?.signal_features) {
+      // Check if this is an EKG result
+      if (parsed?.analysis_type === 'ekg_direct_v2') {
         ekgResult = parsed as EKGAnalysisResult;
         gptRequestId = ekgResult?.gpt_request_id || null;
       }
@@ -120,7 +120,7 @@ export function Results() {
         )}
 
         {/* Analysis Result - GPT from linked request or direct GPT request */}
-        {(gptRequest?.response || (!ekgResult && request.response && request.response.model !== 'ekg_preprocessor_v1')) && (
+        {(gptRequest?.response || (!ekgResult && request.response && request.response.model !== 'ekg_direct_v2')) && (
           <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 shadow rounded-lg p-6 mb-6">
             <div className="flex items-center mb-4">
               <span className="text-2xl mr-2">📒</span>
@@ -166,124 +166,26 @@ export function Results() {
           </div>
         )}
 
-        {/* EKG Result */}
+        {/* EKG Result Info */}
         {ekgResult && (
           <div className="bg-white shadow rounded-lg p-6 mb-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Характеристики сигнала</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div className="bg-blue-50 rounded-lg p-4">
-                <h3 className="text-sm font-medium text-blue-900 mb-2">Основные параметры</h3>
-                <dl className="space-y-2">
-                  <div className="flex justify-between">
-                    <dt className="text-sm text-blue-700">Длина сигнала:</dt>
-                    <dd className="text-sm font-semibold text-blue-900">
-                      {ekgResult.signal_length.toFixed(2)}
-                    </dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-sm text-blue-700">Ширина сигнала:</dt>
-                    <dd className="text-sm font-semibold text-blue-900">
-                      {ekgResult.signal_features.signal_width}
-                    </dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-sm text-blue-700">Точек контура:</dt>
-                    <dd className="text-sm font-semibold text-blue-900">
-                      {ekgResult.signal_features.points_count}
-                    </dd>
-                  </div>
-                </dl>
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Информация об анализе ЭКГ</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-500">Время анализа</label>
+                <p className="mt-1 text-sm text-gray-900">{formatDate(ekgResult.timestamp)}</p>
               </div>
-
-              <div className="bg-green-50 rounded-lg p-4">
-                <h3 className="text-sm font-medium text-green-900 mb-2">Амплитуда</h3>
-                <dl className="space-y-2">
-                  <div className="flex justify-between">
-                    <dt className="text-sm text-green-700">Диапазон:</dt>
-                    <dd className="text-sm font-semibold text-green-900">
-                      {ekgResult.signal_features.amplitude_range}
-                    </dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-sm text-green-700">Базовая линия:</dt>
-                    <dd className="text-sm font-semibold text-green-900">
-                      {ekgResult.signal_features.baseline.toFixed(2)}
-                    </dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-sm text-green-700">Станд. отклонение:</dt>
-                    <dd className="text-sm font-semibold text-green-900">
-                      {ekgResult.signal_features.standard_deviation.toFixed(2)}
-                    </dd>
-                  </div>
-                </dl>
+              <div>
+                <label className="text-sm font-medium text-gray-500">Статус GPT-интерпретации</label>
+                <p className="mt-1 text-sm text-gray-900">
+                  {ekgResult.gpt_interpretation_status || 'N/A'}
+                </p>
               </div>
             </div>
-
-            <div className="bg-purple-50 rounded-lg p-4 mb-6">
-              <h3 className="text-sm font-medium text-purple-900 mb-2">Bounding Box</h3>
-              <dl className="grid grid-cols-4 gap-4">
-                <div>
-                  <dt className="text-xs text-purple-700">Min X</dt>
-                  <dd className="text-sm font-semibold text-purple-900">
-                    {ekgResult.signal_features.bounding_box.min_x}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-purple-700">Max X</dt>
-                  <dd className="text-sm font-semibold text-purple-900">
-                    {ekgResult.signal_features.bounding_box.max_x}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-purple-700">Min Y</dt>
-                  <dd className="text-sm font-semibold text-purple-900">
-                    {ekgResult.signal_features.bounding_box.min_y}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-purple-700">Max Y</dt>
-                  <dd className="text-sm font-semibold text-purple-900">
-                    {ekgResult.signal_features.bounding_box.max_y}
-                  </dd>
-                </div>
-              </dl>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-2">Шаги обработки</h3>
-              <div className="flex flex-wrap gap-2">
-                {ekgResult.processing_steps.map((step, index) => (
-                  <span
-                    key={index}
-                    className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium"
-                  >
-                    {step}
-                  </span>
-                ))}
-              </div>
-            </div>
-
             {ekgResult.notes && (
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <h3 className="text-sm font-medium text-gray-700 mb-2">Примечания</h3>
-                <p className="text-sm text-gray-600">{ekgResult.notes}</p>
-              </div>
-            )}
-
-            {/* EKG Processing Info */}
-            {request.response && request.response.model === 'ekg_preprocessor_v1' && (
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <h3 className="text-sm font-medium text-gray-700 mb-4">Информация об обработке</h3>
-                <div className="grid grid-cols-1 md:grid-cols-1 gap-2">
-                  {request.response.model && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Модель</label>
-                      <p className="mt-1 text-sm text-gray-900">{request.response.model}</p>
-                    </div>
-                  )}
-                </div>
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <label className="text-sm font-medium text-gray-500">Примечания</label>
+                <p className="mt-1 text-sm text-gray-600">{ekgResult.notes}</p>
               </div>
             )}
           </div>

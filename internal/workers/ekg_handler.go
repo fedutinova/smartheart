@@ -7,11 +7,12 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/fedutinova/smartheart/internal/database"
-	"github.com/fedutinova/smartheart/internal/ekg"
 	"github.com/fedutinova/smartheart/internal/gpt"
 	"github.com/fedutinova/smartheart/internal/job"
 	"github.com/fedutinova/smartheart/internal/memq"
@@ -22,28 +23,18 @@ import (
 )
 
 type EKGHandler struct {
-	db           *database.DB
-	preprocessor *ekg.EKGPreprocessor
-	queue        memq.JobQueue
-	storage      storage.Storage
-	repo         *repository.Repository
-}
-
-// EKGJobPayload represents the payload for EKG analysis jobs
-type EKGJobPayload struct {
-	ImageTempURL string `json:"image_temp_url"`
-	Notes        string `json:"notes,omitempty"`
-	UserID       string `json:"user_id,omitempty"`
-	RequestID    string `json:"request_id,omitempty"`
+	db      *database.DB
+	queue   memq.JobQueue
+	storage storage.Storage
+	repo    *repository.Repository
 }
 
 func NewEKGHandler(db *database.DB, queue memq.JobQueue, storageService storage.Storage, repo *repository.Repository) *EKGHandler {
 	return &EKGHandler{
-		db:           db,
-		preprocessor: ekg.NewEKGPreprocessor(),
-		queue:        queue,
-		storage:      storageService,
-		repo:         repo,
+		db:      db,
+		queue:   queue,
+		storage: storageService,
+		repo:    repo,
 	}
 }
 
@@ -52,7 +43,7 @@ func (h *EKGHandler) HandleEKGJob(ctx context.Context, j *job.Job) error {
 		return fmt.Errorf("unexpected job type: %s", j.Type)
 	}
 
-	var payload EKGJobPayload
+	var payload job.EKGJobPayload
 	if err := json.Unmarshal(j.Payload, &payload); err != nil {
 		return fmt.Errorf("failed to unmarshal EKG job payload: %w", err)
 	}
@@ -69,79 +60,104 @@ func (h *EKGHandler) HandleEKGJob(ctx context.Context, j *job.Job) error {
 		return fmt.Errorf("failed to download image: %w", err)
 	}
 
-	// Process the image with actual preprocessing
-	result, err := h.processEKGImage(ctx, imageData, payload)
-	if err != nil {
-		slog.Error("EKG processing failed", "job_id", j.ID, "error", err)
-		return fmt.Errorf("EKG processing failed: %w", err)
-	}
-	defer result.Close() // Ensure resources are cleaned up
-
-	// Save results to database
-	if err := h.saveEKGResults(ctx, j.ID, result, payload, imageData); err != nil {
+	// Save results and trigger GPT analysis directly — no OpenCV preprocessing
+	if err := h.saveEKGResults(ctx, j.ID, payload, imageData); err != nil {
 		return fmt.Errorf("failed to save EKG results: %w", err)
 	}
 
-	slog.Info("EKG analysis completed successfully",
-		"job_id", j.ID,
-		"signal_length", result.SignalLength,
-		"processing_steps", result.ProcessingSteps)
+	slog.Info("EKG analysis job completed, GPT analysis triggered",
+		"job_id", j.ID)
+
+	return nil
+}
+
+// validateImageURL checks that the URL is safe to fetch (prevents SSRF)
+func validateImageURL(rawURL string) error {
+	if rawURL == "" {
+		return fmt.Errorf("empty image URL")
+	}
+
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
+
+	// Only allow http and https schemes
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return fmt.Errorf("unsupported URL scheme: %s (only http/https allowed)", parsed.Scheme)
+	}
+
+	hostname := parsed.Hostname()
+
+	// Block localhost and loopback
+	if hostname == "localhost" || hostname == "127.0.0.1" || hostname == "::1" || hostname == "0.0.0.0" {
+		return fmt.Errorf("requests to localhost are not allowed")
+	}
+
+	// Resolve hostname and check for private/reserved IP ranges
+	ips, err := net.LookupHost(hostname)
+	if err != nil {
+		return fmt.Errorf("failed to resolve hostname %s: %w", hostname, err)
+	}
+
+	for _, ipStr := range ips {
+		ip := net.ParseIP(ipStr)
+		if ip == nil {
+			continue
+		}
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
+			return fmt.Errorf("requests to private/reserved IP addresses are not allowed")
+		}
+	}
 
 	return nil
 }
 
 // downloadImage downloads image from URL with timeout and size limits
 func (h *EKGHandler) downloadImage(ctx context.Context, imageURL string) ([]byte, error) {
-	if imageURL == "" {
-		return nil, fmt.Errorf("empty image URL")
+	if err := validateImageURL(imageURL); err != nil {
+		return nil, fmt.Errorf("URL validation failed: %w", err)
 	}
 
-	// Create HTTP client with timeout
+	const maxImageSize = 10 * 1024 * 1024 // 10MB
+
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 	}
 
-	// Create request with context
 	req, err := http.NewRequestWithContext(ctx, "GET", imageURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	// Set headers
 	req.Header.Set("User-Agent", "SmartHeart-EKG-Processor/1.0")
 	req.Header.Set("Accept", "image/*")
 
-	// Make request
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download image: %w", err)
 	}
 	defer resp.Body.Close()
 
-	// Check status code
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
-	// Check content type
 	contentType := resp.Header.Get("Content-Type")
 	if !isValidImageContentType(contentType) {
 		return nil, fmt.Errorf("invalid content type: %s", contentType)
 	}
 
-	// Check content length (max 10MB)
-	const maxImageSize = 10 * 1024 * 1024 // 10MB
 	if resp.ContentLength > maxImageSize {
 		return nil, fmt.Errorf("image too large: %d bytes (max %d)", resp.ContentLength, maxImageSize)
 	}
 
-	// Read image data
-	imageData, err := io.ReadAll(resp.Body)
+	// Use LimitReader to prevent unbounded memory consumption
+	imageData, err := io.ReadAll(io.LimitReader(resp.Body, maxImageSize+1))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read image data: %w", err)
 	}
 
-	// Double-check size after reading
 	if len(imageData) > maxImageSize {
 		return nil, fmt.Errorf("image too large after download: %d bytes (max %d)", len(imageData), maxImageSize)
 	}
@@ -152,26 +168,6 @@ func (h *EKGHandler) downloadImage(ctx context.Context, imageURL string) ([]byte
 		"size_bytes", len(imageData))
 
 	return imageData, nil
-}
-
-// processEKGImage processes the downloaded image with EKG preprocessing
-func (h *EKGHandler) processEKGImage(ctx context.Context, imageData []byte, payload EKGJobPayload) (*ekg.PreprocessingResult, error) {
-	// Preprocess the image using the EKG preprocessor
-	result, err := h.preprocessor.PreprocessImage(ctx, imageData)
-	if err != nil {
-		return nil, fmt.Errorf("failed to preprocess EKG image: %w", err)
-	}
-
-	// Extract additional signal features
-	features := h.preprocessor.ExtractSignalFeatures(result.SignalContour)
-
-	slog.Info("EKG image processed successfully",
-		"signal_length", result.SignalLength,
-		"features", features,
-		"processing_steps", result.ProcessingSteps,
-		"notes", payload.Notes)
-
-	return result, nil
 }
 
 // isValidImageContentType checks if the content type is a valid image format
@@ -189,7 +185,7 @@ func isValidImageContentType(contentType string) bool {
 	return validTypes[contentType]
 }
 
-func (h *EKGHandler) saveEKGResults(ctx context.Context, jobID uuid.UUID, result *ekg.PreprocessingResult, payload EKGJobPayload, imageData []byte) error {
+func (h *EKGHandler) saveEKGResults(ctx context.Context, jobID uuid.UUID, payload job.EKGJobPayload, imageData []byte) error {
 	// Parse user ID
 	userUUID, err := uuid.Parse(payload.UserID)
 	if err != nil {
@@ -207,35 +203,26 @@ func (h *EKGHandler) saveEKGResults(ctx context.Context, jobID uuid.UUID, result
 		requestID = uuid.New()
 	}
 
-	// Extract signal features for detailed analysis
-	features := h.preprocessor.ExtractSignalFeatures(result.SignalContour)
-
-	// Trigger GPT analysis workflow: save processed image and create GPT job
-	// We need to do this BEFORE saving EKG response to include gpt_request_id
-	gptRequestID, err := h.triggerGPTAnalysis(ctx, jobID, requestID, result, payload, userUUID, imageData)
+	// Trigger GPT analysis: upload image and create GPT job
+	gptRequestID, err := h.triggerGPTAnalysis(ctx, jobID, requestID, payload, userUUID, imageData)
 	if err != nil {
 		slog.Warn("Failed to trigger GPT analysis", "error", err, "job_id", jobID)
-		// Continue even if GPT trigger fails
 		gptRequestID = uuid.Nil
 	}
 
-	// Create comprehensive response content
-	responseContent := map[string]interface{}{
-		"analysis_type":    "ekg_preprocessing",
-		"signal_length":    result.SignalLength,
-		"signal_features":  features,
-		"processing_steps": result.ProcessingSteps,
-		"contour_points":   len(result.SignalContour),
-		"notes":            payload.Notes,
-		"timestamp":        time.Now().UTC().Format(time.RFC3339),
-		"job_id":           jobID.String(),
+	// Create response content
+	ekgContent := &models.EKGResponseContent{
+		AnalysisType: models.EKGModelDirect,
+		Notes:        payload.Notes,
+		Timestamp:    time.Now().UTC().Format(time.RFC3339),
+		JobID:        jobID.String(),
 	}
 	if gptRequestID != uuid.Nil {
-		responseContent["gpt_request_id"] = gptRequestID.String()
-		responseContent["gpt_interpretation_status"] = "pending"
+		ekgContent.GPTRequestID = gptRequestID.String()
+		ekgContent.GPTInterpretationStatus = "pending"
 	}
 
-	responseJSON, err := json.Marshal(responseContent)
+	responseJSON, err := ekgContent.Marshal()
 	if err != nil {
 		return fmt.Errorf("failed to marshal response content: %w", err)
 	}
@@ -244,13 +231,11 @@ func (h *EKGHandler) saveEKGResults(ctx context.Context, jobID uuid.UUID, result
 	err = h.db.WithTx(ctx, func(tx database.Tx) error {
 		txRepo := h.repo.WithTx(tx)
 
-		// Update request status to processing (or create if backward compatibility)
 		if payload.RequestID != "" {
 			if err := txRepo.UpdateRequestStatus(ctx, requestID, models.StatusProcessing); err != nil {
 				return fmt.Errorf("failed to update request status to processing: %w", err)
 			}
 		} else {
-			// Backward compatibility: create request if not provided
 			request := &models.Request{
 				ID:     requestID,
 				UserID: userUUID,
@@ -264,20 +249,18 @@ func (h *EKGHandler) saveEKGResults(ctx context.Context, jobID uuid.UUID, result
 			}
 		}
 
-		// Save EKG analysis results as a response
 		response := &models.Response{
 			ID:               uuid.New(),
 			RequestID:        requestID,
-			Content:          string(responseJSON),
-			Model:            "ekg_preprocessor_v1",
+			Content:          responseJSON,
+			Model:            models.EKGModelDirect,
 			TokensUsed:       0,
-			ProcessingTimeMs: 0, // TODO: Calculate actual processing time
+			ProcessingTimeMs: 0,
 		}
 		if err := txRepo.CreateResponse(ctx, response); err != nil {
 			return fmt.Errorf("failed to save EKG response: %w", err)
 		}
 
-		// Update request status to completed
 		if err := txRepo.UpdateRequestStatus(ctx, requestID, models.StatusCompleted); err != nil {
 			return fmt.Errorf("failed to update request status to completed: %w", err)
 		}
@@ -285,9 +268,7 @@ func (h *EKGHandler) saveEKGResults(ctx context.Context, jobID uuid.UUID, result
 		slog.Info("Saved EKG analysis results",
 			"job_id", jobID,
 			"request_id", requestID,
-			"response_id", response.ID,
-			"signal_length", result.SignalLength,
-			"contour_points", len(result.SignalContour))
+			"response_id", response.ID)
 
 		return nil
 	})
@@ -295,76 +276,44 @@ func (h *EKGHandler) saveEKGResults(ctx context.Context, jobID uuid.UUID, result
 	return err
 }
 
-// triggerGPTAnalysis creates a GPT job to analyze the EKG results
-// Returns the GPT request ID for linking
-func (h *EKGHandler) triggerGPTAnalysis(ctx context.Context, ekgJobID uuid.UUID, ekgRequestID uuid.UUID, result *ekg.PreprocessingResult, payload EKGJobPayload, userUUID uuid.UUID, imageData []byte) (uuid.UUID, error) {
-	// Use ORIGINAL image for GPT analysis
-	// Preprocessed image is too binary (black/white only) and GPT may not recognize it as a medical image
-	// Original image preserves all visual information that GPT needs to analyze
-	// The preprocessing is used only for signal extraction, not for GPT visualization
-	preprocessedImageData := imageData
-	slog.Info("using original image for GPT analysis (preprocessed image is for signal extraction only)",
-		"original_size", len(imageData))
-
-	// Save the preprocessed image to storage
-	filename := fmt.Sprintf("ekg_processed_%s.jpg", ekgJobID.String()[:8])
-	uploadResult, err := h.storage.UploadFile(ctx, filename, bytes.NewReader(preprocessedImageData), "image/jpeg")
+// triggerGPTAnalysis uploads the image and creates a GPT job for EKG interpretation
+func (h *EKGHandler) triggerGPTAnalysis(ctx context.Context, ekgJobID uuid.UUID, ekgRequestID uuid.UUID, payload job.EKGJobPayload, userUUID uuid.UUID, imageData []byte) (uuid.UUID, error) {
+	filename := fmt.Sprintf("ekg_%s.jpg", ekgJobID.String()[:8])
+	uploadResult, err := h.storage.UploadFile(ctx, filename, bytes.NewReader(imageData), "image/jpeg")
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to upload processed image: %w", err)
+		return uuid.Nil, fmt.Errorf("failed to upload image: %w", err)
 	}
 
-	// Create a new request for GPT analysis
 	gptRequestID := uuid.New()
-	features := h.preprocessor.ExtractSignalFeatures(result.SignalContour)
 
-	// Extract feature values with type assertions
-	signalWidth := 0
-	if sw, ok := features["signal_width"].(int); ok {
-		signalWidth = sw
-	}
-	amplitudeRange := 0
-	if ar, ok := features["amplitude_range"].(int); ok {
-		amplitudeRange = ar
-	}
-	baseline := 0.0
-	if bl, ok := features["baseline"].(float64); ok {
-		baseline = bl
-	}
-	stdDev := 0.0
-	if sd, ok := features["standard_deviation"].(float64); ok {
-		stdDev = sd
-	}
+	// Build EKG-specific prompt — GPT-4o analyzes the image directly
+	var textQuery string
+	if payload.Notes != "" {
+		textQuery = fmt.Sprintf(`Analyze this ECG/EKG image. Describe what you observe in Russian language.
 
-	// Create comprehensive text query with EKG analysis results
-	// Use neutral technical language to avoid triggering safety filters
-	textQuery := fmt.Sprintf(`Analyze this waveform graph image. This is a technical visualization of electrical signal patterns.
+Structure your analysis:
+1. Качество изображения: четкость, наличие артефактов, видимость отведений
+2. Ритм: регулярный/нерегулярный, приблизительная ЧСС если видна разметка
+3. Зубцы и интервалы: P, QRS, T — форма, амплитуда, длительность (если видна калибровка)
+4. Сегменты: ST-сегмент (элевация/депрессия), PR-интервал, QT-интервал
+5. Особенности: любые отклонения от нормального синусового ритма
 
-Technical preprocessing data:
-- Signal length: %.2f pixels
-- Contour points: %d
-- Signal width: %d pixels
-- Amplitude range: %d pixels
-- Baseline: %.2f
-- Standard deviation: %.2f
-
-Additional context:
+Additional context from user:
 %s
 
-Please describe what you see in this waveform graph in Russian language, structured as numbered points. Include:
-1. Image quality: clarity, contrast, visibility of all elements
-2. Graph patterns: describe the lines, their shapes, direction, and patterns you observe
-3. Measurements: if there are markings or scales visible, describe the values
-4. Features: any notable features, variations, or changes in the pattern
-5. Technical observations: describe the technical parameters visible or mentioned
+This is for educational and technical analysis. Describe observations without making diagnostic conclusions.`, payload.Notes)
+	} else {
+		textQuery = `Analyze this ECG/EKG image. Describe what you observe in Russian language.
 
-Format your response in Russian with numbered points. This is for educational and technical analysis purposes.`,
-		result.SignalLength,
-		len(result.SignalContour),
-		signalWidth,
-		amplitudeRange,
-		baseline,
-		stdDev,
-		payload.Notes)
+Structure your analysis:
+1. Качество изображения: четкость, наличие артефактов, видимость отведений
+2. Ритм: регулярный/нерегулярный, приблизительная ЧСС если видна разметка
+3. Зубцы и интервалы: P, QRS, T — форма, амплитуда, длительность (если видна калибровка)
+4. Сегменты: ST-сегмент (элевация/депрессия), PR-интервал, QT-интервал
+5. Особенности: любые отклонения от нормального синусового ритма
+
+This is for educational and technical analysis. Describe observations without making diagnostic conclusions.`
+	}
 
 	gptRequest := &models.Request{
 		ID:        gptRequestID,
@@ -377,7 +326,6 @@ Format your response in Russian with numbered points. This is for educational an
 		return uuid.Nil, fmt.Errorf("failed to create GPT request: %w", err)
 	}
 
-	// Create file record
 	fileModel := &models.File{
 		ID:               uuid.New(),
 		RequestID:        gptRequestID,
@@ -392,7 +340,6 @@ Format your response in Russian with numbered points. This is for educational an
 		return uuid.Nil, fmt.Errorf("failed to create file record: %w", err)
 	}
 
-	// Create GPT job payload
 	gptPayload := gpt.GPTJobPayload{
 		RequestID: gptRequestID,
 		TextQuery: textQuery,
@@ -405,7 +352,6 @@ Format your response in Russian with numbered points. This is for educational an
 		return uuid.Nil, fmt.Errorf("failed to marshal GPT payload: %w", err)
 	}
 
-	// Enqueue GPT job
 	gptJob := &job.Job{
 		Type:    job.TypeGPTProcess,
 		Payload: payloadBytes,
@@ -416,7 +362,7 @@ Format your response in Russian with numbered points. This is for educational an
 		return uuid.Nil, fmt.Errorf("failed to enqueue GPT job: %w", err)
 	}
 
-	slog.Info("GPT analysis job triggered after EKG preprocessing",
+	slog.Info("GPT analysis job triggered for EKG image",
 		"ekg_job_id", ekgJobID,
 		"ekg_request_id", ekgRequestID,
 		"gpt_job_id", gptJobID,
@@ -426,27 +372,7 @@ Format your response in Russian with numbered points. This is for educational an
 	return gptRequestID, nil
 }
 
-// ProcessImageFromBytes processes EKG image from raw bytes
-func (h *EKGHandler) ProcessImageFromBytes(ctx context.Context, imageData []byte, notes string, userID string) (*ekg.PreprocessingResult, error) {
-	// Preprocess the image
-	result, err := h.preprocessor.PreprocessImage(ctx, imageData)
-	if err != nil {
-		return nil, fmt.Errorf("failed to preprocess EKG image: %w", err)
-	}
-
-	// Extract signal features
-	features := h.preprocessor.ExtractSignalFeatures(result.SignalContour)
-	slog.Info("EKG image processed successfully",
-		"signal_length", result.SignalLength,
-		"features", features,
-		"processing_steps", result.ProcessingSteps)
-
-	return result, nil
-}
-
 // Close cleans up resources used by the EKG handler
 func (h *EKGHandler) Close() {
-	// Close any resources if needed
-	// Currently, the preprocessor doesn't hold persistent resources
 	slog.Debug("EKG handler closed")
 }

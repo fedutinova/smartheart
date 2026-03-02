@@ -56,6 +56,7 @@ CREATE INDEX IF NOT EXISTS idx_role_permissions_role_id ON role_permissions(role
 CREATE INDEX IF NOT EXISTS idx_role_permissions_permission_id ON role_permissions(permission_id);
 CREATE INDEX IF NOT EXISTS idx_permissions_resource_action ON permissions(resource, action);
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token_hash ON refresh_tokens(token_hash);
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires_at ON refresh_tokens(expires_at);
 
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users 

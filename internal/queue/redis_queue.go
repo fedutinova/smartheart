@@ -87,9 +87,16 @@ func (q *RedisQueue) Enqueue(ctx context.Context, j *job.Job) (uuid.UUID, error)
 	j.Status = job.StatusQueued
 	j.Enqueued = time.Now()
 
+	q.mu.Lock()
+	q.jobs[j.ID] = j
+	q.mu.Unlock()
+
 	// Serialize job
 	data, err := json.Marshal(j)
 	if err != nil {
+		q.mu.Lock()
+		delete(q.jobs, j.ID)
+		q.mu.Unlock()
 		return uuid.Nil, fmt.Errorf("failed to marshal job: %w", err)
 	}
 
@@ -102,13 +109,11 @@ func (q *RedisQueue) Enqueue(ctx context.Context, j *job.Job) (uuid.UUID, error)
 		},
 	}).Result()
 	if err != nil {
+		q.mu.Lock()
+		delete(q.jobs, j.ID)
+		q.mu.Unlock()
 		return uuid.Nil, fmt.Errorf("failed to add job to stream: %w", err)
 	}
-
-	// Cache locally for status lookups
-	q.mu.Lock()
-	q.jobs[j.ID] = j
-	q.mu.Unlock()
 
 	slog.Debug("Job enqueued", "job_id", j.ID, "type", j.Type)
 	return j.ID, nil
