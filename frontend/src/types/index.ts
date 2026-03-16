@@ -79,6 +79,13 @@ export interface Response {
   created_at: string;
 }
 
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export interface EKGAnalysisResult {
   analysis_type: string;
   notes?: string;

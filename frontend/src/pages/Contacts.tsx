@@ -9,12 +9,6 @@ interface TeamMember {
 
 const teamMembers: TeamMember[] = [
   {
-    name: 'Широбоков Михаил',
-    role: 'Лидер проекта',
-    responsibilities: ['ML-разработка'],
-    icon: '👨‍💼',
-  },
-  {
     name: 'Алимова Елена',
     role: 'Врач ФД',
     responsibilities: ['Работа с ЭКГ', 'Дата-аналитик', 'NLP-специалист'],

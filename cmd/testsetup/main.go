@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/fedutinova/smartheart/internal/testutil/fixtures"
+	"github.com/fedutinova/smartheart/back-api/testutil/fixtures"
 )
 
 func main() {

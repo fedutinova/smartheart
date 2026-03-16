@@ -5,13 +5,13 @@ import { formatDate, formatStatus, getStatusColor } from '@/utils/format';
 import { Layout } from '@/components/Layout';
 
 export function History() {
-  const { data: requests, isLoading, error } = useQuery({
+  const { data: page, isLoading, error } = useQuery({
     queryKey: ['requests'],
     queryFn: () => requestAPI.getUserRequests(),
   });
 
   // Hide internal GPT sub-requests created by the EKG worker pipeline.
-  const filteredRequests = requests?.filter(
+  const filteredRequests = page?.data?.filter(
     (request) => !request.text_query?.includes('Analyze this ECG/EKG image')
   ) || [];
 

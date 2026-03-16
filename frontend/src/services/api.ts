@@ -6,6 +6,7 @@ import type {
   EKGAnalysisRequest,
   Job,
   Request,
+  PaginatedResponse,
 } from '@/types';
 import { API_BASE_URL, JWT_STORAGE_KEY, REFRESH_TOKEN_KEY } from '@/config';
 import { useAuthStore } from '@/store/auth';
@@ -156,8 +157,10 @@ export const requestAPI = {
     return response.data;
   },
 
-  getUserRequests: async () => {
-    const response = await api.get<Request[]>('/v1/requests');
+  getUserRequests: async (limit = 50, offset = 0) => {
+    const response = await api.get<PaginatedResponse<Request>>('/v1/requests', {
+      params: { limit, offset },
+    });
     return response.data;
   },
 };

@@ -4,17 +4,17 @@ import { requestAPI } from '@/services/api';
 import { formatRelative, formatStatus, getStatusColor } from '@/utils/format';
 import { ROUTES } from '@/config';
 import { Layout } from '@/components/Layout';
-import type { Request } from '@/types';
+import type { PaginatedResponse, Request } from '@/types';
 
 export function Dashboard() {
-  const { data: requests, isLoading } = useQuery<Request[]>({
+  const { data: page, isLoading } = useQuery<PaginatedResponse<Request>>({
     queryKey: ['requests'],
     queryFn: () => requestAPI.getUserRequests(),
   });
 
   // Hide internal GPT sub-requests created by the EKG worker pipeline.
   // These contain the EKG prompt template in text_query and are not user-facing.
-  const userRequests = requests?.filter(
+  const userRequests = page?.data?.filter(
     (request) => !request.text_query?.includes('Analyze this ECG/EKG image')
   ) || [];
   const recentRequests = userRequests.slice(0, 5);
