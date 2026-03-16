@@ -365,6 +365,63 @@ func (_c *MockStore_CreateUser_Call) RunAndReturn(run func(context.Context, *mod
 	return _c
 }
 
+// GetDailyUsage provides a mock function with given fields: ctx, userID
+func (_m *MockStore) GetDailyUsage(ctx context.Context, userID uuid.UUID) (int, error) {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetDailyUsage")
+	}
+
+	var r0 int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (int, error)); ok {
+		return rf(ctx, userID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) int); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStore_GetDailyUsage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetDailyUsage'
+type MockStore_GetDailyUsage_Call struct {
+	*mock.Call
+}
+
+// GetDailyUsage is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID uuid.UUID
+func (_e *MockStore_Expecter) GetDailyUsage(ctx interface{}, userID interface{}) *MockStore_GetDailyUsage_Call {
+	return &MockStore_GetDailyUsage_Call{Call: _e.mock.On("GetDailyUsage", ctx, userID)}
+}
+
+func (_c *MockStore_GetDailyUsage_Call) Run(run func(ctx context.Context, userID uuid.UUID)) *MockStore_GetDailyUsage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(uuid.UUID))
+	})
+	return _c
+}
+
+func (_c *MockStore_GetDailyUsage_Call) Return(_a0 int, _a1 error) *MockStore_GetDailyUsage_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStore_GetDailyUsage_Call) RunAndReturn(run func(context.Context, uuid.UUID) (int, error)) *MockStore_GetDailyUsage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetFilesByRequestID provides a mock function with given fields: ctx, requestID
 func (_m *MockStore) GetFilesByRequestID(ctx context.Context, requestID uuid.UUID) ([]models.File, error) {
 	ret := _m.Called(ctx, requestID)
@@ -836,6 +893,63 @@ func (_c *MockStore_GetUserByID_Call) Return(_a0 *models.User, _a1 error) *MockS
 }
 
 func (_c *MockStore_GetUserByID_Call) RunAndReturn(run func(context.Context, uuid.UUID) (*models.User, error)) *MockStore_GetUserByID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// IncrementDailyUsage provides a mock function with given fields: ctx, userID
+func (_m *MockStore) IncrementDailyUsage(ctx context.Context, userID uuid.UUID) (int, error) {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for IncrementDailyUsage")
+	}
+
+	var r0 int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (int, error)); ok {
+		return rf(ctx, userID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) int); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStore_IncrementDailyUsage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IncrementDailyUsage'
+type MockStore_IncrementDailyUsage_Call struct {
+	*mock.Call
+}
+
+// IncrementDailyUsage is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID uuid.UUID
+func (_e *MockStore_Expecter) IncrementDailyUsage(ctx interface{}, userID interface{}) *MockStore_IncrementDailyUsage_Call {
+	return &MockStore_IncrementDailyUsage_Call{Call: _e.mock.On("IncrementDailyUsage", ctx, userID)}
+}
+
+func (_c *MockStore_IncrementDailyUsage_Call) Run(run func(ctx context.Context, userID uuid.UUID)) *MockStore_IncrementDailyUsage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(uuid.UUID))
+	})
+	return _c
+}
+
+func (_c *MockStore_IncrementDailyUsage_Call) Return(_a0 int, _a1 error) *MockStore_IncrementDailyUsage_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStore_IncrementDailyUsage_Call) RunAndReturn(run func(context.Context, uuid.UUID) (int, error)) *MockStore_IncrementDailyUsage_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -4,6 +4,7 @@ import (
 	"github.com/fedutinova/smartheart/back-api/auth"
 	"github.com/fedutinova/smartheart/back-api/config"
 	"github.com/fedutinova/smartheart/back-api/job"
+	"github.com/fedutinova/smartheart/back-api/notify"
 	"github.com/fedutinova/smartheart/back-api/repository"
 	"github.com/fedutinova/smartheart/back-api/service"
 	"github.com/fedutinova/smartheart/back-api/storage"
@@ -46,6 +47,7 @@ type Handler struct {
 	GPT     *GPTHandler
 	Request *RequestHandler
 	Healthz *HealthHandler
+	Events  *EventsHandler
 	Config  config.Config
 }
 
@@ -58,6 +60,7 @@ func NewHandler(
 	repo repository.Store,
 	sessions auth.SessionService,
 	storageService storage.Storage,
+	hub *notify.Hub,
 	cfg config.Config,
 ) *Handler {
 	return &Handler{
@@ -66,6 +69,7 @@ func NewHandler(
 		GPT:     &GPTHandler{Service: submissionSvc},
 		Request: &RequestHandler{Service: requestSvc, Config: cfg},
 		Healthz: &HealthHandler{Queue: queue, Repo: repo, Sessions: sessions, Storage: storageService},
+		Events:  &EventsHandler{Hub: hub},
 		Config:  cfg,
 	}
 }
@@ -74,6 +78,9 @@ func NewHandler(
 func (h *Handler) RegisterRoutes(r chi.Router) {
 	// Health check (no auth required, for load balancer)
 	r.Get("/health", h.Healthz.Health)
+
+	// OpenAPI spec (public)
+	r.Get("/openapi.yaml", OpenAPISpec)
 
 	// Public auth endpoints
 	r.Group(func(r chi.Router) {
@@ -99,6 +106,9 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		r.With(auth.RequirePerm(auth.PermJobReadOwn)).Get("/v1/jobs/{id}", h.Request.GetJob)
 		r.With(auth.RequirePerm(auth.PermJobReadOwn)).Get("/v1/requests/{id}", h.Request.GetRequest)
 		r.With(auth.RequirePerm(auth.PermJobReadOwn)).Get("/v1/requests", h.Request.GetUserRequests)
+
+		// SSE event stream
+		r.Get("/v1/events", h.Events.StreamEvents)
 
 		// Admin-only endpoints
 		r.With(auth.RequirePerm(auth.PermAdminAll)).Get("/ready", h.Healthz.Ready)

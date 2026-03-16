@@ -73,6 +73,11 @@ type GPTConfig struct {
 	Model  string
 }
 
+// QuotaConfig holds per-user submission quota settings.
+type QuotaConfig struct {
+	DailyLimit int // max submissions per user per day (0 = unlimited)
+}
+
 type Config struct {
 	HTTPAddr  string
 	JWT       JWTConfig
@@ -84,6 +89,7 @@ type Config struct {
 	RedisURL  string
 	CORS      CORSConfig
 	RateLimit RateLimitConfig
+	Quota     QuotaConfig
 }
 
 // Storage mode constants for compile-time safety.
@@ -275,6 +281,9 @@ func Load() Config {
 		RateLimit: RateLimitConfig{
 			RPM:   envInt("RATE_LIMIT_RPM", 100),
 			Burst: envInt("RATE_LIMIT_BURST", 20),
+		},
+		Quota: QuotaConfig{
+			DailyLimit: envInt("QUOTA_DAILY_LIMIT", 50),
 		},
 	}
 }

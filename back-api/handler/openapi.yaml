@@ -1,0 +1,410 @@
+openapi: "3.0.3"
+info:
+  title: SmartHeart API
+  description: API for EKG image analysis with GPT interpretation.
+  version: "1.0.0"
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+
+tags:
+  - name: auth
+    description: Authentication & registration
+  - name: ekg
+    description: EKG image analysis
+  - name: gpt
+    description: GPT processing
+  - name: requests
+    description: Request & job queries
+  - name: system
+    description: Health & admin endpoints
+  - name: events
+    description: Real-time notifications
+
+paths:
+  /v1/auth/register:
+    post:
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, email, password]
+              properties:
+                username: { type: string, minLength: 2, maxLength: 50 }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 10, maxLength: 72 }
+      responses:
+        "201":
+          description: User registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  user_id: { type: string, format: uuid }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /v1/auth/login:
+    post:
+      tags: [auth]
+      summary: Authenticate user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        "200":
+          description: Token pair
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenPair" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /v1/auth/refresh:
+    post:
+      tags: [auth]
+      summary: Refresh access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token: { type: string }
+      responses:
+        "200":
+          description: New token pair
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenPair" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /v1/auth/logout:
+    post:
+      tags: [auth]
+      summary: Logout (blacklist tokens)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token: { type: string }
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+
+  /v1/ekg/analyze:
+    post:
+      tags: [ekg]
+      summary: Submit EKG image for analysis
+      description: |
+        Accepts either JSON body (URL mode) or multipart/form-data (file upload).
+        Returns a job ID for tracking and a request ID for results.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [image_temp_url]
+              properties:
+                image_temp_url: { type: string, format: uri }
+                notes: { type: string, maxLength: 2000 }
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: "EKG image file (JPEG, PNG, PDF, max 10MB)"
+                notes: { type: string, maxLength: 2000 }
+      responses:
+        "200":
+          description: Job enqueued
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SubmitEKGResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "429": { $ref: "#/components/responses/QuotaExceeded" }
+
+  /v1/gpt/process:
+    post:
+      tags: [gpt]
+      summary: Submit GPT processing request with files
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [files]
+              properties:
+                text_query: { type: string, maxLength: 4000 }
+                files:
+                  type: array
+                  items: { type: string, format: binary }
+                  maxItems: 5
+      responses:
+        "200":
+          description: Job enqueued
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SubmitGPTResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "429": { $ref: "#/components/responses/QuotaExceeded" }
+
+  /v1/jobs/{id}:
+    get:
+      tags: [requests]
+      summary: Get job status
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Job details
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /v1/requests/{id}:
+    get:
+      tags: [requests]
+      summary: Get request with response and files
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Request details
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Request" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /v1/requests:
+    get:
+      tags: [requests]
+      summary: List user's requests (paginated)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50, minimum: 1, maximum: 200 }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0, minimum: 0 }
+      responses:
+        "200":
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Request" }
+                  total: { type: integer }
+                  limit: { type: integer }
+                  offset: { type: integer }
+
+  /v1/events:
+    get:
+      tags: [events]
+      summary: Server-Sent Events stream for real-time notifications
+      description: |
+        Returns an SSE stream. Events are sent when analysis jobs complete or fail.
+        Each event has `type`, `request_id`, and `status` fields.
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: SSE event stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+  /health:
+    get:
+      tags: [system]
+      summary: Basic health check (for load balancer)
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+                  timestamp: { type: string, format: date-time }
+
+  /ready:
+    get:
+      tags: [system]
+      summary: Full readiness check (admin only)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: System status with dependency checks
+        "503":
+          description: Unhealthy
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    TokenPair:
+      type: object
+      properties:
+        access_token: { type: string }
+        refresh_token: { type: string }
+
+    SubmitEKGResponse:
+      type: object
+      properties:
+        job_id: { type: string, format: uuid }
+        request_id: { type: string, format: uuid }
+        status: { type: string }
+        message: { type: string }
+
+    SubmitGPTResponse:
+      type: object
+      properties:
+        request_id: { type: string, format: uuid }
+        job_id: { type: string, format: uuid }
+        status: { type: string }
+        files_processed: { type: integer }
+        upload_errors:
+          type: array
+          items: { type: string }
+
+    Job:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [ekg_analyze, gpt_process] }
+        status: { type: string, enum: [queued, running, succeeded, failed] }
+        enqueued_at: { type: string, format: date-time }
+        started_at: { type: string, format: date-time }
+        finished_at: { type: string, format: date-time }
+
+    Request:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        text_query: { type: string }
+        status: { type: string, enum: [pending, processing, completed, failed] }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        files:
+          type: array
+          items: { $ref: "#/components/schemas/File" }
+        response: { $ref: "#/components/schemas/Response" }
+
+    File:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        request_id: { type: string, format: uuid }
+        original_filename: { type: string }
+        file_type: { type: string }
+        file_size: { type: integer }
+        s3_key: { type: string }
+        s3_url: { type: string }
+        created_at: { type: string, format: date-time }
+
+    Response:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        request_id: { type: string, format: uuid }
+        content: { type: string }
+        model: { type: string }
+        tokens_used: { type: integer }
+        processing_time_ms: { type: integer }
+        created_at: { type: string, format: date-time }
+
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+        details: {}
+        upload_errors:
+          type: array
+          items: { type: string }
+
+  responses:
+    BadRequest:
+      description: Validation error
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: Invalid or missing authentication
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Conflict:
+      description: Resource already exists
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    TooManyRequests:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    QuotaExceeded:
+      description: Daily submission quota exceeded
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }

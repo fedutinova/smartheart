@@ -15,6 +15,7 @@ import (
 	"github.com/fedutinova/smartheart/back-api/gpt"
 	"github.com/fedutinova/smartheart/back-api/handler"
 	"github.com/fedutinova/smartheart/back-api/job"
+	"github.com/fedutinova/smartheart/back-api/notify"
 	"github.com/fedutinova/smartheart/back-api/queue"
 	"github.com/fedutinova/smartheart/back-api/repository"
 	"github.com/fedutinova/smartheart/back-api/server"
@@ -97,14 +98,17 @@ func main() {
 	}
 	defer q.Close()
 
-	gptWorker := workers.NewGPTWorker(db, gptClient, repo)
+	// Notification hub for SSE
+	hub := notify.NewHub()
+
+	gptWorker := workers.NewGPTWorker(db, gptClient, repo, hub)
 	ekgWorker := workers.NewEKGWorker(db, q, storageService, repo)
 
 	authSvc := service.NewAuthService(repo, sessions, cfg.JWT)
-	submissionSvc := service.NewSubmissionService(repo, q, storageService)
+	submissionSvc := service.NewSubmissionService(repo, q, storageService, cfg.Quota)
 	requestSvc := service.NewRequestService(repo, q)
 
-	handlers := handler.NewHandler(authSvc, submissionSvc, requestSvc, q, repo, sessions, storageService, cfg)
+	handlers := handler.NewHandler(authSvc, submissionSvc, requestSvc, q, repo, sessions, storageService, hub, cfg)
 	r := server.NewRouter(handlers, cfg)
 
 	// Register job handlers

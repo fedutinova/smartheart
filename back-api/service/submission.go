@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/fedutinova/smartheart/back-api/apperr"
+	"github.com/fedutinova/smartheart/back-api/config"
 	"github.com/fedutinova/smartheart/back-api/gpt"
 	"github.com/fedutinova/smartheart/back-api/job"
 	"github.com/fedutinova/smartheart/back-api/models"
@@ -47,13 +48,18 @@ type SubmissionService interface {
 }
 
 type submissionService struct {
-	repo    repository.Store
-	queue   job.Queue
-	storage storage.Storage
+	repo       repository.Store
+	queue      job.Queue
+	storage    storage.Storage
+	dailyLimit int
 }
 
-func NewSubmissionService(repo repository.Store, queue job.Queue, storageService storage.Storage) SubmissionService {
-	return &submissionService{repo: repo, queue: queue, storage: storageService}
+func NewSubmissionService(repo repository.Store, queue job.Queue, storageService storage.Storage, quota ...config.QuotaConfig) SubmissionService {
+	s := &submissionService{repo: repo, queue: queue, storage: storageService}
+	if len(quota) > 0 {
+		s.dailyLimit = quota[0].DailyLimit
+	}
+	return s
 }
 
 const maxNotesLen = 2000
@@ -65,9 +71,28 @@ func validateEKGNotes(notes string) error {
 	return nil
 }
 
+// checkQuota increments the daily usage counter and returns an error if the limit is exceeded.
+func (s *submissionService) checkQuota(ctx context.Context, userID uuid.UUID) error {
+	if s.dailyLimit <= 0 {
+		return nil // unlimited
+	}
+	count, err := s.repo.IncrementDailyUsage(ctx, userID)
+	if err != nil {
+		slog.Warn("failed to check quota, allowing request", "user_id", userID, "error", err)
+		return nil // fail-open
+	}
+	if count > s.dailyLimit {
+		return fmt.Errorf("daily submission limit (%d) exceeded: %w", s.dailyLimit, apperr.ErrValidation)
+	}
+	return nil
+}
+
 func (s *submissionService) SubmitEKG(ctx context.Context, userID uuid.UUID, imageURL, notes string) (*SubmittedJob, error) {
 	if imageURL == "" {
 		return nil, fmt.Errorf("image_temp_url is required: %w", apperr.ErrValidation)
+	}
+	if err := s.checkQuota(ctx, userID); err != nil {
+		return nil, err
 	}
 	if err := validateEKGNotes(notes); err != nil {
 		return nil, err
@@ -113,6 +138,9 @@ func (s *submissionService) SubmitEKG(ctx context.Context, userID uuid.UUID, ima
 }
 
 func (s *submissionService) SubmitEKGFile(ctx context.Context, userID uuid.UUID, file UploadedFile, notes string) (*SubmittedJob, error) {
+	if err := s.checkQuota(ctx, userID); err != nil {
+		return nil, err
+	}
 	if err := validateEKGNotes(notes); err != nil {
 		return nil, err
 	}
@@ -190,6 +218,10 @@ func (s *submissionService) SubmitEKGFile(ctx context.Context, userID uuid.UUID,
 }
 
 func (s *submissionService) SubmitGPT(ctx context.Context, userID uuid.UUID, textQuery string, files []UploadedFile) (*GPTSubmitResult, error) {
+	if err := s.checkQuota(ctx, userID); err != nil {
+		return nil, err
+	}
+
 	request := &models.Request{
 		ID:     uuid.New(),
 		UserID: userID,

@@ -16,6 +16,7 @@ import (
 	"github.com/fedutinova/smartheart/back-api/config"
 	"github.com/fedutinova/smartheart/back-api/job"
 	jobmocks "github.com/fedutinova/smartheart/back-api/job/mocks"
+	"github.com/fedutinova/smartheart/back-api/notify"
 	repomocks "github.com/fedutinova/smartheart/back-api/repository/mocks"
 	"github.com/fedutinova/smartheart/back-api/service"
 	svcmocks "github.com/fedutinova/smartheart/back-api/service/mocks"
@@ -53,7 +54,7 @@ func newTestDeps(t testing.TB) *testDeps {
 }
 
 func (d *testDeps) handler() *Handler {
-	return NewHandler(d.authSvc, d.submissionSvc, d.requestSvc, d.queue, d.repo, d.sessions, d.storage, d.config)
+	return NewHandler(d.authSvc, d.submissionSvc, d.requestSvc, d.queue, d.repo, d.sessions, d.storage, notify.NewHub(), d.config)
 }
 
 func withAuthContext(r *http.Request, userID uuid.UUID, roles []string) *http.Request {

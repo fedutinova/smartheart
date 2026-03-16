@@ -11,7 +11,9 @@ import (
 	"github.com/fedutinova/smartheart/back-api/gpt"
 	"github.com/fedutinova/smartheart/back-api/job"
 	"github.com/fedutinova/smartheart/back-api/models"
+	"github.com/fedutinova/smartheart/back-api/notify"
 	"github.com/fedutinova/smartheart/back-api/repository"
+	"github.com/google/uuid"
 )
 
 // GPTWorker processes GPT analysis jobs.
@@ -20,13 +22,15 @@ type GPTWorker struct {
 	txb       database.TxBeginner
 	gptClient gpt.Processor
 	repo      repository.RequestRepo
+	hub       *notify.Hub
 }
 
-func NewGPTWorker(txb database.TxBeginner, gptClient gpt.Processor, repo repository.RequestRepo) *GPTWorker {
+func NewGPTWorker(txb database.TxBeginner, gptClient gpt.Processor, repo repository.RequestRepo, hub *notify.Hub) *GPTWorker {
 	return &GPTWorker{
 		txb:       txb,
 		gptClient: gptClient,
 		repo:      repo,
+		hub:       hub,
 	}
 }
 
@@ -49,6 +53,7 @@ func (h *GPTWorker) HandleGPTJob(ctx context.Context, j *job.Job) error {
 		if updateErr := h.repo.UpdateRequestStatus(ctx, payload.RequestID, models.StatusFailed); updateErr != nil {
 			slog.Error("failed to update request status to failed", "request_id", payload.RequestID, "error", updateErr)
 		}
+		h.notifyUser(payload.UserID, payload.RequestID, models.StatusFailed)
 		return fmt.Errorf("GPT processing failed: %w", err)
 	}
 
@@ -85,10 +90,23 @@ func (h *GPTWorker) HandleGPTJob(ctx context.Context, j *job.Job) error {
 			slog.Error("failed to update request status to failed after tx error",
 				"request_id", payload.RequestID, "error", updateErr)
 		}
+		h.notifyUser(payload.UserID, payload.RequestID, models.StatusFailed)
 		return txErr
 	}
 
+	h.notifyUser(payload.UserID, payload.RequestID, models.StatusCompleted)
 	return nil
+}
+
+func (h *GPTWorker) notifyUser(userID, requestID uuid.UUID, status string) {
+	if h.hub == nil {
+		return
+	}
+	h.hub.Notify(userID, notify.Event{
+		Type:      "request_" + status,
+		RequestID: requestID,
+		Status:    status,
+	})
 }
 
 // processWithFallback calls GPT and falls back to EKG data if GPT fails or refuses.

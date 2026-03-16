@@ -2,34 +2,254 @@
 
 ## Overview
 
-SmartHeart анализирует ЭКГ с использованием OpenCV для предобработки. Система автоматически загружает изображения по URL, применяет комплексную предобработку и извлекает характеристики ЭКГ сигнала.
+SmartHeart — система анализа ЭКГ изображений с использованием OpenCV для предобработки и GPT для интерпретации результатов. Включает Go-бэкенд, React-фронтенд и инфраструктуру на Docker Compose (PostgreSQL, Redis, S3/LocalStack).
 
-### 🔬 ЭКГ Предобработка изображений
-- **Изменение размера**: Приведение к фиксированным размерам (800x600)
-- **Grayscale**: Перевод в градации серого
-- **Контраст**: Повышение контраста с помощью histogram equalization
-- **Бинаризация**: Adaptive threshold для выделения сигнала
-- **Морфология**: Erosion/dilation для удаления шума
-- **Извлечение сигнала**: Поиск самой длинной линии как ЭКГ сигнала
+## Архитектура
 
-### 📊 Анализ характеристик сигнала
-- Длина сигнала (arc length)
-- Ширина сигнала
-- Диапазон амплитуды
-- Базовая линия
-- Стандартное отклонение
-- Bounding box сигнала
+```
+frontend/          React + TypeScript + Vite
+back-api/          Go (chi router, pgx, Redis)
+  ├── auth/        JWT аутентификация, RBAC, middleware
+  ├── config/      Конфигурация из env
+  ├── handler/     HTTP-обработчики, OpenAPI спецификация
+  ├── notify/      SSE-уведомления (per-user hub)
+  ├── repository/  PostgreSQL data access
+  ├── service/     Бизнес-логика (auth, submission, request)
+  ├── workers/     Фоновые обработчики (EKG, GPT)
+  ├── queue/       Очередь задач (Redis / in-memory)
+  └── storage/     Хранилище файлов (S3 / local)
+migrations/        SQL-миграции
+```
+
+### Обработка ЭКГ
+
+1. Пользователь загружает изображение (файл или URL) через фронтенд
+2. Бэкенд ставит задачу в очередь (Redis stream)
+3. EKG worker: предобработка OpenCV (resize → grayscale → contrast → binarization → morphology → signal extraction)
+4. GPT worker: интерпретация результатов через OpenAI API
+5. SSE-уведомление отправляется пользователю в реальном времени
+
+### Характеристики сигнала
+- Длина сигнала (arc length), ширина, диапазон амплитуды
+- Базовая линия, стандартное отклонение, bounding box
 
 ## Установка и запуск
 
 ### Требования
-- Go 1.26
-- OpenCV 4.x
+- Go 1.26+, OpenCV 4.x, Node.js
 - Docker & Docker Compose
 
-### Локальная разработка
+### Быстрый старт
 
-1. **Установите OpenCV**:
+```bash
+# 1. Инфраструктура
+docker-compose up -d postgres redis localstack
+
+# 2. Бэкенд
+go mod download
+CGO_ENABLED=1 go run cmd/main.go
+
+# 3. Фронтенд
+cd frontend && npm install && npm run dev
+```
+
+Приложение: бэкенд на `http://localhost:8080`, фронтенд на `http://localhost:5173`.
+
+### Docker
+
+```bash
+docker-compose up --build
+```
+
+## API
+
+### OpenAPI спецификация
+
+Полная спецификация доступна по адресу:
+```
+GET /openapi.yaml
+```
+Описывает все эндпоинты, схемы запросов/ответов и коды ошибок (OpenAPI 3.0.3).
+
+### Аутентификация
+
+JWT-токены (access + refresh). Access-токен передается в заголовке `Authorization: Bearer <token>`.
+
+```bash
+# Регистрация
+curl -X POST http://localhost:8080/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email": "user@example.com", "password": "securepass"}'
+
+# Вход
+curl -X POST http://localhost:8080/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "user@example.com", "password": "securepass"}'
+
+# Обновление токена
+curl -X POST http://localhost:8080/v1/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"refresh_token": "REFRESH_TOKEN"}'
+
+# Выход
+curl -X POST http://localhost:8080/v1/auth/logout \
+  -H "Authorization: Bearer ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"refresh_token": "REFRESH_TOKEN"}'
+```
+
+### ЭКГ анализ
+
+Поддерживает два режима: загрузка файла (multipart) и отправка URL (JSON).
+
+```bash
+# Загрузка файла (рекомендуется)
+curl -X POST http://localhost:8080/v1/ekg/analyze \
+  -H "Authorization: Bearer TOKEN" \
+  -F "image=@ekg.jpg" \
+  -F "notes=Описание пациента"
+
+# По URL
+curl -X POST http://localhost:8080/v1/ekg/analyze \
+  -H "Authorization: Bearer TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"image_temp_url": "https://example.com/ekg.jpg", "notes": "Описание"}'
+```
+
+### GPT обработка
+
+```bash
+curl -X POST http://localhost:8080/v1/gpt/process \
+  -H "Authorization: Bearer TOKEN" \
+  -F "text_query=Проанализируй ЭКГ" \
+  -F "files=@image.jpg"
+```
+
+### Запросы и результаты
+
+```bash
+# Статус задачи
+curl -H "Authorization: Bearer TOKEN" http://localhost:8080/v1/jobs/JOB_ID
+
+# Результат запроса
+curl -H "Authorization: Bearer TOKEN" http://localhost:8080/v1/requests/REQUEST_ID
+
+# История запросов (с пагинацией)
+curl -H "Authorization: Bearer TOKEN" "http://localhost:8080/v1/requests?limit=20&offset=0"
+```
+
+### SSE уведомления
+
+Уведомления о завершении анализа в реальном времени через Server-Sent Events:
+
+```bash
+curl -N -H "Authorization: Bearer TOKEN" http://localhost:8080/v1/events
+```
+
+Формат событий:
+```json
+{"type": "request_completed", "request_id": "uuid", "status": "completed"}
+{"type": "request_failed", "request_id": "uuid", "status": "failed"}
+```
+
+> EventSource API не поддерживает заголовки — фронтенд передает токен через query-параметр `?token=`.
+
+### Health check
+
+```bash
+GET /health    # Публичный, для load balancer
+GET /ready     # Защищённый (admin), проверяет DB + Redis + Storage
+```
+
+## Конфигурация
+
+Переменные окружения (файл `.env` или `.env.local`):
+
+| Переменная | По умолчанию | Описание |
+|---|---|---|
+| `HTTP_ADDR` | `:8080` | Адрес HTTP-сервера |
+| `DATABASE_URL` | `postgres://...localhost:5432/smartheart` | PostgreSQL |
+| `REDIS_URL` | `redis://localhost:6379` | Redis |
+| `OPENAI_API_KEY` | — | Ключ OpenAI API |
+| `GPT_MODEL` | `gpt-4o` | Модель GPT |
+| `JWT_SECRET` | dev-default | Секрет JWT (обязателен в production) |
+| `JWT_TTL_ACCESS` | `15m` | Время жизни access-токена |
+| `JWT_TTL_REFRESH` | `168h` | Время жизни refresh-токена (7 дней) |
+| `STORAGE_MODE` | `local` | Режим хранилища: `local`, `s3`, `aws` |
+| `LOCAL_STORAGE_DIR` | `./uploads` | Директория для локального хранилища |
+| `QUEUE_MODE` | `redis` | Очередь: `redis` или `memory` |
+| `QUEUE_WORKERS` | `4` | Количество воркеров |
+| `QUEUE_BUFFER` | `1024` | Размер буфера очереди |
+| `JOB_MAX_DURATION` | `30s` | Таймаут обработки задачи |
+| `QUOTA_DAILY_LIMIT` | `50` | Лимит запросов на пользователя в день (0 = без лимита) |
+| `RATE_LIMIT_RPM` | `100` | Rate limit запросов в минуту на IP |
+| `CORS_ORIGINS` | `localhost:3000,localhost:5173` | Разрешённые CORS origins |
+
+## Frontend
+
+React + TypeScript + Vite + TailwindCSS + React Query.
+
+### Возможности
+
+- Авторизация (регистрация, вход, автообновление токенов)
+- Загрузка ЭКГ с обрезкой изображения (react-image-crop)
+- Просмотр результатов с GPT-интерпретацией (Markdown)
+- История анализов с пагинацией
+- SSE-уведомления о завершении обработки
+- База знаний по ЭКГ
+- Адаптивный дизайн (мобильное меню)
+- Lazy loading роутов, Error Boundary
+- Контактная страница
+
+### Запуск
+
+```bash
+cd frontend
+npm install
+npm run dev       # Dev-сервер (http://localhost:5173)
+npm run build     # Production-сборка
+```
+
+## Безопасность
+
+- JWT аутентификация с blacklist (logout invalidation)
+- Ролевая авторизация (RBAC) с пермишенами
+- Rate limiting по IP
+- Квоты на количество запросов в день
+- Валидация типов и размеров файлов
+- CORS, Security headers (CSP, X-Frame-Options, etc.)
+- Structured logging (slog)
+
+## Поддерживаемые форматы
+
+- **Изображения**: JPEG, PNG, GIF, WebP, BMP, TIFF
+- **Документы**: PDF (с изображениями)
+- **Максимальный размер**: 10MB
+
+## Разработка
+
+### Тестирование
+
+```bash
+go test ./...              # Все тесты
+go test -cover ./...       # С покрытием
+cd frontend && npx tsc --noEmit  # TypeScript проверка
+cd frontend && npx vite build    # Frontend сборка
+```
+
+### Генерация моков
+
+```bash
+# Требует mockery v2.52+
+$(go env GOPATH)/bin/mockery
+```
+
+### Миграции
+
+SQL-миграции находятся в `migrations/`. Применяются при старте приложения.
+
+### OpenCV
+
 ```bash
 # Ubuntu/Debian
 sudo apt-get install libopencv-dev pkg-config
@@ -37,202 +257,6 @@ sudo apt-get install libopencv-dev pkg-config
 # macOS
 brew install opencv pkg-config
 
-# Alpine (для Docker)
-apk add opencv-dev pkgconfig build-base
-```
-
-2. **Установите зависимости**:
-```bash
-# Проверьте системные зависимости
-make check-deps
-
-# Установите Go модули
-go mod download
-```
-
-3. **Запустите сервисы**:
-```bash
-docker-compose up -d postgres redis localstack
-```
-
-4. **Запустите приложение**:
-```bash
-# Используя Makefile
-make run
-
-# Или напрямую
-CGO_ENABLED=1 go run cmd/main.go
-```
-
-### Docker
-
-```bash
-# Сборка и запуск
-docker-compose up --build
-
-# Или только приложение
-docker build -t smartheart .
-docker run -p 8080:8080 smartheart
-```
-
-## API Использование
-
-### 1. Отправка ЭКГ анализа
-
-```bash
-curl -X POST http://localhost:8080/v1/ekg/analyze \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "image_temp_url": "https://example.com/ekg.jpg",
-    "notes": "Emergency room EKG"
-  }'
-```
-
-### 2. Проверка статуса
-
-```bash
-curl -H "Authorization: Bearer YOUR_TOKEN" \
-  http://localhost:8080/v1/jobs/JOB_ID
-```
-
-### 3. Получение результатов
-
-```bash
-curl -H "Authorization: Bearer YOUR_TOKEN" \
-  http://localhost:8080/v1/requests/REQUEST_ID
-```
-
-## Конфигурация
-
-### Переменные окружения
-
-```bash
-# EKG Processing
-OPENAI_API_KEY=your_openai_key
-
-# Storage
-STORAGE_MODE=local  # или s3
-LOCAL_STORAGE_DIR=./uploads
-
-# Для настройки S3 хранилища см. S3_SETUP.md
-
-# Queue
-QUEUE_WORKERS=4
-QUEUE_BUFFER=1024
-JOB_MAX_DURATION=30s
-
-# Database
-DATABASE_URL=postgres://user:password@localhost:5432/smartheart
-
-# Redis
-REDIS_URL=redis://localhost:6379
-```
-
-## Поддерживаемые форматы
-
-- **Изображения**: JPEG, PNG, GIF, WebP, BMP, TIFF
-- **Документы**: PDF (с изображениями)
-- **Максимальный размер**: 10MB
-- **Таймаут загрузки**: 30 секунд
-
-## Мониторинг и логи
-
-Система предоставляет подробные логи:
-
-```json
-{
-  "level": "info",
-  "msg": "EKG analysis completed successfully",
-  "job_id": "123e4567-e89b-12d3-a456-426614174000",
-  "signal_length": 150.5,
-  "processing_steps": ["resized", "grayscale", "contrast_enhanced", "binarized", "morphological_processed", "signal_extracted"]
-}
-```
-
-## Производительность
-
-- **Обработка изображения**: ~2-5 секунд
-- **Параллельная обработка**: До 4 воркеров одновременно
-- **Память**: ~50-100MB на изображение
-- **CPU**: Оптимизировано для OpenCV операций
-
-## Безопасность
-
-- ✅ Валидация типов файлов
-- ✅ Ограничение размера файлов
-- ✅ Таймауты загрузки
-- ✅ JWT аутентификация
-- ✅ Ролевая авторизация
-- ✅ Логирование всех операций
-
-## Frontend
-
-У SmartHeart есть веб-интерфейс на React + TypeScript.
-
-### Запуск фронтенда
-
-```bash
-cd frontend
-
-# Установить зависимости
-npm install
-
-# Запустить dev сервер
-npm run dev
-
-# Приложение будет доступно на http://localhost:3000
-```
-
-### Возможности интерфейса
-
-- 🔐 Авторизация (регистрация, вход, выход)
-- 📊 Анализ ЭКГ с загрузкой изображений
-- 📈 Просмотр результатов с детальными характеристиками
-- 📜 История всех анализов
-- 🎨 Адаптивный дизайн
-
-Подробнее см. [frontend/README.md](frontend/README.md)
-
-## Troubleshooting
-
-### OpenCV ошибки
-```bash
-# Проверьте установку OpenCV
+# Проверка
 pkg-config --modversion opencv4
-
-# Убедитесь, что CGO включен
-export CGO_ENABLED=1
-```
-
-### Docker проблемы
-```bash
-# Пересоберите образ
-docker-compose build --no-cache app
-
-# Проверьте логи
-docker-compose logs app
-```
-
-### Производительность
-- Увеличьте `QUEUE_WORKERS` для большего параллелизма
-- Настройте `JOB_MAX_DURATION` для больших изображений
-- Используйте SSD для локального хранилища
-
-## Разработка
-
-### Добавление новых алгоритмов
-
-1. Расширьте `EKGPreprocessor` в `internal/ekg/preprocessor.go`
-2. Добавьте новые шаги обработки
-3. Обновите `ExtractSignalFeatures` для новых характеристик
-
-### Тестирование
-
-```bash
-# Запуск тестов
-go test ./...
-
-# Тесты с покрытием
-go test -cover ./...
 ```

@@ -32,6 +32,12 @@ type RequestRepo interface {
 	GetResponseByRequestID(ctx context.Context, requestID uuid.UUID) (*models.Response, error)
 }
 
+// QuotaRepo provides daily usage quota data access.
+type QuotaRepo interface {
+	IncrementDailyUsage(ctx context.Context, userID uuid.UUID) (int, error)
+	GetDailyUsage(ctx context.Context, userID uuid.UUID) (int, error)
+}
+
 // TokenRepo provides refresh-token data access.
 type TokenRepo interface {
 	CreateRefreshToken(ctx context.Context, token *models.RefreshToken) error
@@ -50,6 +56,7 @@ type Store interface {
 	RequestRepo
 	TokenRepo
 	RoleRepo
+	QuotaRepo
 
 	// Transaction support
 	RunTx(ctx context.Context, fn func(tx pgx.Tx) error) error

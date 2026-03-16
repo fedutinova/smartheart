@@ -1,13 +1,27 @@
+import { useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
 import { requestAPI } from '@/services/api';
 import { formatDate, formatStatus, getStatusColor } from '@/utils/format';
 import { Layout } from '@/components/Layout';
+import { useEventSource } from '@/hooks/useEventSource';
 import type { EKGAnalysisResult } from '@/types';
 
 export function Results() {
   const { id } = useParams<{ id: string }>();
+  const queryClient = useQueryClient();
+
+  // SSE: instantly refetch when the backend notifies about this request.
+  const onSSEEvent = useCallback(
+    (evt: { request_id: string }) => {
+      if (evt.request_id === id) {
+        queryClient.invalidateQueries({ queryKey: ['request', id] });
+      }
+    },
+    [id, queryClient],
+  );
+  useEventSource(onSSEEvent);
 
   const { data: request, isLoading, error } = useQuery({
     queryKey: ['request', id],
