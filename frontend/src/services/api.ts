@@ -134,12 +134,23 @@ export const authAPI = {
   },
 };
 
+type EKGSubmitResponse = { job_id: string; request_id: string; status: string; message: string };
+
 export const ekgAPI = {
   submitAnalysis: async (data: EKGAnalysisRequest) => {
-    const response = await api.post<{ job_id: string; request_id: string; status: string; message: string }>(
-      '/v1/ekg/analyze',
-      data
-    );
+    const response = await api.post<EKGSubmitResponse>('/v1/ekg/analyze', data);
+    return response.data;
+  },
+
+  submitAnalysisFile: async (imageBlob: Blob, notes?: string) => {
+    const formData = new FormData();
+    formData.append('image', imageBlob, 'ekg-image.jpg');
+    if (notes) {
+      formData.append('notes', notes);
+    }
+    const response = await api.post<EKGSubmitResponse>('/v1/ekg/analyze', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return response.data;
   },
 };

@@ -42,6 +42,7 @@ type UploadedFile struct {
 // SubmissionService handles EKG and GPT job submission business logic.
 type SubmissionService interface {
 	SubmitEKG(ctx context.Context, userID uuid.UUID, imageURL, notes string) (*SubmittedJob, error)
+	SubmitEKGFile(ctx context.Context, userID uuid.UUID, file UploadedFile, notes string) (*SubmittedJob, error)
 	SubmitGPT(ctx context.Context, userID uuid.UUID, textQuery string, files []UploadedFile) (*GPTSubmitResult, error)
 }
 
@@ -57,12 +58,19 @@ func NewSubmissionService(repo repository.Store, queue job.Queue, storageService
 
 const maxNotesLen = 2000
 
+func validateEKGNotes(notes string) error {
+	if len(notes) > maxNotesLen {
+		return fmt.Errorf("notes too long: %w", apperr.ErrValidation)
+	}
+	return nil
+}
+
 func (s *submissionService) SubmitEKG(ctx context.Context, userID uuid.UUID, imageURL, notes string) (*SubmittedJob, error) {
 	if imageURL == "" {
 		return nil, fmt.Errorf("image_temp_url is required: %w", apperr.ErrValidation)
 	}
-	if len(notes) > maxNotesLen {
-		return nil, fmt.Errorf("notes too long: %w", apperr.ErrValidation)
+	if err := validateEKGNotes(notes); err != nil {
+		return nil, err
 	}
 
 	requestID := uuid.New()
@@ -96,6 +104,83 @@ func (s *submissionService) SubmitEKG(ctx context.Context, userID uuid.UUID, ima
 	}
 
 	slog.Info("ekg analysis job enqueued", "job_id", jobID, "request_id", requestID, "user_id", userID)
+
+	return &SubmittedJob{
+		JobID:     jobID,
+		RequestID: requestID,
+		Status:    string(j.Status),
+	}, nil
+}
+
+func (s *submissionService) SubmitEKGFile(ctx context.Context, userID uuid.UUID, file UploadedFile, notes string) (*SubmittedJob, error) {
+	if err := validateEKGNotes(notes); err != nil {
+		return nil, err
+	}
+
+	// Detect content type if missing
+	contentType := file.ContentType
+	if contentType == "" {
+		buf := make([]byte, 512)
+		n, readErr := io.ReadFull(file.Reader, buf)
+		if n == 0 && readErr != nil {
+			return nil, fmt.Errorf("detect content type: %w", readErr)
+		}
+		contentType = http.DetectContentType(buf[:n])
+		if _, err := file.Reader.Seek(0, io.SeekStart); err != nil {
+			return nil, fmt.Errorf("seek: %w", err)
+		}
+	}
+
+	// Upload to storage
+	uploadResult, err := s.storage.UploadFile(ctx, file.Filename, file.Reader, contentType)
+	if err != nil {
+		return nil, fmt.Errorf("upload EKG image: %w", err)
+	}
+
+	requestID := uuid.New()
+	request := &models.Request{
+		ID:     requestID,
+		UserID: userID,
+		Status: models.StatusPending,
+	}
+	if notes != "" {
+		request.TextQuery = &notes
+	}
+
+	if err := s.repo.CreateRequest(ctx, request); err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+
+	fileModel := &models.File{
+		ID:               uuid.New(),
+		RequestID:        requestID,
+		OriginalFilename: file.Filename,
+		FileType:         contentType,
+		FileSize:         file.Size,
+		S3Key:            uploadResult.Key,
+		S3URL:            uploadResult.URL,
+	}
+	if err := s.repo.CreateFile(ctx, fileModel); err != nil {
+		return nil, fmt.Errorf("create file record: %w", err)
+	}
+
+	payload, err := json.Marshal(job.EKGJobPayload{
+		ImageFileKey: uploadResult.Key,
+		Notes:        notes,
+		UserID:       userID,
+		RequestID:    requestID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("marshal EKG payload: %w", err)
+	}
+
+	j := &job.Job{Type: job.TypeEKGAnalyze, Payload: payload}
+	jobID, err := s.queue.Enqueue(ctx, j)
+	if err != nil {
+		return nil, fmt.Errorf("enqueue EKG job: %w", err)
+	}
+
+	slog.Info("ekg file analysis job enqueued", "job_id", jobID, "request_id", requestID, "user_id", userID, "file_key", uploadResult.Key)
 
 	return &SubmittedJob{
 		JobID:     jobID,

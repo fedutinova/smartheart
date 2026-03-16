@@ -52,13 +52,22 @@ func (h *EKGWorker) HandleEKGJob(ctx context.Context, j *job.Job) error {
 
 	slog.Info("starting EKG analysis",
 		"job_id", j.ID,
-		"user_id", payload.UserID)
+		"user_id", payload.UserID,
+		"mode", ekgJobMode(payload))
 
-	// Download image from temp URL
-	imageData, err := h.downloadImage(ctx, payload.ImageTempURL)
+	var imageData []byte
+	var err error
+
+	if payload.ImageFileKey != "" {
+		// File mode: image already in storage
+		imageData, err = h.readFromStorage(ctx, payload.ImageFileKey)
+	} else {
+		// URL mode: download from external URL
+		imageData, err = h.downloadImage(ctx, payload.ImageTempURL)
+	}
 	if err != nil {
-		slog.Error("failed to download EKG image", "job_id", j.ID, "error", err)
-		return fmt.Errorf("failed to download image: %w", err)
+		slog.Error("failed to get EKG image", "job_id", j.ID, "error", err)
+		return fmt.Errorf("failed to get image: %w", err)
 	}
 
 	// Save results and trigger GPT analysis directly — no OpenCV preprocessing
@@ -140,8 +149,6 @@ func (h *EKGWorker) downloadImage(ctx context.Context, imageURL string) ([]byte,
 		return nil, fmt.Errorf("URL validation failed: %w", err)
 	}
 
-	const maxImageSize = 10 * 1024 * 1024 // 10MB
-
 	client := &http.Client{
 		Timeout:   30 * time.Second,
 		Transport: sharedSSRFTransport,
@@ -200,6 +207,35 @@ func (h *EKGWorker) downloadImage(ctx context.Context, imageURL string) ([]byte,
 // isValidImageContentType checks if the content type is a valid image or PDF format
 func isValidImageContentType(contentType string) bool {
 	return validation.IsImageType(contentType) || contentType == "application/pdf"
+}
+
+func ekgJobMode(p job.EKGJobPayload) string {
+	if p.ImageFileKey != "" {
+		return "file"
+	}
+	return "url"
+}
+
+const maxImageSize = 10 * 1024 * 1024 // 10MB
+
+// readFromStorage reads an already-uploaded image from storage.
+func (h *EKGWorker) readFromStorage(ctx context.Context, key string) ([]byte, error) {
+	reader, _, err := h.storage.GetFile(ctx, key)
+	if err != nil {
+		return nil, fmt.Errorf("get file from storage: %w", err)
+	}
+	defer reader.Close()
+
+	data, err := io.ReadAll(io.LimitReader(reader, int64(maxImageSize)+1))
+	if err != nil {
+		return nil, fmt.Errorf("read file from storage: %w", err)
+	}
+	if len(data) > maxImageSize {
+		return nil, fmt.Errorf("image too large: %d bytes (max %d)", len(data), maxImageSize)
+	}
+
+	slog.Debug("read EKG image from storage", "key", key, "size_bytes", len(data))
+	return data, nil
 }
 
 func (h *EKGWorker) saveEKGResults(ctx context.Context, jobID uuid.UUID, payload job.EKGJobPayload, imageData []byte) error {
@@ -261,20 +297,30 @@ type gptAnalysisPrep struct {
 	userID    uuid.UUID
 }
 
-// prepareGPTAnalysis uploads the image and prepares data for the GPT request/file
-// records without writing to the DB yet.
+// prepareGPTAnalysis uploads the image (or reuses existing key) and prepares
+// data for the GPT request/file records without writing to the DB yet.
 func (h *EKGWorker) prepareGPTAnalysis(ctx context.Context, ekgJobID uuid.UUID, payload job.EKGJobPayload, imageData []byte) (*gptAnalysisPrep, error) {
 	filename := fmt.Sprintf("ekg_%s.jpg", ekgJobID.String()[:8])
-	uploadResult, err := h.storage.UploadFile(ctx, filename, bytes.NewReader(imageData), "image/jpeg")
-	if err != nil {
-		return nil, fmt.Errorf("failed to upload image: %w", err)
+
+	var uploadKey, uploadURL string
+	if payload.ImageFileKey != "" {
+		// File mode: image already in storage, reuse existing key
+		uploadKey = payload.ImageFileKey
+	} else {
+		// URL mode: upload downloaded image to storage
+		uploadResult, err := h.storage.UploadFile(ctx, filename, bytes.NewReader(imageData), "image/jpeg")
+		if err != nil {
+			return nil, fmt.Errorf("failed to upload image: %w", err)
+		}
+		uploadKey = uploadResult.Key
+		uploadURL = uploadResult.URL
 	}
 
 	return &gptAnalysisPrep{
 		requestID: uuid.New(),
 		textQuery: buildEKGPrompt(payload.Notes),
-		uploadKey: uploadResult.Key,
-		uploadURL: uploadResult.URL,
+		uploadKey: uploadKey,
+		uploadURL: uploadURL,
 		filename:  filename,
 		fileSize:  int64(len(imageData)),
 		userID:    payload.UserID,

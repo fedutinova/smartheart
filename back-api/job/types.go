@@ -59,8 +59,10 @@ const (
 )
 
 // EKGJobPayload represents the payload for EKG analysis jobs.
+// Either ImageTempURL (URL mode) or ImageFileKey (file upload mode) is set.
 type EKGJobPayload struct {
-	ImageTempURL string    `json:"image_temp_url"`
+	ImageTempURL string    `json:"image_temp_url,omitempty"`
+	ImageFileKey string    `json:"image_file_key,omitempty"`
 	Notes        string    `json:"notes,omitempty"`
 	UserID       uuid.UUID `json:"user_id"`
 	RequestID    uuid.UUID `json:"request_id"`

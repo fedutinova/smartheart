@@ -125,6 +125,112 @@ func TestSubmitEKG_EnqueueFails(t *testing.T) {
 	assert.Contains(t, err.Error(), "enqueue EKG job")
 }
 
+// --- SubmitEKGFile ---
+
+func TestSubmitEKGFile_Success(t *testing.T) {
+	svc, repo, queue, store := newSubmissionService(t)
+	ctx := context.Background()
+	userID := uuid.New()
+	jobID := uuid.New()
+
+	store.EXPECT().
+		UploadFile(mock.Anything, "ekg.jpg", mock.Anything, "image/jpeg").
+		Return(&storage.UploadResult{Key: "uploads/ekg.jpg", URL: "https://s3/uploads/ekg.jpg"}, nil)
+
+	repo.EXPECT().
+		CreateRequest(mock.Anything, mock.Anything).
+		Return(nil)
+
+	repo.EXPECT().
+		CreateFile(mock.Anything, mock.Anything).
+		Run(func(ctx context.Context, f *models.File) {
+			assert.Equal(t, "uploads/ekg.jpg", f.S3Key)
+			assert.Equal(t, "image/jpeg", f.FileType)
+		}).
+		Return(nil)
+
+	queue.EXPECT().
+		Enqueue(mock.Anything, mock.Anything).
+		Return(jobID, nil)
+
+	file := UploadedFile{
+		Reader:      bytes.NewReader([]byte("image data")),
+		Filename:    "ekg.jpg",
+		ContentType: "image/jpeg",
+		Size:        10,
+	}
+
+	result, err := svc.SubmitEKGFile(ctx, userID, file, "patient notes")
+	require.NoError(t, err)
+	assert.Equal(t, jobID, result.JobID)
+	assert.NotEqual(t, uuid.Nil, result.RequestID)
+}
+
+func TestSubmitEKGFile_UploadFails(t *testing.T) {
+	svc, _, _, store := newSubmissionService(t)
+	ctx := context.Background()
+
+	store.EXPECT().
+		UploadFile(mock.Anything, "ekg.jpg", mock.Anything, "image/jpeg").
+		Return(nil, errors.New("storage down"))
+
+	file := UploadedFile{
+		Reader:      bytes.NewReader([]byte("data")),
+		Filename:    "ekg.jpg",
+		ContentType: "image/jpeg",
+		Size:        4,
+	}
+
+	_, err := svc.SubmitEKGFile(ctx, uuid.New(), file, "")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "upload EKG image")
+}
+
+func TestSubmitEKGFile_NotesTooLong(t *testing.T) {
+	svc, _, _, _ := newSubmissionService(t)
+	ctx := context.Background()
+
+	longNotes := make([]byte, maxNotesLen+1)
+	for i := range longNotes {
+		longNotes[i] = 'a'
+	}
+
+	file := UploadedFile{
+		Reader:      bytes.NewReader([]byte("data")),
+		Filename:    "ekg.jpg",
+		ContentType: "image/jpeg",
+		Size:        4,
+	}
+
+	_, err := svc.SubmitEKGFile(ctx, uuid.New(), file, string(longNotes))
+	require.Error(t, err)
+	assert.ErrorIs(t, err, apperr.ErrValidation)
+}
+
+func TestSubmitEKGFile_CreateRequestFails(t *testing.T) {
+	svc, repo, _, store := newSubmissionService(t)
+	ctx := context.Background()
+
+	store.EXPECT().
+		UploadFile(mock.Anything, "ekg.jpg", mock.Anything, "image/jpeg").
+		Return(&storage.UploadResult{Key: "uploads/ekg.jpg", URL: "https://s3/uploads/ekg.jpg"}, nil)
+
+	repo.EXPECT().
+		CreateRequest(mock.Anything, mock.Anything).
+		Return(errors.New("db error"))
+
+	file := UploadedFile{
+		Reader:      bytes.NewReader([]byte("data")),
+		Filename:    "ekg.jpg",
+		ContentType: "image/jpeg",
+		Size:        4,
+	}
+
+	_, err := svc.SubmitEKGFile(ctx, uuid.New(), file, "")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "create request")
+}
+
 // --- SubmitGPT ---
 
 func TestSubmitGPT_Success(t *testing.T) {

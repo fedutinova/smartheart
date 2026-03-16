@@ -84,6 +84,67 @@ func (_c *MockSubmissionService_SubmitEKG_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
+// SubmitEKGFile provides a mock function with given fields: ctx, userID, file, notes
+func (_m *MockSubmissionService) SubmitEKGFile(ctx context.Context, userID uuid.UUID, file service.UploadedFile, notes string) (*service.SubmittedJob, error) {
+	ret := _m.Called(ctx, userID, file, notes)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SubmitEKGFile")
+	}
+
+	var r0 *service.SubmittedJob
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, service.UploadedFile, string) (*service.SubmittedJob, error)); ok {
+		return rf(ctx, userID, file, notes)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, service.UploadedFile, string) *service.SubmittedJob); ok {
+		r0 = rf(ctx, userID, file, notes)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*service.SubmittedJob)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, service.UploadedFile, string) error); ok {
+		r1 = rf(ctx, userID, file, notes)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockSubmissionService_SubmitEKGFile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SubmitEKGFile'
+type MockSubmissionService_SubmitEKGFile_Call struct {
+	*mock.Call
+}
+
+// SubmitEKGFile is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID uuid.UUID
+//   - file service.UploadedFile
+//   - notes string
+func (_e *MockSubmissionService_Expecter) SubmitEKGFile(ctx interface{}, userID interface{}, file interface{}, notes interface{}) *MockSubmissionService_SubmitEKGFile_Call {
+	return &MockSubmissionService_SubmitEKGFile_Call{Call: _e.mock.On("SubmitEKGFile", ctx, userID, file, notes)}
+}
+
+func (_c *MockSubmissionService_SubmitEKGFile_Call) Run(run func(ctx context.Context, userID uuid.UUID, file service.UploadedFile, notes string)) *MockSubmissionService_SubmitEKGFile_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(uuid.UUID), args[2].(service.UploadedFile), args[3].(string))
+	})
+	return _c
+}
+
+func (_c *MockSubmissionService_SubmitEKGFile_Call) Return(_a0 *service.SubmittedJob, _a1 error) *MockSubmissionService_SubmitEKGFile_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockSubmissionService_SubmitEKGFile_Call) RunAndReturn(run func(context.Context, uuid.UUID, service.UploadedFile, string) (*service.SubmittedJob, error)) *MockSubmissionService_SubmitEKGFile_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SubmitGPT provides a mock function with given fields: ctx, userID, textQuery, files
 func (_m *MockSubmissionService) SubmitGPT(ctx context.Context, userID uuid.UUID, textQuery string, files []service.UploadedFile) (*service.GPTSubmitResult, error) {
 	ret := _m.Called(ctx, userID, textQuery, files)
