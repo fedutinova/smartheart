@@ -5,35 +5,29 @@ import (
 	"github.com/fedutinova/smartheart/back-api/config"
 	"github.com/fedutinova/smartheart/back-api/job"
 	"github.com/fedutinova/smartheart/back-api/repository"
+	"github.com/fedutinova/smartheart/back-api/service"
 	"github.com/fedutinova/smartheart/back-api/storage"
 	"github.com/go-chi/chi/v5"
 )
 
 // AuthHandler handles authentication endpoints (register, login, refresh, logout).
 type AuthHandler struct {
-	Repo     repository.Store
-	Sessions auth.SessionService
-	Config   config.Config
+	Service service.AuthService
 }
 
 // EKGHandler handles EKG submission endpoints.
 type EKGHandler struct {
-	Queue job.Queue
-	Repo  repository.Store
+	Service service.SubmissionService
 }
 
 // GPTHandler handles GPT processing submission endpoints.
 type GPTHandler struct {
-	Queue   job.Queue
-	Repo    repository.Store
-	Storage storage.Storage
+	Service service.SubmissionService
 }
 
 // RequestHandler handles request/job query endpoints and file serving.
 type RequestHandler struct {
-	Queue   job.Queue
-	Repo    repository.Store
-	Storage storage.Storage
+	Service service.RequestService
 	Config  config.Config
 }
 
@@ -52,16 +46,27 @@ type Handler struct {
 	GPT     *GPTHandler
 	Request *RequestHandler
 	Healthz *HealthHandler
+	Config  config.Config
 }
 
 // NewHandler creates a Handler with all sub-handlers wired to shared dependencies.
-func NewHandler(queue job.Queue, repo repository.Store, sessions auth.SessionService, storageService storage.Storage, cfg config.Config) *Handler {
+func NewHandler(
+	authSvc service.AuthService,
+	submissionSvc service.SubmissionService,
+	requestSvc service.RequestService,
+	queue job.Queue,
+	repo repository.Store,
+	sessions auth.SessionService,
+	storageService storage.Storage,
+	cfg config.Config,
+) *Handler {
 	return &Handler{
-		Auth:    &AuthHandler{Repo: repo, Sessions: sessions, Config: cfg},
-		EKG:     &EKGHandler{Queue: queue, Repo: repo},
-		GPT:     &GPTHandler{Queue: queue, Repo: repo, Storage: storageService},
-		Request: &RequestHandler{Queue: queue, Repo: repo, Storage: storageService, Config: cfg},
+		Auth:    &AuthHandler{Service: authSvc},
+		EKG:     &EKGHandler{Service: submissionSvc},
+		GPT:     &GPTHandler{Service: submissionSvc},
+		Request: &RequestHandler{Service: requestSvc, Config: cfg},
 		Healthz: &HealthHandler{Queue: queue, Repo: repo, Sessions: sessions, Storage: storageService},
+		Config:  cfg,
 	}
 }
 
@@ -79,10 +84,10 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 
 	// Protected endpoints
 	r.Group(func(r chi.Router) {
-		r.Use(auth.JWTMiddleware(h.Auth.Config.JWT.Secret, h.Auth.Config.JWT.Issuer, auth.WithBlacklist(h.Auth.Sessions)))
+		r.Use(auth.JWTMiddleware(h.Config.JWT.Secret, h.Config.JWT.Issuer, auth.WithBlacklist(h.Healthz.Sessions)))
 
 		// Static file serving for local storage (requires auth)
-		if h.Request.Config.Storage.Mode == config.StorageModeLocal || h.Request.Config.Storage.Mode == config.StorageModeFilesystem {
+		if h.Config.Storage.Mode == config.StorageModeLocal || h.Config.Storage.Mode == config.StorageModeFilesystem {
 			r.Get("/files/*", h.Request.ServeFiles)
 		}
 

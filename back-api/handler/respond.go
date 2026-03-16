@@ -57,3 +57,4 @@ func extractUserID(r *http.Request) (uuid.UUID, *auth.Claims, bool) {
 func parseUUID(s string) (uuid.UUID, error) {
 	return uuid.Parse(s)
 }
+

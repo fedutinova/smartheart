@@ -124,7 +124,10 @@ func (r *Repository) GetRequestsByUserID(ctx context.Context, userID uuid.UUID, 
 		requests = append(requests, req)
 	}
 
-	return requests, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate request rows: %w", err)
+	}
+	return requests, nil
 }
 
 // GetRecentRequestsWithResponses retrieves recent requests for a user with their
@@ -184,7 +187,10 @@ func (r *Repository) GetRecentRequestsWithResponses(ctx context.Context, userID 
 		requests = append(requests, req)
 	}
 
-	return requests, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate request-with-response rows: %w", err)
+	}
+	return requests, nil
 }
 
 // CountRequestsByUserID returns the total number of requests for a user.

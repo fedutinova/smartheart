@@ -218,7 +218,7 @@ func Load() Config {
 			os.Exit(1)
 		}
 		slog.Warn("JWT_SECRET is not set, using insecure default — DO NOT use in production")
-		jwtSecret = "dev-secret-change-me"
+		jwtSecret = "dev-secret-change-me-not-for-prod!"
 	}
 
 	dbURL := envString("DATABASE_URL", "")
@@ -261,7 +261,7 @@ func Load() Config {
 		Storage: StorageConfig{
 			Mode:     envString("STORAGE_MODE", "local"),
 			LocalDir: envString("LOCAL_STORAGE_DIR", "./uploads"),
-			LocalURL: envString("LOCAL_STORAGE_URL", "http://localhost:8080/files"),
+			LocalURL: envString("LOCAL_STORAGE_URL", "http://localhost:8081/files"),
 		},
 		GPT: GPTConfig{
 			APIKey: envString("OPENAI_API_KEY", ""),

@@ -119,7 +119,7 @@ func (r *Repository) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]mode
 
 	rows, err := r.querier.Query(ctx, query, userID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get user roles: %w", err)
 	}
 	defer rows.Close()
 
@@ -138,7 +138,7 @@ func (r *Repository) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]mode
 			&roleID, &roleName, &roleDesc, &roleCreated,
 			&permID, &permName, &permResource, &permAction, &permDesc, &permCreated,
 		); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan user role row: %w", err)
 		}
 
 		if len(roles) == 0 || roleID != lastID {
@@ -164,7 +164,10 @@ func (r *Repository) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]mode
 		}
 	}
 
-	return roles, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate user role rows: %w", err)
+	}
+	return roles, nil
 }
 
 // AssignRoleToUser assigns a role to a user.
@@ -207,11 +210,14 @@ func (r *Repository) LoadRolePermissions(ctx context.Context) (map[string][]stri
 	for rows.Next() {
 		var roleName, permName string
 		if err := rows.Scan(&roleName, &permName); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan role permission row: %w", err)
 		}
 		mapping[roleName] = append(mapping[roleName], permName)
 	}
-	return mapping, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate role permission rows: %w", err)
+	}
+	return mapping, nil
 }
 
 // isUniqueViolation checks if the error is a unique constraint violation (PostgreSQL code 23505)

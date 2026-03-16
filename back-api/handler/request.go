@@ -1,19 +1,13 @@
 package handler
 
 import (
-	"encoding/json"
-	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
-	"github.com/fedutinova/smartheart/back-api/apperr"
-	"github.com/fedutinova/smartheart/back-api/auth"
-	"github.com/fedutinova/smartheart/back-api/models"
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 )
 
 // GetUserRequests returns requests for the authenticated user with pagination.
@@ -38,37 +32,24 @@ func (h *RequestHandler) GetUserRequests(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	requests, err := h.Repo.GetRequestsByUserID(r.Context(), userID, limit, offset)
+	page, err := h.Service.GetUserRequests(r.Context(), userID, limit, offset)
 	if err != nil {
-		slog.Error("failed to get user requests", "user_id", userID, "error", err)
-		writeError(w, http.StatusInternalServerError, "internal error")
+		handleServiceError(w, err)
 		return
-	}
-
-	total, err := h.Repo.CountRequestsByUserID(r.Context(), userID)
-	if err != nil {
-		slog.Error("failed to count user requests", "user_id", userID, "error", err)
-		writeError(w, http.StatusInternalServerError, "internal error")
-		return
-	}
-
-	// Ensure JSON serializes as [] instead of null for empty results.
-	if requests == nil {
-		requests = []models.Request{}
 	}
 
 	writeJSON(w, http.StatusOK, PaginatedResponse{
-		Data:   requests,
-		Total:  total,
-		Limit:  limit,
-		Offset: offset,
+		Data:   page.Data,
+		Total:  page.Total,
+		Limit:  page.Limit,
+		Offset: page.Offset,
 	})
 }
 
 // GetRequest returns a specific request by ID
 func (h *RequestHandler) GetRequest(w http.ResponseWriter, r *http.Request) {
 	raw := chi.URLParam(r, "id")
-	id, err := uuid.Parse(raw)
+	id, err := parseUUID(raw)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "bad id")
 		return
@@ -80,30 +61,10 @@ func (h *RequestHandler) GetRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	request, err := h.Repo.GetRequestByID(r.Context(), id)
+	request, err := h.Service.GetRequest(r.Context(), id, claims)
 	if err != nil {
-		if apperr.IsNotFound(err) {
-			writeError(w, http.StatusNotFound, "not found")
-			return
-		}
-		slog.Error("failed to get request", "id", id, "error", err)
-		writeError(w, http.StatusInternalServerError, "internal error")
+		handleServiceError(w, err)
 		return
-	}
-
-	if !auth.CanAccessResource(claims, request.UserID) {
-		writeError(w, http.StatusForbidden, "forbidden")
-		return
-	}
-
-	// Enrich and parse EKG responses
-	if request.Response != nil && request.Response.Model == models.EKGModelDirect {
-		enrichEKGResponse(r.Context(), h.Repo, request, claims)
-
-		if parsed, err := request.Response.ParseContent(); err == nil {
-			writeJSON(w, http.StatusOK, request.WithParsedResponse(parsed))
-			return
-		}
 	}
 
 	writeJSON(w, http.StatusOK, request)
@@ -112,7 +73,7 @@ func (h *RequestHandler) GetRequest(w http.ResponseWriter, r *http.Request) {
 // GetJob returns the status of a job by ID
 func (h *RequestHandler) GetJob(w http.ResponseWriter, r *http.Request) {
 	raw := chi.URLParam(r, "id")
-	id, err := uuid.Parse(raw)
+	id, err := parseUUID(raw)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "bad id")
 		return
@@ -124,22 +85,9 @@ func (h *RequestHandler) GetJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	j, ok := h.Queue.Status(r.Context(), id)
-	if !ok {
-		writeError(w, http.StatusNotFound, "not found")
-		return
-	}
-
-	// Check ownership unless admin or read-all
-	var payload struct {
-		UserID uuid.UUID `json:"user_id"`
-	}
-	if err := json.Unmarshal(j.Payload, &payload); err != nil {
-		writeError(w, http.StatusForbidden, "forbidden")
-		return
-	}
-	if !auth.CanAccessResource(claims, payload.UserID) {
-		writeError(w, http.StatusForbidden, "forbidden")
+	j, err := h.Service.GetJobStatus(r.Context(), id, claims)
+	if err != nil {
+		handleServiceError(w, err)
 		return
 	}
 

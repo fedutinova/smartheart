@@ -11,17 +11,16 @@ import (
 	"github.com/fedutinova/smartheart/back-api/gpt"
 	"github.com/fedutinova/smartheart/back-api/job"
 	"github.com/fedutinova/smartheart/back-api/models"
-	"github.com/fedutinova/smartheart/back-api/testutil"
+	repomocks "github.com/fedutinova/smartheart/back-api/repository/mocks"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/mock"
 )
-
-// mockRequestRepo is an alias for the shared test mock.
-type mockRequestRepo = testutil.MockRequestRepo
 
 // --- HandleGPTJob tests ---
 
 func TestHandleGPTJob_WrongJobType(t *testing.T) {
-	h := &GPTWorker{repo: &mockRequestRepo{}}
+	repo := repomocks.NewMockRequestRepo(t)
+	h := &GPTWorker{repo: repo}
 
 	j := &job.Job{
 		ID:   uuid.New(),
@@ -38,7 +37,8 @@ func TestHandleGPTJob_WrongJobType(t *testing.T) {
 }
 
 func TestHandleGPTJob_InvalidPayload(t *testing.T) {
-	h := &GPTWorker{repo: &mockRequestRepo{}}
+	repo := repomocks.NewMockRequestRepo(t)
+	h := &GPTWorker{repo: repo}
 
 	j := &job.Job{
 		ID:      uuid.New(),
@@ -53,14 +53,11 @@ func TestHandleGPTJob_InvalidPayload(t *testing.T) {
 }
 
 func TestHandleGPTJob_UpdateStatusFails(t *testing.T) {
-	repo := &mockRequestRepo{
-		UpdateRequestStatusFn: func(_ context.Context, _ uuid.UUID, status string) error {
-			if status == models.StatusProcessing {
-				return errors.New("db down")
-			}
-			return nil
-		},
-	}
+	repo := repomocks.NewMockRequestRepo(t)
+	repo.EXPECT().
+		UpdateRequestStatus(mock.Anything, mock.Anything, models.StatusProcessing).
+		Return(errors.New("db down"))
+
 	h := &GPTWorker{repo: repo}
 
 	payload := gpt.JobPayload{
@@ -200,25 +197,27 @@ func TestFormatBasicFallback_EmptyQuery(t *testing.T) {
 // --- createFallbackResponse tests ---
 
 func TestCreateFallbackResponse_NoEKGData(t *testing.T) {
-	repo := &mockRequestRepo{
-		GetRequestByIDFn: func(_ context.Context, _ uuid.UUID) (*models.Request, error) {
-			textQuery := "test query"
-			return &models.Request{
-				ID:        uuid.New(),
-				UserID:    uuid.New(),
-				TextQuery: &textQuery,
-			}, nil
-		},
-		GetRecentRequestsWithResponsesFn: func(_ context.Context, _ uuid.UUID, _ int) ([]models.Request, error) {
-			return nil, nil // no related requests
-		},
-	}
+	requestID := uuid.New()
+	userID := uuid.New()
+	textQuery := "test query"
+
+	repo := repomocks.NewMockRequestRepo(t)
+	repo.EXPECT().
+		GetRequestByID(mock.Anything, requestID).
+		Return(&models.Request{
+			ID:        requestID,
+			UserID:    userID,
+			TextQuery: &textQuery,
+		}, nil)
+	repo.EXPECT().
+		GetRecentRequestsWithResponses(mock.Anything, userID, mock.Anything).
+		Return(nil, nil)
 
 	h := &GPTWorker{repo: repo}
 	payload := gpt.JobPayload{
-		RequestID: uuid.New(),
-		TextQuery: "test query",
-		UserID:    uuid.New(),
+		RequestID: requestID,
+		TextQuery: textQuery,
+		UserID:    userID,
 	}
 
 	result, err := h.createFallbackResponse(context.Background(), payload)
@@ -246,26 +245,22 @@ func TestCreateFallbackResponse_WithEKGResponse(t *testing.T) {
 	}
 	ekgJSON, _ := ekgContent.Marshal()
 
-	repo := &mockRequestRepo{
-		GetRequestByIDFn: func(_ context.Context, id uuid.UUID) (*models.Request, error) {
-			if id == requestID {
-				return &models.Request{ID: requestID, UserID: userID}, nil
-			}
-			return nil, errors.New("not found")
-		},
-		GetRecentRequestsWithResponsesFn: func(_ context.Context, _ uuid.UUID, _ int) ([]models.Request, error) {
-			return []models.Request{
-				{ID: requestID},
-				{
-					ID:     ekgRequestID,
-					UserID: userID,
-					Response: &models.Response{
-						Content: ekgJSON,
-					},
+	repo := repomocks.NewMockRequestRepo(t)
+	repo.EXPECT().
+		GetRequestByID(mock.Anything, requestID).
+		Return(&models.Request{ID: requestID, UserID: userID}, nil)
+	repo.EXPECT().
+		GetRecentRequestsWithResponses(mock.Anything, userID, mock.Anything).
+		Return([]models.Request{
+			{ID: requestID},
+			{
+				ID:     ekgRequestID,
+				UserID: userID,
+				Response: &models.Response{
+					Content: ekgJSON,
 				},
-			}, nil
-		},
-	}
+			},
+		}, nil)
 
 	h := &GPTWorker{repo: repo}
 	payload := gpt.JobPayload{
@@ -284,15 +279,16 @@ func TestCreateFallbackResponse_WithEKGResponse(t *testing.T) {
 }
 
 func TestCreateFallbackResponse_RequestNotFound(t *testing.T) {
-	repo := &mockRequestRepo{
-		GetRequestByIDFn: func(_ context.Context, _ uuid.UUID) (*models.Request, error) {
-			return nil, errors.New("not found")
-		},
-	}
+	requestID := uuid.New()
+
+	repo := repomocks.NewMockRequestRepo(t)
+	repo.EXPECT().
+		GetRequestByID(mock.Anything, requestID).
+		Return(nil, errors.New("not found"))
 
 	h := &GPTWorker{repo: repo}
 	payload := gpt.JobPayload{
-		RequestID: uuid.New(),
+		RequestID: requestID,
 		UserID:    uuid.New(),
 	}
 
@@ -352,7 +348,7 @@ func TestIsPrivateIP(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ip := parseIP(tt.ip)
+			ip := net.ParseIP(tt.ip)
 			if ip == nil {
 				t.Fatalf("failed to parse IP: %s", tt.ip)
 			}
@@ -361,10 +357,4 @@ func TestIsPrivateIP(t *testing.T) {
 			}
 		})
 	}
-}
-
-// --- helpers ---
-
-func parseIP(s string) net.IP {
-	return net.ParseIP(s)
 }

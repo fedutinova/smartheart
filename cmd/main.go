@@ -18,6 +18,7 @@ import (
 	"github.com/fedutinova/smartheart/back-api/queue"
 	"github.com/fedutinova/smartheart/back-api/repository"
 	"github.com/fedutinova/smartheart/back-api/server"
+	"github.com/fedutinova/smartheart/back-api/service"
 	"github.com/fedutinova/smartheart/back-api/session"
 	"github.com/fedutinova/smartheart/back-api/storage"
 	"github.com/fedutinova/smartheart/back-api/workers"
@@ -99,7 +100,11 @@ func main() {
 	gptWorker := workers.NewGPTWorker(db, gptClient, repo)
 	ekgWorker := workers.NewEKGWorker(db, q, storageService, repo)
 
-	handlers := handler.NewHandler(q, repo, sessions, storageService, cfg)
+	authSvc := service.NewAuthService(repo, sessions, cfg.JWT)
+	submissionSvc := service.NewSubmissionService(repo, q, storageService)
+	requestSvc := service.NewRequestService(repo, q)
+
+	handlers := handler.NewHandler(authSvc, submissionSvc, requestSvc, q, repo, sessions, storageService, cfg)
 	r := server.NewRouter(handlers, cfg)
 
 	// Register job handlers

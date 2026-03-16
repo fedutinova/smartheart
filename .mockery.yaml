@@ -1,0 +1,24 @@
+with-expecter: true
+dir: "{{.InterfaceDir}}/mocks"
+outpkg: mocks
+mockname: "Mock{{.InterfaceName}}"
+filename: "mock_{{.InterfaceName | snakecase}}.go"
+packages:
+  github.com/fedutinova/smartheart/back-api/service:
+    interfaces:
+      AuthService:
+      SubmissionService:
+      RequestService:
+  github.com/fedutinova/smartheart/back-api/repository:
+    interfaces:
+      Store:
+      RequestRepo:
+  github.com/fedutinova/smartheart/back-api/job:
+    interfaces:
+      Queue:
+  github.com/fedutinova/smartheart/back-api/auth:
+    interfaces:
+      SessionService:
+  github.com/fedutinova/smartheart/back-api/storage:
+    interfaces:
+      Storage:

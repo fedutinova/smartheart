@@ -1,23 +1,12 @@
-import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { requestAPI } from '@/services/api';
 import { formatRelative, formatStatus, getStatusColor } from '@/utils/format';
 import { ROUTES } from '@/config';
 import { Layout } from '@/components/Layout';
-import type { PaginatedResponse, Request } from '@/types';
+import { useUserRequests } from '@/hooks/useUserRequests';
 
 export function Dashboard() {
-  const { data: page, isLoading } = useQuery<PaginatedResponse<Request>>({
-    queryKey: ['requests'],
-    queryFn: () => requestAPI.getUserRequests(),
-  });
-
-  // Hide internal GPT sub-requests created by the EKG worker pipeline.
-  // These contain the EKG prompt template in text_query and are not user-facing.
-  const userRequests = page?.data?.filter(
-    (request) => !request.text_query?.includes('Analyze this ECG/EKG image')
-  ) || [];
-  const recentRequests = userRequests.slice(0, 5);
+  const { requests, isLoading } = useUserRequests();
+  const recentRequests = requests.slice(0, 5);
 
   return (
     <Layout>

@@ -65,10 +65,13 @@ func (r *Repository) GetFilesByRequestID(ctx context.Context, requestID uuid.UUI
 			&file.CreatedAt,
 		)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan file row: %w", err)
 		}
 		files = append(files, file)
 	}
 
-	return files, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate file rows: %w", err)
+	}
+	return files, nil
 }

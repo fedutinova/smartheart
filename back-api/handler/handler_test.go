@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -14,179 +12,48 @@ import (
 
 	"github.com/fedutinova/smartheart/back-api/apperr"
 	"github.com/fedutinova/smartheart/back-api/auth"
+	authmocks "github.com/fedutinova/smartheart/back-api/auth/mocks"
 	"github.com/fedutinova/smartheart/back-api/config"
 	"github.com/fedutinova/smartheart/back-api/job"
-	"github.com/fedutinova/smartheart/back-api/models"
-	"github.com/fedutinova/smartheart/back-api/repository"
-	"github.com/fedutinova/smartheart/back-api/storage"
-	"github.com/fedutinova/smartheart/back-api/testutil"
+	jobmocks "github.com/fedutinova/smartheart/back-api/job/mocks"
+	repomocks "github.com/fedutinova/smartheart/back-api/repository/mocks"
+	"github.com/fedutinova/smartheart/back-api/service"
+	svcmocks "github.com/fedutinova/smartheart/back-api/service/mocks"
+	storagemocks "github.com/fedutinova/smartheart/back-api/storage/mocks"
 	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
+	"github.com/stretchr/testify/mock"
 )
-
-// --- Mock implementations ---
-
-// Compile-time interface checks.
-var (
-	_ repository.Store    = (*mockStore)(nil)
-	_ job.Queue           = (*mockQueue)(nil)
-	_ auth.SessionService = (*mockAuth)(nil)
-	_ storage.Storage     = (*mockStorage)(nil)
-)
-
-type mockStore struct {
-	testutil.MockRequestRepo // embeds RequestRepo methods
-
-	createUserFn         func(ctx context.Context, user *models.User) error
-	getUserByEmailFn     func(ctx context.Context, email string) (*models.User, error)
-	getUserByIDFn        func(ctx context.Context, userID uuid.UUID) (*models.User, error)
-	assignRoleFn         func(ctx context.Context, userID uuid.UUID, roleName string) error
-	createRefreshTokenFn func(ctx context.Context, token *models.RefreshToken) error
-	getRefreshTokenFn    func(ctx context.Context, tokenHash string) (*models.RefreshToken, error)
-	revokeRefreshTokenFn func(ctx context.Context, tokenHash string) error
-	loadRolePermsFn      func(ctx context.Context) (map[string][]string, error)
-}
-
-func (m *mockStore) CreateUser(ctx context.Context, user *models.User) error {
-	if m.createUserFn != nil {
-		return m.createUserFn(ctx, user)
-	}
-	return nil
-}
-func (m *mockStore) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
-	if m.getUserByEmailFn != nil {
-		return m.getUserByEmailFn(ctx, email)
-	}
-	return nil, errors.New("not found")
-}
-func (m *mockStore) GetUserByID(ctx context.Context, userID uuid.UUID) (*models.User, error) {
-	if m.getUserByIDFn != nil {
-		return m.getUserByIDFn(ctx, userID)
-	}
-	return nil, errors.New("not found")
-}
-func (m *mockStore) AssignRoleToUser(ctx context.Context, userID uuid.UUID, roleName string) error {
-	if m.assignRoleFn != nil {
-		return m.assignRoleFn(ctx, userID, roleName)
-	}
-	return nil
-}
-func (m *mockStore) CreateRefreshToken(ctx context.Context, token *models.RefreshToken) error {
-	if m.createRefreshTokenFn != nil {
-		return m.createRefreshTokenFn(ctx, token)
-	}
-	return nil
-}
-func (m *mockStore) GetRefreshToken(ctx context.Context, tokenHash string) (*models.RefreshToken, error) {
-	if m.getRefreshTokenFn != nil {
-		return m.getRefreshTokenFn(ctx, tokenHash)
-	}
-	return nil, errors.New("not found")
-}
-func (m *mockStore) RevokeRefreshToken(ctx context.Context, tokenHash string) error {
-	if m.revokeRefreshTokenFn != nil {
-		return m.revokeRefreshTokenFn(ctx, tokenHash)
-	}
-	return nil
-}
-func (m *mockStore) LoadRolePermissions(ctx context.Context) (map[string][]string, error) {
-	if m.loadRolePermsFn != nil {
-		return m.loadRolePermsFn(ctx)
-	}
-	return nil, nil
-}
-func (m *mockStore) WithTx(_ pgx.Tx) repository.Store                     { return m }
-func (m *mockStore) RunTx(_ context.Context, fn func(pgx.Tx) error) error { return fn(nil) }
-func (m *mockStore) Ping(_ context.Context) error                         { return nil }
-
-type mockQueue struct {
-	enqueueFn func(ctx context.Context, j *job.Job) (uuid.UUID, error)
-	statusFn  func(ctx context.Context, id uuid.UUID) (*job.Job, bool)
-	lenVal    int
-}
-
-func (m *mockQueue) Enqueue(ctx context.Context, j *job.Job) (uuid.UUID, error) {
-	if m.enqueueFn != nil {
-		return m.enqueueFn(ctx, j)
-	}
-	id := uuid.New()
-	j.ID = id
-	j.Status = job.StatusQueued
-	return id, nil
-}
-func (m *mockQueue) Status(ctx context.Context, id uuid.UUID) (*job.Job, bool) {
-	if m.statusFn != nil {
-		return m.statusFn(ctx, id)
-	}
-	return nil, false
-}
-func (m *mockQueue) StartConsumers(ctx context.Context, n int, handler job.Handler) {}
-func (m *mockQueue) Len() int                                                       { return m.lenVal }
-func (m *mockQueue) Close() error                                                   { return nil }
-
-type mockAuth struct {
-	pingErr error
-}
-
-func (m *mockAuth) Ping(ctx context.Context) error { return m.pingErr }
-func (m *mockAuth) IsTokenBlacklisted(ctx context.Context, tokenHash string) (bool, error) {
-	return false, nil
-}
-func (m *mockAuth) GetLoginAttempts(ctx context.Context, email string) (int64, error) {
-	return 0, nil
-}
-func (m *mockAuth) IncrLoginAttempts(ctx context.Context, email string, window time.Duration) (int64, error) {
-	return 1, nil
-}
-func (m *mockAuth) ResetLoginAttempts(ctx context.Context, email string) error { return nil }
-func (m *mockAuth) StoreRefreshToken(ctx context.Context, userID, tokenHash string, ttl time.Duration) error {
-	return nil
-}
-func (m *mockAuth) GetRefreshTokenUserID(ctx context.Context, tokenHash string) (string, error) {
-	return "", errors.New("not found")
-}
-func (m *mockAuth) RevokeRefreshToken(ctx context.Context, tokenHash string) error { return nil }
-func (m *mockAuth) StoreBlacklistedToken(ctx context.Context, tokenHash string, ttl time.Duration) error {
-	return nil
-}
-
-type mockStorage struct{}
-
-func (m *mockStorage) UploadFile(ctx context.Context, filename string, content io.Reader, contentType string) (*storage.UploadResult, error) {
-	return &storage.UploadResult{Key: "test-key", URL: "http://test/test-key"}, nil
-}
-func (m *mockStorage) GetPresignedURL(ctx context.Context, key string, exp time.Duration) (string, error) {
-	return "http://test/" + key, nil
-}
-func (m *mockStorage) DeleteFile(ctx context.Context, key string) error { return nil }
-func (m *mockStorage) GetFile(ctx context.Context, key string) (io.ReadCloser, string, error) {
-	return io.NopCloser(strings.NewReader("data")), "application/octet-stream", nil
-}
 
 // --- Helpers ---
 
-type testOpts struct {
-	queue    job.Queue
-	repo     repository.Store
-	sessions auth.SessionService
-	storage  storage.Storage
-	config   config.Config
+type testDeps struct {
+	authSvc       *svcmocks.MockAuthService
+	submissionSvc *svcmocks.MockSubmissionService
+	requestSvc    *svcmocks.MockRequestService
+	queue         *jobmocks.MockQueue
+	repo          *repomocks.MockStore
+	sessions      *authmocks.MockSessionService
+	storage       *storagemocks.MockStorage
+	config        config.Config
 }
 
-func newTestHandler(opts ...func(*testOpts)) *Handler {
-	o := &testOpts{
-		queue:    &mockQueue{},
-		repo:     &mockStore{},
-		sessions: &mockAuth{},
-		storage:  &mockStorage{},
-		config:   config.Config{JWT: config.JWTConfig{Secret: "test-secret", Issuer: "test"}},
+func newTestDeps(t testing.TB) *testDeps {
+	return &testDeps{
+		authSvc:       svcmocks.NewMockAuthService(t),
+		submissionSvc: svcmocks.NewMockSubmissionService(t),
+		requestSvc:    svcmocks.NewMockRequestService(t),
+		queue:         jobmocks.NewMockQueue(t),
+		repo:          repomocks.NewMockStore(t),
+		sessions:      authmocks.NewMockSessionService(t),
+		storage:       storagemocks.NewMockStorage(t),
+		config:        config.Config{JWT: config.JWTConfig{Secret: "test-secret", Issuer: "test"}},
 	}
-	for _, fn := range opts {
-		fn(o)
-	}
-	return NewHandler(o.queue, o.repo, o.sessions, o.storage, o.config)
+}
+
+func (d *testDeps) handler() *Handler {
+	return NewHandler(d.authSvc, d.submissionSvc, d.requestSvc, d.queue, d.repo, d.sessions, d.storage, d.config)
 }
 
 func withAuthContext(r *http.Request, userID uuid.UUID, roles []string) *http.Request {
@@ -209,7 +76,8 @@ func addChiURLParam(r *http.Request, key, value string) *http.Request {
 // --- Health tests ---
 
 func TestHealth_ReturnsOK(t *testing.T) {
-	h := newTestHandler()
+	d := newTestDeps(t)
+	h := d.handler()
 	req := httptest.NewRequest("GET", "/health", nil)
 	w := httptest.NewRecorder()
 
@@ -231,8 +99,14 @@ func TestHealth_ReturnsOK(t *testing.T) {
 // --- EKG handler tests ---
 
 func TestSubmitEKGAnalyze_Success(t *testing.T) {
-	h := newTestHandler()
+	d := newTestDeps(t)
 	userID := uuid.New()
+
+	d.submissionSvc.EXPECT().
+		SubmitEKG(mock.Anything, mock.Anything, "http://example.com/ekg.jpg", "test notes").
+		Return(&service.SubmittedJob{JobID: uuid.New(), RequestID: uuid.New(), Status: "queued"}, nil)
+
+	h := d.handler()
 
 	body, _ := json.Marshal(map[string]string{
 		"image_temp_url": "http://example.com/ekg.jpg",
@@ -264,7 +138,8 @@ func TestSubmitEKGAnalyze_Success(t *testing.T) {
 }
 
 func TestSubmitEKGAnalyze_EmptyBody(t *testing.T) {
-	h := newTestHandler()
+	d := newTestDeps(t)
+	h := d.handler()
 	userID := uuid.New()
 
 	req := httptest.NewRequest("POST", "/v1/ekg/analyze", strings.NewReader(""))
@@ -279,7 +154,8 @@ func TestSubmitEKGAnalyze_EmptyBody(t *testing.T) {
 }
 
 func TestSubmitEKGAnalyze_InvalidJSON(t *testing.T) {
-	h := newTestHandler()
+	d := newTestDeps(t)
+	h := d.handler()
 	userID := uuid.New()
 
 	req := httptest.NewRequest("POST", "/v1/ekg/analyze", strings.NewReader("{invalid"))
@@ -294,7 +170,13 @@ func TestSubmitEKGAnalyze_InvalidJSON(t *testing.T) {
 }
 
 func TestSubmitEKGAnalyze_MissingImageURL(t *testing.T) {
-	h := newTestHandler()
+	d := newTestDeps(t)
+
+	d.submissionSvc.EXPECT().
+		SubmitEKG(mock.Anything, mock.Anything, "", mock.Anything).
+		Return(nil, apperr.ErrValidation)
+
+	h := d.handler()
 	userID := uuid.New()
 
 	body, _ := json.Marshal(map[string]string{"notes": "test"})
@@ -310,7 +192,8 @@ func TestSubmitEKGAnalyze_MissingImageURL(t *testing.T) {
 }
 
 func TestSubmitEKGAnalyze_NoAuthContext(t *testing.T) {
-	h := newTestHandler()
+	d := newTestDeps(t)
+	h := d.handler()
 
 	body, _ := json.Marshal(map[string]string{"image_temp_url": "http://example.com/ekg.jpg"})
 	req := httptest.NewRequest("POST", "/v1/ekg/analyze", bytes.NewReader(body))
@@ -318,22 +201,19 @@ func TestSubmitEKGAnalyze_NoAuthContext(t *testing.T) {
 
 	h.EKG.SubmitEKGAnalyze(w, req)
 
-	// No auth context means empty userID string → uuid.Parse("") fails → 400
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", w.Code)
 	}
 }
 
-func TestSubmitEKGAnalyze_RepoError(t *testing.T) {
-	h := newTestHandler(func(o *testOpts) {
-		o.repo = &mockStore{
-			MockRequestRepo: testutil.MockRequestRepo{
-				CreateRequestFn: func(ctx context.Context, req *models.Request) error {
-					return errors.New("db down")
-				},
-			},
-		}
-	})
+func TestSubmitEKGAnalyze_ServiceError(t *testing.T) {
+	d := newTestDeps(t)
+
+	d.submissionSvc.EXPECT().
+		SubmitEKG(mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Return(nil, apperr.ErrInternal)
+
+	h := d.handler()
 	userID := uuid.New()
 
 	body, _ := json.Marshal(map[string]string{"image_temp_url": "http://example.com/ekg.jpg"})
@@ -348,34 +228,18 @@ func TestSubmitEKGAnalyze_RepoError(t *testing.T) {
 	}
 }
 
-func TestSubmitEKGAnalyze_QueueError(t *testing.T) {
-	h := newTestHandler(func(o *testOpts) {
-		o.queue = &mockQueue{
-			enqueueFn: func(ctx context.Context, j *job.Job) (uuid.UUID, error) {
-				return uuid.Nil, errors.New("queue full")
-			},
-		}
-	})
-	userID := uuid.New()
-
-	body, _ := json.Marshal(map[string]string{"image_temp_url": "http://example.com/ekg.jpg"})
-	req := httptest.NewRequest("POST", "/v1/ekg/analyze", bytes.NewReader(body))
-	req = withAuthContext(req, userID, []string{"user"})
-	w := httptest.NewRecorder()
-
-	h.EKG.SubmitEKGAnalyze(w, req)
-
-	if w.Code != http.StatusServiceUnavailable {
-		t.Fatalf("expected 503, got %d", w.Code)
-	}
-}
-
 // --- GetJob tests ---
 
 func TestGetJob_NotFound(t *testing.T) {
-	h := newTestHandler()
-	userID := uuid.New()
+	d := newTestDeps(t)
 	jobID := uuid.New()
+
+	d.requestSvc.EXPECT().
+		GetJobStatus(mock.Anything, jobID, mock.Anything).
+		Return(nil, apperr.ErrJobNotFound)
+
+	h := d.handler()
+	userID := uuid.New()
 
 	req := httptest.NewRequest("GET", "/v1/jobs/"+jobID.String(), nil)
 	req = withAuthContext(req, userID, []string{"user"})
@@ -390,7 +254,8 @@ func TestGetJob_NotFound(t *testing.T) {
 }
 
 func TestGetJob_BadID(t *testing.T) {
-	h := newTestHandler()
+	d := newTestDeps(t)
+	h := d.handler()
 	userID := uuid.New()
 
 	req := httptest.NewRequest("GET", "/v1/jobs/not-a-uuid", nil)
@@ -406,27 +271,21 @@ func TestGetJob_BadID(t *testing.T) {
 }
 
 func TestGetJob_Success(t *testing.T) {
+	d := newTestDeps(t)
 	userID := uuid.New()
 	jobID := uuid.New()
 
-	payloadBytes, _ := json.Marshal(map[string]string{"user_id": userID.String()})
 	testJob := &job.Job{
-		ID:      jobID,
-		Type:    job.TypeEKGAnalyze,
-		Status:  job.StatusRunning,
-		Payload: payloadBytes,
+		ID:     jobID,
+		Type:   job.TypeEKGAnalyze,
+		Status: job.StatusRunning,
 	}
 
-	h := newTestHandler(func(o *testOpts) {
-		o.queue = &mockQueue{
-			statusFn: func(ctx context.Context, id uuid.UUID) (*job.Job, bool) {
-				if id == jobID {
-					return testJob, true
-				}
-				return nil, false
-			},
-		}
-	})
+	d.requestSvc.EXPECT().
+		GetJobStatus(mock.Anything, jobID, mock.Anything).
+		Return(testJob, nil)
+
+	h := d.handler()
 
 	req := httptest.NewRequest("GET", "/v1/jobs/"+jobID.String(), nil)
 	req = withAuthContext(req, userID, []string{"user"})
@@ -500,7 +359,14 @@ func TestSubmitEKGResponse_Roundtrip(t *testing.T) {
 // --- Auth handler tests ---
 
 func TestRegister_MissingFields(t *testing.T) {
-	h := newTestHandler()
+	d := newTestDeps(t)
+
+	d.authSvc.EXPECT().
+		Register(mock.Anything, mock.Anything, "alice@example.com", mock.Anything).
+		Return(uuid.Nil, apperr.ErrValidation)
+
+	h := d.handler()
+
 	body, _ := json.Marshal(map[string]string{"email": "alice@example.com"})
 	req := httptest.NewRequest("POST", "/v1/auth/register", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -513,7 +379,14 @@ func TestRegister_MissingFields(t *testing.T) {
 }
 
 func TestRegister_InvalidEmail(t *testing.T) {
-	h := newTestHandler()
+	d := newTestDeps(t)
+
+	d.authSvc.EXPECT().
+		Register(mock.Anything, "alice", "not-an-email", "securepassword123").
+		Return(uuid.Nil, apperr.ErrValidation)
+
+	h := d.handler()
+
 	body, _ := json.Marshal(map[string]string{
 		"username": "alice",
 		"email":    "not-an-email",
@@ -530,7 +403,14 @@ func TestRegister_InvalidEmail(t *testing.T) {
 }
 
 func TestRegister_ShortPassword(t *testing.T) {
-	h := newTestHandler()
+	d := newTestDeps(t)
+
+	d.authSvc.EXPECT().
+		Register(mock.Anything, "alice", "alice@example.com", "short").
+		Return(uuid.Nil, apperr.ErrValidation)
+
+	h := d.handler()
+
 	body, _ := json.Marshal(map[string]string{
 		"username": "alice",
 		"email":    "alice@example.com",
@@ -547,11 +427,19 @@ func TestRegister_ShortPassword(t *testing.T) {
 }
 
 func TestRegister_PasswordTooLong(t *testing.T) {
-	h := newTestHandler()
+	d := newTestDeps(t)
+	longPassword := strings.Repeat("a", 73)
+
+	d.authSvc.EXPECT().
+		Register(mock.Anything, "alice", "alice@example.com", longPassword).
+		Return(uuid.Nil, apperr.ErrValidation)
+
+	h := d.handler()
+
 	body, _ := json.Marshal(map[string]string{
 		"username": "alice",
 		"email":    "alice@example.com",
-		"password": strings.Repeat("a", 73),
+		"password": longPassword,
 	})
 	req := httptest.NewRequest("POST", "/v1/auth/register", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -564,7 +452,9 @@ func TestRegister_PasswordTooLong(t *testing.T) {
 }
 
 func TestLogin_InvalidJSON(t *testing.T) {
-	h := newTestHandler()
+	d := newTestDeps(t)
+	h := d.handler()
+
 	req := httptest.NewRequest("POST", "/v1/auth/login", strings.NewReader("{bad"))
 	w := httptest.NewRecorder()
 
@@ -576,7 +466,14 @@ func TestLogin_InvalidJSON(t *testing.T) {
 }
 
 func TestLogin_MissingFields(t *testing.T) {
-	h := newTestHandler()
+	d := newTestDeps(t)
+
+	d.authSvc.EXPECT().
+		Login(mock.Anything, "alice@example.com", "").
+		Return(nil, apperr.ErrValidation)
+
+	h := d.handler()
+
 	body, _ := json.Marshal(map[string]string{"email": "alice@example.com"})
 	req := httptest.NewRequest("POST", "/v1/auth/login", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -589,13 +486,14 @@ func TestLogin_MissingFields(t *testing.T) {
 }
 
 func TestLogin_UserNotFound(t *testing.T) {
-	h := newTestHandler(func(o *testOpts) {
-		o.repo = &mockStore{
-			getUserByEmailFn: func(_ context.Context, _ string) (*models.User, error) {
-				return nil, apperr.ErrUserNotFound
-			},
-		}
-	})
+	d := newTestDeps(t)
+
+	d.authSvc.EXPECT().
+		Login(mock.Anything, "noone@example.com", "securepassword123").
+		Return(nil, apperr.ErrInvalidCredentials)
+
+	h := d.handler()
+
 	body, _ := json.Marshal(map[string]string{
 		"email":    "noone@example.com",
 		"password": "securepassword123",
@@ -611,19 +509,14 @@ func TestLogin_UserNotFound(t *testing.T) {
 }
 
 func TestLogin_WrongPassword(t *testing.T) {
-	userID := uuid.New()
-	passwordHash, _ := auth.HashPassword("correctpassword")
-	h := newTestHandler(func(o *testOpts) {
-		o.repo = &mockStore{
-			getUserByEmailFn: func(_ context.Context, _ string) (*models.User, error) {
-				return &models.User{
-					ID:           userID,
-					Email:        "alice@example.com",
-					PasswordHash: passwordHash,
-				}, nil
-			},
-		}
-	})
+	d := newTestDeps(t)
+
+	d.authSvc.EXPECT().
+		Login(mock.Anything, "alice@example.com", "wrongpassword").
+		Return(nil, apperr.ErrInvalidCredentials)
+
+	h := d.handler()
+
 	body, _ := json.Marshal(map[string]string{
 		"email":    "alice@example.com",
 		"password": "wrongpassword",
@@ -639,20 +532,14 @@ func TestLogin_WrongPassword(t *testing.T) {
 }
 
 func TestLogin_Success(t *testing.T) {
-	userID := uuid.New()
-	passwordHash, _ := auth.HashPassword("securepassword123")
-	h := newTestHandler(func(o *testOpts) {
-		o.repo = &mockStore{
-			getUserByEmailFn: func(_ context.Context, _ string) (*models.User, error) {
-				return &models.User{
-					ID:           userID,
-					Email:        "alice@example.com",
-					PasswordHash: passwordHash,
-					Roles:        []models.Role{{Name: "user"}},
-				}, nil
-			},
-		}
-	})
+	d := newTestDeps(t)
+
+	d.authSvc.EXPECT().
+		Login(mock.Anything, "alice@example.com", "securepassword123").
+		Return(&auth.TokenPair{AccessToken: "access-token", RefreshToken: "refresh-token"}, nil)
+
+	h := d.handler()
+
 	body, _ := json.Marshal(map[string]string{
 		"email":    "alice@example.com",
 		"password": "securepassword123",
@@ -678,7 +565,14 @@ func TestLogin_Success(t *testing.T) {
 }
 
 func TestRefresh_MissingToken(t *testing.T) {
-	h := newTestHandler()
+	d := newTestDeps(t)
+
+	d.authSvc.EXPECT().
+		Refresh(mock.Anything, "").
+		Return(nil, apperr.ErrValidation)
+
+	h := d.handler()
+
 	body, _ := json.Marshal(map[string]string{})
 	req := httptest.NewRequest("POST", "/v1/auth/refresh", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -691,7 +585,14 @@ func TestRefresh_MissingToken(t *testing.T) {
 }
 
 func TestRefresh_InvalidToken(t *testing.T) {
-	h := newTestHandler()
+	d := newTestDeps(t)
+
+	d.authSvc.EXPECT().
+		Refresh(mock.Anything, "invalid-token").
+		Return(nil, apperr.ErrInvalidToken)
+
+	h := d.handler()
+
 	body, _ := json.Marshal(map[string]string{"refresh_token": "invalid-token"})
 	req := httptest.NewRequest("POST", "/v1/auth/refresh", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -704,8 +605,14 @@ func TestRefresh_InvalidToken(t *testing.T) {
 }
 
 func TestLogout_Success(t *testing.T) {
-	h := newTestHandler()
+	d := newTestDeps(t)
 	userID := uuid.New()
+
+	d.authSvc.EXPECT().
+		Logout(mock.Anything, "some-refresh-token", mock.Anything, mock.Anything).
+		Return(nil)
+
+	h := d.handler()
 
 	body, _ := json.Marshal(map[string]string{"refresh_token": "some-refresh-token"})
 	req := httptest.NewRequest("POST", "/v1/auth/logout", bytes.NewReader(body))
@@ -722,8 +629,14 @@ func TestLogout_Success(t *testing.T) {
 }
 
 func TestLogout_EmptyBody(t *testing.T) {
-	h := newTestHandler()
+	d := newTestDeps(t)
 	userID := uuid.New()
+
+	d.authSvc.EXPECT().
+		Logout(mock.Anything, "", mock.Anything, mock.Anything).
+		Return(nil)
+
+	h := d.handler()
 
 	body, _ := json.Marshal(map[string]string{})
 	req := httptest.NewRequest("POST", "/v1/auth/logout", bytes.NewReader(body))

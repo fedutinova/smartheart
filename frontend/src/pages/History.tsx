@@ -1,19 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { requestAPI } from '@/services/api';
 import { formatDate, formatStatus, getStatusColor } from '@/utils/format';
 import { Layout } from '@/components/Layout';
+import { useUserRequests } from '@/hooks/useUserRequests';
 
 export function History() {
-  const { data: page, isLoading, error } = useQuery({
-    queryKey: ['requests'],
-    queryFn: () => requestAPI.getUserRequests(),
-  });
-
-  // Hide internal GPT sub-requests created by the EKG worker pipeline.
-  const filteredRequests = page?.data?.filter(
-    (request) => !request.text_query?.includes('Analyze this ECG/EKG image')
-  ) || [];
+  const { requests: filteredRequests, isLoading, error } = useUserRequests();
 
   return (
     <Layout>
