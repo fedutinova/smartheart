@@ -31,3 +31,11 @@ type SubmitEKGResponse struct {
 	Status    string    `json:"status"`
 	Message   string    `json:"message"`
 }
+
+// PaginatedResponse wraps a list result with pagination metadata.
+type PaginatedResponse struct {
+	Data   any `json:"data"`
+	Total  int `json:"total"`
+	Limit  int `json:"limit"`
+	Offset int `json:"offset"`
+}

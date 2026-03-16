@@ -21,7 +21,7 @@ type mockRequestRepo = testutil.MockRequestRepo
 // --- HandleGPTJob tests ---
 
 func TestHandleGPTJob_WrongJobType(t *testing.T) {
-	h := &GPTHandler{repo: &mockRequestRepo{}}
+	h := &GPTWorker{repo: &mockRequestRepo{}}
 
 	j := &job.Job{
 		ID:   uuid.New(),
@@ -38,7 +38,7 @@ func TestHandleGPTJob_WrongJobType(t *testing.T) {
 }
 
 func TestHandleGPTJob_InvalidPayload(t *testing.T) {
-	h := &GPTHandler{repo: &mockRequestRepo{}}
+	h := &GPTWorker{repo: &mockRequestRepo{}}
 
 	j := &job.Job{
 		ID:      uuid.New(),
@@ -61,7 +61,7 @@ func TestHandleGPTJob_UpdateStatusFails(t *testing.T) {
 			return nil
 		},
 	}
-	h := &GPTHandler{repo: repo}
+	h := &GPTWorker{repo: repo}
 
 	payload := gpt.JobPayload{
 		RequestID: uuid.New(),
@@ -93,13 +93,13 @@ func TestBuildEKGPrompt_WithNotes(t *testing.T) {
 	if result == "" {
 		t.Fatal("expected non-empty prompt")
 	}
-	if !strings.Contains(result,"user notes") {
+	if !strings.Contains(result, "user notes") {
 		t.Error("expected prompt to contain user notes")
 	}
-	if !strings.Contains(result,"Additional context from user") {
+	if !strings.Contains(result, "Additional context from user") {
 		t.Error("expected prompt to contain context header")
 	}
-	if !strings.Contains(result,"educational and technical analysis") {
+	if !strings.Contains(result, "educational and technical analysis") {
 		t.Error("expected prompt to contain disclaimer")
 	}
 }
@@ -110,10 +110,10 @@ func TestBuildEKGPrompt_WithoutNotes(t *testing.T) {
 	if result == "" {
 		t.Fatal("expected non-empty prompt")
 	}
-	if strings.Contains(result,"Additional context from user") {
+	if strings.Contains(result, "Additional context from user") {
 		t.Error("should not contain context header when no notes")
 	}
-	if !strings.Contains(result,"educational and technical analysis") {
+	if !strings.Contains(result, "educational and technical analysis") {
 		t.Error("expected prompt to contain disclaimer")
 	}
 }
@@ -128,16 +128,16 @@ func TestFormatEKGFallback_WithNotesAndQuery(t *testing.T) {
 
 	result := formatEKGFallback(ekg, "query text")
 
-	if !strings.Contains(result,"Автоматический анализ ЭКГ") {
+	if !strings.Contains(result, "Автоматический анализ ЭКГ") {
 		t.Error("expected Russian header")
 	}
-	if !strings.Contains(result,"2026-01-01T00:00:00Z") {
+	if !strings.Contains(result, "2026-01-01T00:00:00Z") {
 		t.Error("expected timestamp")
 	}
-	if !strings.Contains(result,"patient notes") {
+	if !strings.Contains(result, "patient notes") {
 		t.Error("expected notes")
 	}
-	if !strings.Contains(result,"query text") {
+	if !strings.Contains(result, "query text") {
 		t.Error("expected query text")
 	}
 }
@@ -165,10 +165,10 @@ func TestFormatEKGFallback_EmptyNotes(t *testing.T) {
 
 	result := formatEKGFallback(ekg, "")
 
-	if !strings.Contains(result,"2026-01-01T00:00:00Z") {
+	if !strings.Contains(result, "2026-01-01T00:00:00Z") {
 		t.Error("expected timestamp")
 	}
-	if strings.Contains(result,"Примечания пользователя") {
+	if strings.Contains(result, "Примечания пользователя") {
 		t.Error("should not contain notes section when notes are empty")
 	}
 }
@@ -178,10 +178,10 @@ func TestFormatEKGFallback_EmptyNotes(t *testing.T) {
 func TestFormatBasicFallback_WithQuery(t *testing.T) {
 	result := formatBasicFallback("my query")
 
-	if !strings.Contains(result,"my query") {
+	if !strings.Contains(result, "my query") {
 		t.Error("expected query in fallback")
 	}
-	if !strings.Contains(result,"Автоматический анализ") {
+	if !strings.Contains(result, "Автоматический анализ") {
 		t.Error("expected Russian header")
 	}
 }
@@ -189,10 +189,10 @@ func TestFormatBasicFallback_WithQuery(t *testing.T) {
 func TestFormatBasicFallback_EmptyQuery(t *testing.T) {
 	result := formatBasicFallback("")
 
-	if strings.Contains(result,"Контекст запроса") {
+	if strings.Contains(result, "Контекст запроса") {
 		t.Error("should not contain query section when empty")
 	}
-	if !strings.Contains(result,"попробуйте повторить") {
+	if !strings.Contains(result, "попробуйте повторить") {
 		t.Error("expected retry message")
 	}
 }
@@ -209,12 +209,12 @@ func TestCreateFallbackResponse_NoEKGData(t *testing.T) {
 				TextQuery: &textQuery,
 			}, nil
 		},
-		GetRequestsByUserIDFn: func(_ context.Context, _ uuid.UUID, _, _ int) ([]models.Request, error) {
+		GetRecentRequestsWithResponsesFn: func(_ context.Context, _ uuid.UUID, _ int) ([]models.Request, error) {
 			return nil, nil // no related requests
 		},
 	}
 
-	h := &GPTHandler{repo: repo}
+	h := &GPTWorker{repo: repo}
 	payload := gpt.JobPayload{
 		RequestID: uuid.New(),
 		TextQuery: "test query",
@@ -228,7 +228,7 @@ func TestCreateFallbackResponse_NoEKGData(t *testing.T) {
 	if result == "" {
 		t.Fatal("expected non-empty fallback")
 	}
-	if !strings.Contains(result,"test query") {
+	if !strings.Contains(result, "test query") {
 		t.Error("expected query in basic fallback")
 	}
 }
@@ -239,10 +239,10 @@ func TestCreateFallbackResponse_WithEKGResponse(t *testing.T) {
 	ekgRequestID := uuid.New()
 
 	ekgContent := &models.EKGResponseContent{
-		AnalysisType:  models.EKGModelDirect,
-		Notes:         "patient notes",
-		Timestamp:     "2026-01-01T00:00:00Z",
-		GPTRequestID:  requestID.String(),
+		AnalysisType: models.EKGModelDirect,
+		Notes:        "patient notes",
+		Timestamp:    "2026-01-01T00:00:00Z",
+		GPTRequestID: requestID.String(),
 	}
 	ekgJSON, _ := ekgContent.Marshal()
 
@@ -251,26 +251,23 @@ func TestCreateFallbackResponse_WithEKGResponse(t *testing.T) {
 			if id == requestID {
 				return &models.Request{ID: requestID, UserID: userID}, nil
 			}
-			if id == ekgRequestID {
-				return &models.Request{
+			return nil, errors.New("not found")
+		},
+		GetRecentRequestsWithResponsesFn: func(_ context.Context, _ uuid.UUID, _ int) ([]models.Request, error) {
+			return []models.Request{
+				{ID: requestID},
+				{
 					ID:     ekgRequestID,
 					UserID: userID,
 					Response: &models.Response{
 						Content: ekgJSON,
 					},
-				}, nil
-			}
-			return nil, errors.New("not found")
-		},
-		GetRequestsByUserIDFn: func(_ context.Context, _ uuid.UUID, _, _ int) ([]models.Request, error) {
-			return []models.Request{
-				{ID: requestID},
-				{ID: ekgRequestID},
+				},
 			}, nil
 		},
 	}
 
-	h := &GPTHandler{repo: repo}
+	h := &GPTWorker{repo: repo}
 	payload := gpt.JobPayload{
 		RequestID: requestID,
 		TextQuery: "analyze this",
@@ -281,7 +278,7 @@ func TestCreateFallbackResponse_WithEKGResponse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(result,"patient notes") {
+	if !strings.Contains(result, "patient notes") {
 		t.Error("expected EKG notes in fallback")
 	}
 }
@@ -293,7 +290,7 @@ func TestCreateFallbackResponse_RequestNotFound(t *testing.T) {
 		},
 	}
 
-	h := &GPTHandler{repo: repo}
+	h := &GPTWorker{repo: repo}
 	payload := gpt.JobPayload{
 		RequestID: uuid.New(),
 		UserID:    uuid.New(),

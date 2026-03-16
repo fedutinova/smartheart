@@ -18,6 +18,7 @@ func NewRouter(h *handler.Handler, cfg config.Config) http.Handler {
 	// CORS middleware - must be first
 	r.Use(corsMiddleware(cfg.CORS.Origins, cfg.CORS.Credentials))
 
+	r.Use(securityHeaders)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
@@ -40,6 +41,18 @@ func NewRouter(h *handler.Handler, cfg config.Config) http.Handler {
 
 	h.RegisterRoutes(r)
 	return r
+}
+
+// securityHeaders adds standard security headers to every response.
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("X-XSS-Protection", "0")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+		next.ServeHTTP(w, r)
+	})
 }
 
 // corsMiddleware creates a CORS middleware with configurable origins

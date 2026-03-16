@@ -111,7 +111,7 @@ func (h *HealthHandler) Ready(w http.ResponseWriter, r *http.Request) {
 
 func (h *HealthHandler) checkDatabase(ctx context.Context) Check {
 	start := time.Now()
-	err := h.Repo.DB().Pool().Ping(ctx)
+	err := h.Repo.Ping(ctx)
 	duration := time.Since(start)
 
 	if err != nil {

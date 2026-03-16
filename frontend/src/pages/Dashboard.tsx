@@ -12,9 +12,12 @@ export function Dashboard() {
     queryFn: () => requestAPI.getUserRequests(),
   });
 
-  // Filter out EKG Analysis requests (requests with text_query) - only show GPT requests
-  const gptRequests = requests?.filter((request) => !request.text_query) || [];
-  const recentRequests = gptRequests.slice(0, 5);
+  // Hide internal GPT sub-requests created by the EKG worker pipeline.
+  // These contain the EKG prompt template in text_query and are not user-facing.
+  const userRequests = requests?.filter(
+    (request) => !request.text_query?.includes('Analyze this ECG/EKG image')
+  ) || [];
+  const recentRequests = userRequests.slice(0, 5);
 
   return (
     <Layout>

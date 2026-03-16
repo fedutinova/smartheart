@@ -43,7 +43,7 @@ export interface Job {
   finished_at?: string;
 }
 
-export type JobStatus = 'queued' | 'started' | 'succeeded' | 'failed';
+export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed';
 
 export interface Request {
   id: string;
@@ -86,5 +86,7 @@ export interface EKGAnalysisResult {
   job_id: string;
   gpt_request_id?: string;
   gpt_interpretation_status?: string;
+  gpt_interpretation?: string;
+  gpt_full_response?: string;
 }
 

@@ -3,11 +3,23 @@ package auth
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
+
+const minSecretLen = 32 // HS256 requires at least 256 bits
+
+// ValidateSecret checks that the JWT signing secret meets the minimum length
+// requirement for HS256. Call this at application startup.
+func ValidateSecret(secret string) error {
+	if len(secret) < minSecretLen {
+		return fmt.Errorf("JWT secret too short: got %d bytes, need at least %d", len(secret), minSecretLen)
+	}
+	return nil
+}
 
 type Claims struct {
 	UserID string   `json:"user_id"`

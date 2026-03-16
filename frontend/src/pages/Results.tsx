@@ -8,40 +8,56 @@ import type { EKGAnalysisResult } from '@/types';
 
 export function Results() {
   const { id } = useParams<{ id: string }>();
-  
+
   const { data: request, isLoading, error } = useQuery({
     queryKey: ['request', id],
     queryFn: () => requestAPI.getRequest(id!),
     enabled: !!id,
     refetchInterval: (query) => {
-      // Poll if request is still pending or processing
       const data = query.state.data;
-      return data?.status === 'pending' || data?.status === 'processing' ? 2000 : false;
+      if (!data) return false;
+      // Poll while request is pending/processing
+      if (data.status === 'pending' || data.status === 'processing') return 2000;
+      // For completed EKG requests, also poll while GPT interpretation is still pending
+      if (data.response?.content) {
+        try {
+          const parsed = JSON.parse(data.response.content);
+          if (parsed?.analysis_type === 'ekg_direct_v2' &&
+              parsed.gpt_interpretation_status &&
+              parsed.gpt_interpretation_status !== 'completed' &&
+              parsed.gpt_interpretation_status !== 'failed') {
+            return 3000;
+          }
+        } catch { /* not JSON, stop polling */ }
+      }
+      return false;
     },
   });
 
   let ekgResult: EKGAnalysisResult | null = null;
-  let gptRequestId: string | null = null;
   if (request?.response?.content) {
     try {
       const parsed = JSON.parse(request.response.content);
-      // Check if this is an EKG result
       if (parsed?.analysis_type === 'ekg_direct_v2') {
         ekgResult = parsed as EKGAnalysisResult;
-        gptRequestId = ekgResult?.gpt_request_id || null;
       }
-    } catch (err) {
-      // If parsing fails or it's not an EKG result, it's likely a GPT response
-      console.error('Failed to parse EKG result:', err);
+    } catch {
+      // Not JSON — this is a direct GPT text response
     }
   }
 
-  // Fetch GPT analysis result if available
-  const { data: gptRequest } = useQuery({
-    queryKey: ['request', gptRequestId],
-    queryFn: () => requestAPI.getRequest(gptRequestId!),
-    enabled: !!gptRequestId,
-  });
+  // Determine the GPT interpretation content to display.
+  // For EKG requests: use the enriched gpt_full_response from the backend.
+  // For direct GPT requests: use response.content directly.
+  const gptContent = ekgResult
+    ? ekgResult.gpt_full_response || null
+    : (request?.response && request.response.model !== 'ekg_direct_v2')
+      ? request.response.content
+      : null;
+
+  const gptMeta = ekgResult
+    ? null // GPT metadata is on the linked request, not available here
+    : request?.response;
 
   if (isLoading) {
     return (
@@ -110,7 +126,6 @@ export function Results() {
                 alt="Исходное ЭКГ изображение"
                 className="max-w-full h-auto rounded-lg shadow-md"
                 onError={(e) => {
-                  // Fallback if image fails to load
                   const target = e.target as HTMLImageElement;
                   target.style.display = 'none';
                 }}
@@ -119,50 +134,55 @@ export function Results() {
           </div>
         )}
 
-        {/* Analysis Result - GPT from linked request or direct GPT request */}
-        {(gptRequest?.response || (!ekgResult && request.response && request.response.model !== 'ekg_direct_v2')) && (
+        {/* GPT Interpretation / Analysis Result */}
+        {gptContent && (
           <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 shadow rounded-lg p-6 mb-6">
             <div className="flex items-center mb-4">
-              <span className="text-2xl mr-2">📒</span>
               <h2 className="text-xl font-bold text-gray-900">Заключение</h2>
             </div>
             <div className="bg-white rounded-lg p-4 border border-purple-100 mb-4">
               <ReactMarkdown className="prose prose-sm max-w-none prose-gray">
-                {(gptRequest?.response?.content || request.response?.content) || ''}
+                {gptContent}
               </ReactMarkdown>
             </div>
-            {/* GPT Processing Info */}
-            {(gptRequest?.response || request.response) && (
+            {/* Processing metadata (only for direct GPT requests where we have it) */}
+            {gptMeta && (
               <div className="bg-white rounded-lg p-4 border border-purple-100">
                 <h3 className="text-sm font-medium text-gray-700 mb-4">Информация об обработке</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {(gptRequest?.response?.model || request.response?.model) && (
+                  {gptMeta.model && (
                     <div>
                       <label className="text-sm font-medium text-gray-500">Модель</label>
-                      <p className="mt-1 text-sm text-gray-900">
-                        {gptRequest?.response?.model || request.response?.model}
-                      </p>
+                      <p className="mt-1 text-sm text-gray-900">{gptMeta.model}</p>
                     </div>
                   )}
-                  {(gptRequest?.response?.tokens_used !== undefined || request.response?.tokens_used !== undefined) && (
+                  {gptMeta.tokens_used !== undefined && (
                     <div>
                       <label className="text-sm font-medium text-gray-500">Токены</label>
-                      <p className="mt-1 text-sm text-gray-900">
-                        {gptRequest?.response?.tokens_used ?? request.response?.tokens_used}
-                      </p>
+                      <p className="mt-1 text-sm text-gray-900">{gptMeta.tokens_used}</p>
                     </div>
                   )}
-                  {(gptRequest?.response?.processing_time_ms !== undefined || request.response?.processing_time_ms !== undefined) && (
+                  {gptMeta.processing_time_ms !== undefined && (
                     <div>
                       <label className="text-sm font-medium text-gray-500">Время обработки</label>
-                      <p className="mt-1 text-sm text-gray-900">
-                        {(gptRequest?.response?.processing_time_ms ?? request.response?.processing_time_ms)}ms
-                      </p>
+                      <p className="mt-1 text-sm text-gray-900">{gptMeta.processing_time_ms}ms</p>
                     </div>
                   )}
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* GPT interpretation pending/failed message for EKG requests */}
+        {ekgResult && !gptContent && ekgResult.gpt_request_id && (
+          <div className="bg-yellow-50 border border-yellow-200 shadow rounded-lg p-6 mb-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Заключение</h2>
+            <p className="text-sm text-yellow-800">
+              {ekgResult.gpt_interpretation_status === 'failed'
+                ? 'GPT-интерпретация не удалась. Попробуйте повторить запрос.'
+                : 'GPT-интерпретация в обработке...'}
+            </p>
           </div>
         )}
 
@@ -178,7 +198,9 @@ export function Results() {
               <div>
                 <label className="text-sm font-medium text-gray-500">Статус GPT-интерпретации</label>
                 <p className="mt-1 text-sm text-gray-900">
-                  {ekgResult.gpt_interpretation_status || 'N/A'}
+                  {ekgResult.gpt_interpretation_status
+                    ? formatStatus(ekgResult.gpt_interpretation_status)
+                    : 'N/A'}
                 </p>
               </div>
             </div>
@@ -195,4 +217,3 @@ export function Results() {
     </Layout>
   );
 }
-

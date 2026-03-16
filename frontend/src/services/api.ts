@@ -8,6 +8,7 @@ import type {
   Request,
 } from '@/types';
 import { API_BASE_URL, JWT_STORAGE_KEY, REFRESH_TOKEN_KEY } from '@/config';
+import { useAuthStore } from '@/store/auth';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -58,8 +59,7 @@ api.interceptors.response.use(
       const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
 
       if (!refreshToken) {
-        localStorage.removeItem(JWT_STORAGE_KEY);
-        localStorage.removeItem(REFRESH_TOKEN_KEY);
+        useAuthStore.getState().logout();
         window.location.href = '/login';
         return Promise.reject(error);
       }
@@ -86,8 +86,8 @@ api.interceptors.response.use(
         );
         const { access_token, refresh_token } = response.data;
 
-        localStorage.setItem(JWT_STORAGE_KEY, access_token);
-        localStorage.setItem(REFRESH_TOKEN_KEY, refresh_token);
+        // Sync both localStorage and Zustand store
+        useAuthStore.getState().login({ access_token, refresh_token });
 
         processQueue(null, access_token);
 
@@ -95,8 +95,7 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        localStorage.removeItem(JWT_STORAGE_KEY);
-        localStorage.removeItem(REFRESH_TOKEN_KEY);
+        useAuthStore.getState().logout();
         window.location.href = '/login';
         return Promise.reject(refreshError);
       } finally {

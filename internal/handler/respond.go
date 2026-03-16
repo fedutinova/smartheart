@@ -10,11 +10,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type apiError struct {
-	Error   string `json:"error"`
-	Details any    `json:"details,omitempty"`
-}
-
 // writeJSON writes a JSON response with the given status code.
 func writeJSON(w http.ResponseWriter, code int, v any) {
 	w.Header().Set("Content-Type", "application/json")
@@ -26,7 +21,7 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 
 // writeError writes a structured JSON error response.
 func writeError(w http.ResponseWriter, code int, msg string) {
-	writeJSON(w, code, apiError{Error: msg})
+	writeJSON(w, code, APIError{Error: msg})
 }
 
 // decodeJSON decodes the request body into v.

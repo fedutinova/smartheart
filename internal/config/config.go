@@ -86,7 +86,22 @@ type Config struct {
 	RateLimit RateLimitConfig
 }
 
-func getenv(key, def string) string {
+// Storage mode constants for compile-time safety.
+const (
+	StorageModeS3         = "s3"
+	StorageModeAWS        = "aws"
+	StorageModeLocalStack = "localstack"
+	StorageModeLocal      = "local"
+	StorageModeFilesystem = "filesystem"
+)
+
+// Queue mode constants.
+const (
+	QueueModeRedis  = "redis"
+	QueueModeMemory = "memory"
+)
+
+func envString(key, def string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
 	}
@@ -104,7 +119,7 @@ func envInt(key string, def int) int {
 	return def
 }
 
-func getBool(key string, def bool) bool {
+func envBool(key string, def bool) bool {
 	if v := os.Getenv(key); v != "" {
 		if v == "true" || v == "1" {
 			return true
@@ -128,7 +143,7 @@ func envDuration(key string, def time.Duration) time.Duration {
 	return def
 }
 
-func getStringList(key string, def []string) []string {
+func envStringList(key string, def []string) []string {
 	if v := os.Getenv(key); v != "" {
 		parts := strings.Split(v, ",")
 		var result []string
@@ -195,9 +210,9 @@ func loadEnvFiles() {
 func Load() Config {
 	loadEnvFiles()
 
-	jwtSecret := getenv("JWT_SECRET", "")
+	jwtSecret := envString("JWT_SECRET", "")
 	if jwtSecret == "" {
-		env := getenv("APP_ENV", "development")
+		env := envString("APP_ENV", "development")
 		if env == "production" || env == "prod" {
 			slog.Error("JWT_SECRET must be set in production")
 			os.Exit(1)
@@ -206,26 +221,26 @@ func Load() Config {
 		jwtSecret = "dev-secret-change-me"
 	}
 
-	dbURL := getenv("DATABASE_URL", "")
+	dbURL := envString("DATABASE_URL", "")
 	if dbURL == "" {
 		slog.Warn("DATABASE_URL is not set, using insecure default — DO NOT use in production")
 		dbURL = "postgres://user:password@localhost:5432/smartheart?sslmode=disable"
 	}
 
 	return Config{
-		HTTPAddr: getenv("HTTP_ADDR", ":8080"),
+		HTTPAddr: envString("HTTP_ADDR", ":8080"),
 		JWT: JWTConfig{
 			Secret:     jwtSecret,
-			Issuer:     getenv("JWT_ISSUER", "smartheart"),
+			Issuer:     envString("JWT_ISSUER", "smartheart"),
 			TTLAccess:  envDuration("JWT_TTL_ACCESS", 15*time.Minute),
 			TTLRefresh: envDuration("JWT_TTL_REFRESH", 7*24*time.Hour),
 		},
 		Queue: QueueConfig{
 			Workers:      envInt("QUEUE_WORKERS", 4),
 			Buffer:       envInt("QUEUE_BUFFER", 1024),
-			Mode:         getenv("QUEUE_MODE", "redis"),
-			Stream:       getenv("QUEUE_STREAM", "smartheart:jobs"),
-			Group:        getenv("QUEUE_GROUP", "workers"),
+			Mode:         envString("QUEUE_MODE", "redis"),
+			Stream:       envString("QUEUE_STREAM", "smartheart:jobs"),
+			Group:        envString("QUEUE_GROUP", "workers"),
 			MaxDuration:  envDuration("JOB_MAX_DURATION", 30*time.Second),
 			ClaimTimeout: envDuration("JOB_CLAIM_TIMEOUT", 60*time.Second),
 		},
@@ -236,26 +251,26 @@ func Load() Config {
 			QueryTimeout: envDuration("DB_QUERY_TIMEOUT", 5*time.Second),
 		},
 		S3: S3Config{
-			Bucket:         getenv("S3_BUCKET", "smartheart-files"),
-			Endpoint:       getenv("S3_ENDPOINT", "http://localhost:4566"),
-			Region:         getenv("S3_REGION", "us-east-1"),
-			AWSAccessKey:   getenv("AWS_ACCESS_KEY_ID", ""),
-			AWSSecretKey:   getenv("AWS_SECRET_ACCESS_KEY", ""),
-			ForcePathStyle: getBool("S3_FORCE_PATH_STYLE", true),
+			Bucket:         envString("S3_BUCKET", "smartheart-files"),
+			Endpoint:       envString("S3_ENDPOINT", "http://localhost:4566"),
+			Region:         envString("S3_REGION", "us-east-1"),
+			AWSAccessKey:   envString("AWS_ACCESS_KEY_ID", ""),
+			AWSSecretKey:   envString("AWS_SECRET_ACCESS_KEY", ""),
+			ForcePathStyle: envBool("S3_FORCE_PATH_STYLE", true),
 		},
 		Storage: StorageConfig{
-			Mode:     getenv("STORAGE_MODE", "local"),
-			LocalDir: getenv("LOCAL_STORAGE_DIR", "./uploads"),
-			LocalURL: getenv("LOCAL_STORAGE_URL", "http://localhost:8080/files"),
+			Mode:     envString("STORAGE_MODE", "local"),
+			LocalDir: envString("LOCAL_STORAGE_DIR", "./uploads"),
+			LocalURL: envString("LOCAL_STORAGE_URL", "http://localhost:8080/files"),
 		},
 		GPT: GPTConfig{
-			APIKey: getenv("OPENAI_API_KEY", ""),
-			Model:  getenv("GPT_MODEL", "gpt-4o"),
+			APIKey: envString("OPENAI_API_KEY", ""),
+			Model:  envString("GPT_MODEL", "gpt-4o"),
 		},
-		RedisURL: getenv("REDIS_URL", "redis://localhost:6379"),
+		RedisURL: envString("REDIS_URL", "redis://localhost:6379"),
 		CORS: CORSConfig{
-			Origins:     getStringList("CORS_ORIGINS", []string{"http://localhost:3000", "http://localhost:5173"}),
-			Credentials: getBool("CORS_CREDENTIALS", true),
+			Origins:     envStringList("CORS_ORIGINS", []string{"http://localhost:3000", "http://localhost:5173"}),
+			Credentials: envBool("CORS_CREDENTIALS", true),
 		},
 		RateLimit: RateLimitConfig{
 			RPM:   envInt("RATE_LIMIT_RPM", 100),

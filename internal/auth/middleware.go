@@ -12,7 +12,8 @@ import (
 )
 
 // writeJSONError writes a JSON error response from middleware.
-// Uses the same {"error":"..."} shape as handler.writeError for consistency.
+// Duplicates the {"error":"..."} shape from handler.APIError because
+// the auth package cannot import handler (circular dependency).
 func writeJSONError(w http.ResponseWriter, code int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)

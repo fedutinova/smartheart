@@ -21,6 +21,11 @@ type Querier interface {
 // Tx is an alias for pgx.Tx for convenience
 type Tx = pgx.Tx
 
+// TxBeginner abstracts transaction support so callers don't depend on *DB directly.
+type TxBeginner interface {
+	WithTx(ctx context.Context, fn func(tx Tx) error) error
+}
+
 type DB struct {
 	pool *pgxpool.Pool
 }

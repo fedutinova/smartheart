@@ -78,7 +78,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		PasswordHash: passwordHash,
 	}
 
-	if err := h.Repo.DB().WithTx(r.Context(), func(tx pgx.Tx) error {
+	if err := h.Repo.RunTx(r.Context(), func(tx pgx.Tx) error {
 		txRepo := h.Repo.WithTx(tx)
 		if err := txRepo.CreateUser(r.Context(), user); err != nil {
 			return err
@@ -132,8 +132,8 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	user, err := h.Repo.GetUserByEmail(r.Context(), req.Email)
 	if err != nil {
 		if apperr.IsNotFound(err) {
-			slog.Warn("login attempt with invalid email", "email", req.Email)
-			writeError(w, http.StatusUnauthorized, "invalid credentials")
+			slog.Warn("failed login attempt", "email", req.Email, "reason", "user not found")
+			writeError(w, http.StatusUnauthorized, "invalid email or password")
 			return
 		}
 		slog.Error("failed to get user", "email", req.Email, "error", err)
@@ -142,8 +142,8 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !auth.CheckPassword(req.Password, user.PasswordHash) {
-		slog.Warn("login attempt with invalid password", "email", req.Email)
-		writeError(w, http.StatusUnauthorized, "invalid credentials")
+		slog.Warn("failed login attempt", "email", req.Email, "reason", "wrong password")
+		writeError(w, http.StatusUnauthorized, "invalid email or password")
 		return
 	}
 
@@ -184,7 +184,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	const maxRefreshAttempts int64 = 5
 	const refreshWindow = 5 * time.Minute
-	refreshKey := "refresh:" + tokenHash[:16]
+	refreshKey := "refresh:" + tokenHash
 	attempts, err := h.Sessions.IncrLoginAttempts(r.Context(), refreshKey, refreshWindow)
 	if err != nil {
 		slog.Warn("failed to check refresh attempts, allowing request", "error", err)

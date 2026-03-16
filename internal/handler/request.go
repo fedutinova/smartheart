@@ -45,12 +45,24 @@ func (h *RequestHandler) GetUserRequests(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	total, err := h.Repo.CountRequestsByUserID(r.Context(), userID)
+	if err != nil {
+		slog.Error("failed to count user requests", "user_id", userID, "error", err)
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+
 	// Ensure JSON serializes as [] instead of null for empty results.
 	if requests == nil {
 		requests = []models.Request{}
 	}
 
-	writeJSON(w, http.StatusOK, requests)
+	writeJSON(w, http.StatusOK, PaginatedResponse{
+		Data:   requests,
+		Total:  total,
+		Limit:  limit,
+		Offset: offset,
+	})
 }
 
 // GetRequest returns a specific request by ID

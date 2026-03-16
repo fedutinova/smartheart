@@ -82,7 +82,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		r.Use(auth.JWTMiddleware(h.Auth.Config.JWT.Secret, h.Auth.Config.JWT.Issuer, auth.WithBlacklist(h.Auth.Sessions)))
 
 		// Static file serving for local storage (requires auth)
-		if h.Request.Config.Storage.Mode == "local" || h.Request.Config.Storage.Mode == "filesystem" {
+		if h.Request.Config.Storage.Mode == config.StorageModeLocal || h.Request.Config.Storage.Mode == config.StorageModeFilesystem {
 			r.Get("/files/*", h.Request.ServeFiles)
 		}
 

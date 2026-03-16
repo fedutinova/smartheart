@@ -10,8 +10,10 @@ export function History() {
     queryFn: () => requestAPI.getUserRequests(),
   });
 
-  // Filter out EKG Analysis requests (requests with text_query)
-  const filteredRequests = requests?.filter((request) => !request.text_query) || [];
+  // Hide internal GPT sub-requests created by the EKG worker pipeline.
+  const filteredRequests = requests?.filter(
+    (request) => !request.text_query?.includes('Analyze this ECG/EKG image')
+  ) || [];
 
   return (
     <Layout>
@@ -61,7 +63,7 @@ export function History() {
                         {request.id.slice(0, 8)}...
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {request.text_query ? 'ЭКГ Анализ' : 'GPT Запрос'}
+                        {request.response?.model === 'ekg_direct_v2' ? 'ЭКГ Анализ' : 'GPT Запрос'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span

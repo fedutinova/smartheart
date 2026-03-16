@@ -20,8 +20,12 @@ func (h *EKGHandler) SubmitEKGAnalyze(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
 	var req ekgAnalyzeRequest
-	if err := decodeJSON(r, &req); err != nil || req.ImageTempURL == "" {
-		writeError(w, http.StatusBadRequest, "bad request")
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	if req.ImageTempURL == "" {
+		writeError(w, http.StatusBadRequest, "image_temp_url is required")
 		return
 	}
 
@@ -78,7 +82,7 @@ func (h *EKGHandler) SubmitEKGAnalyze(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slog.Info("EKG analysis job enqueued",
+	slog.Info("ekg analysis job enqueued",
 		"job_id", id,
 		"request_id", requestID,
 		"user_id", userID)

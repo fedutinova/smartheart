@@ -22,23 +22,25 @@ import (
 	"github.com/google/uuid"
 )
 
-type EKGHandler struct {
-	db      *database.DB
+// EKGWorker processes EKG analysis jobs.
+// Named differently from handler.EKGHandler to avoid confusion.
+type EKGWorker struct {
+	txb     database.TxBeginner
 	queue   job.Queue
 	storage storage.Storage
 	repo    repository.RequestRepo
 }
 
-func NewEKGHandler(db *database.DB, queue job.Queue, storageService storage.Storage, repo repository.RequestRepo) *EKGHandler {
-	return &EKGHandler{
-		db:      db,
+func NewEKGWorker(txb database.TxBeginner, queue job.Queue, storageService storage.Storage, repo repository.RequestRepo) *EKGWorker {
+	return &EKGWorker{
+		txb:     txb,
 		queue:   queue,
 		storage: storageService,
 		repo:    repo,
 	}
 }
 
-func (h *EKGHandler) HandleEKGJob(ctx context.Context, j *job.Job) error {
+func (h *EKGWorker) HandleEKGJob(ctx context.Context, j *job.Job) error {
 	if j.Type != job.TypeEKGAnalyze {
 		return fmt.Errorf("unexpected job type: %s", j.Type)
 	}
@@ -55,7 +57,7 @@ func (h *EKGHandler) HandleEKGJob(ctx context.Context, j *job.Job) error {
 	// Download image from temp URL
 	imageData, err := h.downloadImage(ctx, payload.ImageTempURL)
 	if err != nil {
-		slog.Error("Failed to download EKG image", "job_id", j.ID, "error", err)
+		slog.Error("failed to download EKG image", "job_id", j.ID, "error", err)
 		return fmt.Errorf("failed to download image: %w", err)
 	}
 
@@ -64,7 +66,7 @@ func (h *EKGHandler) HandleEKGJob(ctx context.Context, j *job.Job) error {
 		return fmt.Errorf("failed to save EKG results: %w", err)
 	}
 
-	slog.Info("EKG analysis job completed, GPT analysis triggered",
+	slog.Info("ekg analysis job completed, GPT analysis triggered",
 		"job_id", j.ID)
 
 	return nil
@@ -133,7 +135,7 @@ func newSSRFSafeTransport() *http.Transport {
 }
 
 // downloadImage downloads image from URL with SSRF protection, timeout and size limits.
-func (h *EKGHandler) downloadImage(ctx context.Context, imageURL string) ([]byte, error) {
+func (h *EKGWorker) downloadImage(ctx context.Context, imageURL string) ([]byte, error) {
 	if err := validateImageURL(imageURL); err != nil {
 		return nil, fmt.Errorf("URL validation failed: %w", err)
 	}
@@ -187,7 +189,7 @@ func (h *EKGHandler) downloadImage(ctx context.Context, imageURL string) ([]byte
 		return nil, fmt.Errorf("image too large after download: %d bytes (max %d)", len(imageData), maxImageSize)
 	}
 
-	slog.Debug("Downloaded EKG image",
+	slog.Debug("downloaded EKG image",
 		"url", imageURL,
 		"content_type", contentType,
 		"size_bytes", len(imageData))
@@ -200,7 +202,7 @@ func isValidImageContentType(contentType string) bool {
 	return validation.IsImageType(contentType) || contentType == "application/pdf"
 }
 
-func (h *EKGHandler) saveEKGResults(ctx context.Context, jobID uuid.UUID, payload job.EKGJobPayload, imageData []byte) error {
+func (h *EKGWorker) saveEKGResults(ctx context.Context, jobID uuid.UUID, payload job.EKGJobPayload, imageData []byte) error {
 	requestID := payload.RequestID
 	if requestID == uuid.Nil {
 		requestID = uuid.New()
@@ -235,7 +237,7 @@ func (h *EKGHandler) saveEKGResults(ctx context.Context, jobID uuid.UUID, payloa
 			slog.Error("failed to enqueue GPT job after EKG commit",
 				"error", err, "gpt_request_id", gptPrep.requestID)
 		} else {
-			slog.Info("GPT analysis job triggered for EKG image",
+			slog.Info("gpt analysis job triggered for EKG image",
 				"ekg_job_id", jobID,
 				"ekg_request_id", requestID,
 				"gpt_job_id", gptJobID,
@@ -261,7 +263,7 @@ type gptAnalysisPrep struct {
 
 // prepareGPTAnalysis uploads the image and prepares data for the GPT request/file
 // records without writing to the DB yet.
-func (h *EKGHandler) prepareGPTAnalysis(ctx context.Context, ekgJobID uuid.UUID, payload job.EKGJobPayload, imageData []byte) (*gptAnalysisPrep, error) {
+func (h *EKGWorker) prepareGPTAnalysis(ctx context.Context, ekgJobID uuid.UUID, payload job.EKGJobPayload, imageData []byte) (*gptAnalysisPrep, error) {
 	filename := fmt.Sprintf("ekg_%s.jpg", ekgJobID.String()[:8])
 	uploadResult, err := h.storage.UploadFile(ctx, filename, bytes.NewReader(imageData), "image/jpeg")
 	if err != nil {
@@ -280,7 +282,7 @@ func (h *EKGHandler) prepareGPTAnalysis(ctx context.Context, ekgJobID uuid.UUID,
 }
 
 // buildEKGResponseJSON creates the JSON content for an EKG response.
-func (h *EKGHandler) buildEKGResponseJSON(jobID, gptRequestID uuid.UUID, notes string) (string, error) {
+func (h *EKGWorker) buildEKGResponseJSON(jobID, gptRequestID uuid.UUID, notes string) (string, error) {
 	ekgContent := &models.EKGResponseContent{
 		AnalysisType: models.EKGModelDirect,
 		Notes:        notes,
@@ -296,9 +298,9 @@ func (h *EKGHandler) buildEKGResponseJSON(jobID, gptRequestID uuid.UUID, notes s
 
 // persistEKGResults saves EKG response, GPT request/file, and status updates
 // in a single transaction to avoid orphaned records.
-func (h *EKGHandler) persistEKGResults(ctx context.Context, jobID, requestID uuid.UUID, payload job.EKGJobPayload, responseJSON string, gptPrep *gptAnalysisPrep) error {
-	return h.db.WithTx(ctx, func(tx database.Tx) error {
-		txRepo := repository.NewWithQuerier(h.db, tx)
+func (h *EKGWorker) persistEKGResults(ctx context.Context, jobID, requestID uuid.UUID, payload job.EKGJobPayload, responseJSON string, gptPrep *gptAnalysisPrep) error {
+	return h.txb.WithTx(ctx, func(tx database.Tx) error {
+		txRepo := repository.NewTxScoped(tx)
 
 		if payload.RequestID == uuid.Nil {
 			request := &models.Request{
@@ -366,7 +368,7 @@ func (h *EKGHandler) persistEKGResults(ctx context.Context, jobID, requestID uui
 }
 
 // enqueueGPTJob enqueues a GPT processing job from prepared data.
-func (h *EKGHandler) enqueueGPTJob(ctx context.Context, prep *gptAnalysisPrep) (uuid.UUID, error) {
+func (h *EKGWorker) enqueueGPTJob(ctx context.Context, prep *gptAnalysisPrep) (uuid.UUID, error) {
 	gptPayload := gpt.JobPayload{
 		RequestID: prep.requestID,
 		TextQuery: prep.textQuery,
@@ -385,9 +387,9 @@ func (h *EKGHandler) enqueueGPTJob(ctx context.Context, prep *gptAnalysisPrep) (
 	})
 }
 
-// Close cleans up resources used by the EKG handler
-func (h *EKGHandler) Close() {
-	slog.Debug("EKG handler closed")
+// Close cleans up resources used by the EKG worker.
+func (h *EKGWorker) Close() {
+	slog.Debug("ekg worker closed")
 }
 
 const ekgPromptTemplate = `Analyze this ECG/EKG image. Describe what you observe in Russian language.

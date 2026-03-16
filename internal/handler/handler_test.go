@@ -12,15 +12,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fedutinova/smartheart/internal/apperr"
 	"github.com/fedutinova/smartheart/internal/auth"
 	"github.com/fedutinova/smartheart/internal/config"
-	"github.com/fedutinova/smartheart/internal/database"
 	"github.com/fedutinova/smartheart/internal/job"
 	"github.com/fedutinova/smartheart/internal/models"
 	"github.com/fedutinova/smartheart/internal/repository"
 	"github.com/fedutinova/smartheart/internal/storage"
 	"github.com/fedutinova/smartheart/internal/testutil"
 	"github.com/go-chi/chi/v5"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
@@ -96,8 +97,9 @@ func (m *mockStore) LoadRolePermissions(ctx context.Context) (map[string][]strin
 	}
 	return nil, nil
 }
-func (m *mockStore) WithTx(_ pgx.Tx) repository.Store { return m }
-func (m *mockStore) DB() *database.DB                 { return nil }
+func (m *mockStore) WithTx(_ pgx.Tx) repository.Store                    { return m }
+func (m *mockStore) RunTx(_ context.Context, fn func(pgx.Tx) error) error { return fn(nil) }
+func (m *mockStore) Ping(_ context.Context) error                         { return nil }
 
 type mockQueue struct {
 	enqueueFn func(ctx context.Context, j *job.Job) (uuid.UUID, error)
@@ -188,7 +190,13 @@ func newTestHandler(opts ...func(*testOpts)) *Handler {
 }
 
 func withAuthContext(r *http.Request, userID uuid.UUID, roles []string) *http.Request {
-	claims := &auth.Claims{UserID: userID.String(), Roles: roles}
+	claims := &auth.Claims{
+		UserID: userID.String(),
+		Roles:  roles,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
+		},
+	}
 	return r.WithContext(auth.NewContext(r.Context(), claims))
 }
 
@@ -486,6 +494,246 @@ func TestSubmitEKGResponse_Roundtrip(t *testing.T) {
 	}
 	if decoded.Status != resp.Status {
 		t.Errorf("Status: got %s, want %s", decoded.Status, resp.Status)
+	}
+}
+
+// --- Auth handler tests ---
+
+func TestRegister_MissingFields(t *testing.T) {
+	h := newTestHandler()
+	body, _ := json.Marshal(map[string]string{"email": "alice@example.com"})
+	req := httptest.NewRequest("POST", "/v1/auth/register", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Auth.Register(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestRegister_InvalidEmail(t *testing.T) {
+	h := newTestHandler()
+	body, _ := json.Marshal(map[string]string{
+		"username": "alice",
+		"email":    "not-an-email",
+		"password": "securepassword123",
+	})
+	req := httptest.NewRequest("POST", "/v1/auth/register", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Auth.Register(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestRegister_ShortPassword(t *testing.T) {
+	h := newTestHandler()
+	body, _ := json.Marshal(map[string]string{
+		"username": "alice",
+		"email":    "alice@example.com",
+		"password": "short",
+	})
+	req := httptest.NewRequest("POST", "/v1/auth/register", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Auth.Register(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestRegister_PasswordTooLong(t *testing.T) {
+	h := newTestHandler()
+	body, _ := json.Marshal(map[string]string{
+		"username": "alice",
+		"email":    "alice@example.com",
+		"password": strings.Repeat("a", 73),
+	})
+	req := httptest.NewRequest("POST", "/v1/auth/register", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Auth.Register(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestLogin_InvalidJSON(t *testing.T) {
+	h := newTestHandler()
+	req := httptest.NewRequest("POST", "/v1/auth/login", strings.NewReader("{bad"))
+	w := httptest.NewRecorder()
+
+	h.Auth.Login(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestLogin_MissingFields(t *testing.T) {
+	h := newTestHandler()
+	body, _ := json.Marshal(map[string]string{"email": "alice@example.com"})
+	req := httptest.NewRequest("POST", "/v1/auth/login", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Auth.Login(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestLogin_UserNotFound(t *testing.T) {
+	h := newTestHandler(func(o *testOpts) {
+		o.repo = &mockStore{
+			getUserByEmailFn: func(_ context.Context, _ string) (*models.User, error) {
+				return nil, apperr.ErrUserNotFound
+			},
+		}
+	})
+	body, _ := json.Marshal(map[string]string{
+		"email":    "noone@example.com",
+		"password": "securepassword123",
+	})
+	req := httptest.NewRequest("POST", "/v1/auth/login", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Auth.Login(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", w.Code)
+	}
+}
+
+func TestLogin_WrongPassword(t *testing.T) {
+	userID := uuid.New()
+	passwordHash, _ := auth.HashPassword("correctpassword")
+	h := newTestHandler(func(o *testOpts) {
+		o.repo = &mockStore{
+			getUserByEmailFn: func(_ context.Context, _ string) (*models.User, error) {
+				return &models.User{
+					ID:           userID,
+					Email:        "alice@example.com",
+					PasswordHash: passwordHash,
+				}, nil
+			},
+		}
+	})
+	body, _ := json.Marshal(map[string]string{
+		"email":    "alice@example.com",
+		"password": "wrongpassword",
+	})
+	req := httptest.NewRequest("POST", "/v1/auth/login", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Auth.Login(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", w.Code)
+	}
+}
+
+func TestLogin_Success(t *testing.T) {
+	userID := uuid.New()
+	passwordHash, _ := auth.HashPassword("securepassword123")
+	h := newTestHandler(func(o *testOpts) {
+		o.repo = &mockStore{
+			getUserByEmailFn: func(_ context.Context, _ string) (*models.User, error) {
+				return &models.User{
+					ID:           userID,
+					Email:        "alice@example.com",
+					PasswordHash: passwordHash,
+					Roles:        []models.Role{{Name: "user"}},
+				}, nil
+			},
+		}
+	})
+	body, _ := json.Marshal(map[string]string{
+		"email":    "alice@example.com",
+		"password": "securepassword123",
+	})
+	req := httptest.NewRequest("POST", "/v1/auth/login", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Auth.Login(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var tokens auth.TokenPair
+	if err := json.NewDecoder(w.Body).Decode(&tokens); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if tokens.AccessToken == "" {
+		t.Error("expected non-empty access_token")
+	}
+	if tokens.RefreshToken == "" {
+		t.Error("expected non-empty refresh_token")
+	}
+}
+
+func TestRefresh_MissingToken(t *testing.T) {
+	h := newTestHandler()
+	body, _ := json.Marshal(map[string]string{})
+	req := httptest.NewRequest("POST", "/v1/auth/refresh", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Auth.Refresh(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestRefresh_InvalidToken(t *testing.T) {
+	h := newTestHandler()
+	body, _ := json.Marshal(map[string]string{"refresh_token": "invalid-token"})
+	req := httptest.NewRequest("POST", "/v1/auth/refresh", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Auth.Refresh(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", w.Code)
+	}
+}
+
+func TestLogout_Success(t *testing.T) {
+	h := newTestHandler()
+	userID := uuid.New()
+
+	body, _ := json.Marshal(map[string]string{"refresh_token": "some-refresh-token"})
+	req := httptest.NewRequest("POST", "/v1/auth/logout", bytes.NewReader(body))
+	req = withAuthContext(req, userID, []string{"user"})
+	accessToken, _ := auth.NewToken("test-secret", "test", userID.String(), []string{"user"}, 15*time.Minute)
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	w := httptest.NewRecorder()
+
+	h.Auth.Logout(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestLogout_EmptyBody(t *testing.T) {
+	h := newTestHandler()
+	userID := uuid.New()
+
+	body, _ := json.Marshal(map[string]string{})
+	req := httptest.NewRequest("POST", "/v1/auth/logout", bytes.NewReader(body))
+	req = withAuthContext(req, userID, []string{"user"})
+	w := httptest.NewRecorder()
+
+	h.Auth.Logout(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
 	}
 }
 

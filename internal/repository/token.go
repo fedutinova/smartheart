@@ -23,7 +23,10 @@ func (r *Repository) CreateRefreshToken(ctx context.Context, token *models.Refre
 	`
 
 	_, err := r.querier.Exec(ctx, query, token.ID, token.UserID, token.TokenHash, token.ExpiresAt)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to create refresh token: %w", err)
+	}
+	return nil
 }
 
 // GetRefreshToken retrieves a valid refresh token by hash
@@ -62,6 +65,9 @@ func (r *Repository) RevokeRefreshToken(ctx context.Context, tokenHash string) e
 	`
 
 	_, err := r.querier.Exec(ctx, query, tokenHash)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to revoke refresh token: %w", err)
+	}
+	return nil
 }
 

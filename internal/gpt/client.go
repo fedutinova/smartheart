@@ -144,7 +144,7 @@ func (c *Client) ProcessRequest(ctx context.Context, textQuery string, fileKeys 
 	}
 
 	if len(resp.Choices) == 0 {
-		slog.Error("OpenAI API returned empty choices",
+		slog.Error("openai API returned empty choices",
 			"model", resp.Model,
 			"tokens_used", resp.Usage.TotalTokens,
 			"response_id", resp.ID)
@@ -154,10 +154,10 @@ func (c *Client) ProcessRequest(ctx context.Context, textQuery string, fileKeys 
 	responseContent := resp.Choices[0].Message.Content
 
 	if IsRefusal(responseContent) {
-		slog.Warn("OpenAI returned refusal", "tokens", resp.Usage.TotalTokens, "finish_reason", resp.Choices[0].FinishReason)
+		slog.Warn("openai returned refusal", "tokens", resp.Usage.TotalTokens, "finish_reason", resp.Choices[0].FinishReason)
 	}
 
-	slog.Info("OpenAI response received",
+	slog.Info("openai response received",
 		"model", resp.Model,
 		"tokens", resp.Usage.TotalTokens,
 		"response_len", len(responseContent))
@@ -290,11 +290,11 @@ func classifyOpenAIError(err error, reqCtx context.Context, timeout time.Duratio
 	}
 
 	if reqCtx.Err() == context.DeadlineExceeded {
-		slog.Error("OpenAI API request timeout", "error", err, "timeout", timeout)
+		slog.Error("openai API request timeout", "error", err, "timeout", timeout)
 		return fmt.Errorf("OpenAI API request timeout: %w", err)
 	}
 
-	slog.Error("OpenAI API error", "error", err)
+	slog.Error("openai API error", "error", err)
 	return fmt.Errorf("OpenAI API error: %w", err)
 }
 
@@ -302,11 +302,12 @@ func isImageType(contentType string) bool {
 	return validation.IsImageType(contentType)
 }
 
+var textTypes = map[string]bool{
+	"text/plain":       true,
+	"application/json": true,
+	"text/csv":         true,
+}
+
 func isTextType(contentType string) bool {
-	textTypes := map[string]bool{
-		"text/plain":       true,
-		"application/json": true,
-		"text/csv":         true,
-	}
 	return textTypes[contentType]
 }

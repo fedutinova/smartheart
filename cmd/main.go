@@ -25,6 +25,12 @@ import (
 
 func main() {
 	cfg := appconfig.Load()
+
+	if err := auth.ValidateSecret(cfg.JWT.Secret); err != nil {
+		slog.Error("invalid configuration", "err", err)
+		os.Exit(1)
+	}
+
 	slog.Info("starting smartheart", "addr", cfg.HTTPAddr, "workers", cfg.Queue.Workers)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -70,7 +76,7 @@ func main() {
 	// Initialize job queue based on configuration
 	var q job.Queue
 	switch cfg.Queue.Mode {
-	case "redis":
+	case appconfig.QueueModeRedis:
 		redisQueue, err := queue.NewRedisQueue(sessions.Client(), queue.RedisQueueConfig{
 			Stream:        cfg.Queue.Stream,
 			Group:         cfg.Queue.Group,
@@ -90,16 +96,16 @@ func main() {
 	}
 	defer q.Close()
 
-	gptHandler := workers.NewGPTHandler(db, gptClient, repo)
-	ekgHandler := workers.NewEKGHandler(db, q, storageService, repo)
+	gptWorker := workers.NewGPTWorker(db, gptClient, repo)
+	ekgWorker := workers.NewEKGWorker(db, q, storageService, repo)
 
 	handlers := handler.NewHandler(q, repo, sessions, storageService, cfg)
 	r := server.NewRouter(handlers, cfg)
 
 	// Register job handlers
 	registry := job.NewRegistry()
-	registry.Register(job.TypeEKGAnalyze, ekgHandler.HandleEKGJob)
-	registry.Register(job.TypeGPTProcess, gptHandler.HandleGPTJob)
+	registry.Register(job.TypeEKGAnalyze, ekgWorker.HandleEKGJob)
+	registry.Register(job.TypeGPTProcess, gptWorker.HandleGPTJob)
 
 	// Start queue consumers
 	q.StartConsumers(ctx, cfg.Queue.Workers, registry.Dispatch)

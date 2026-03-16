@@ -15,14 +15,16 @@ var _ repository.RequestRepo = (*MockRequestRepo)(nil)
 // MockRequestRepo is a test double for repository.RequestRepo.
 // Set the function fields to override default behaviour.
 type MockRequestRepo struct {
-	CreateRequestFn       func(ctx context.Context, req *models.Request) error
-	GetRequestByIDFn      func(ctx context.Context, id uuid.UUID) (*models.Request, error)
-	GetRequestsByUserIDFn func(ctx context.Context, userID uuid.UUID, limit, offset int) ([]models.Request, error)
-	UpdateRequestStatusFn func(ctx context.Context, id uuid.UUID, status string) error
-	CreateFileFn          func(ctx context.Context, file *models.File) error
-	GetFilesByRequestIDFn func(ctx context.Context, requestID uuid.UUID) ([]models.File, error)
-	CreateResponseFn      func(ctx context.Context, resp *models.Response) error
-	GetResponseByReqIDFn  func(ctx context.Context, requestID uuid.UUID) (*models.Response, error)
+	CreateRequestFn                  func(ctx context.Context, req *models.Request) error
+	GetRequestByIDFn                 func(ctx context.Context, id uuid.UUID) (*models.Request, error)
+	GetRequestsByUserIDFn            func(ctx context.Context, userID uuid.UUID, limit, offset int) ([]models.Request, error)
+	CountRequestsByUserIDFn          func(ctx context.Context, userID uuid.UUID) (int, error)
+	GetRecentRequestsWithResponsesFn func(ctx context.Context, userID uuid.UUID, limit int) ([]models.Request, error)
+	UpdateRequestStatusFn            func(ctx context.Context, id uuid.UUID, status string) error
+	CreateFileFn                     func(ctx context.Context, file *models.File) error
+	GetFilesByRequestIDFn            func(ctx context.Context, requestID uuid.UUID) ([]models.File, error)
+	CreateResponseFn                 func(ctx context.Context, resp *models.Response) error
+	GetResponseByReqIDFn             func(ctx context.Context, requestID uuid.UUID) (*models.Response, error)
 }
 
 func (m *MockRequestRepo) CreateRequest(ctx context.Context, req *models.Request) error {
@@ -42,6 +44,20 @@ func (m *MockRequestRepo) GetRequestByID(ctx context.Context, id uuid.UUID) (*mo
 func (m *MockRequestRepo) GetRequestsByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]models.Request, error) {
 	if m.GetRequestsByUserIDFn != nil {
 		return m.GetRequestsByUserIDFn(ctx, userID, limit, offset)
+	}
+	return nil, nil
+}
+
+func (m *MockRequestRepo) CountRequestsByUserID(ctx context.Context, userID uuid.UUID) (int, error) {
+	if m.CountRequestsByUserIDFn != nil {
+		return m.CountRequestsByUserIDFn(ctx, userID)
+	}
+	return 0, nil
+}
+
+func (m *MockRequestRepo) GetRecentRequestsWithResponses(ctx context.Context, userID uuid.UUID, limit int) ([]models.Request, error) {
+	if m.GetRecentRequestsWithResponsesFn != nil {
+		return m.GetRecentRequestsWithResponsesFn(ctx, userID, limit)
 	}
 	return nil, nil
 }

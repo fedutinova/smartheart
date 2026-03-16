@@ -23,6 +23,8 @@ type RequestRepo interface {
 	CreateRequest(ctx context.Context, req *models.Request) error
 	GetRequestByID(ctx context.Context, id uuid.UUID) (*models.Request, error)
 	GetRequestsByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]models.Request, error)
+	CountRequestsByUserID(ctx context.Context, userID uuid.UUID) (int, error)
+	GetRecentRequestsWithResponses(ctx context.Context, userID uuid.UUID, limit int) ([]models.Request, error)
 	UpdateRequestStatus(ctx context.Context, requestID uuid.UUID, status string) error
 	CreateFile(ctx context.Context, file *models.File) error
 	GetFilesByRequestID(ctx context.Context, requestID uuid.UUID) ([]models.File, error)
@@ -50,8 +52,11 @@ type Store interface {
 	RoleRepo
 
 	// Transaction support
+	RunTx(ctx context.Context, fn func(tx pgx.Tx) error) error
 	WithTx(tx pgx.Tx) Store
-	DB() *database.DB
+
+	// Ping checks that the underlying database connection is alive.
+	Ping(ctx context.Context) error
 }
 
 // Repository provides data access methods backed by PostgreSQL.
@@ -82,11 +87,20 @@ func WithQueryTimeout(d time.Duration) func(*Repository) {
 // NewWithQuerier creates a Repository backed by a specific Querier (e.g. a transaction).
 // This allows callers that only need a focused interface (like RequestRepo) to create
 // a transaction-scoped repository without depending on the full Store interface.
+// The db parameter is optional — pass nil for tx-scoped repos that don't need DB() or WithTx().
 func NewWithQuerier(db *database.DB, q database.Querier) *Repository {
 	return &Repository{
 		db:      db,
 		querier: q,
 	}
+}
+
+// NewTxScoped creates a transaction-scoped Repository.
+// Unlike NewWithQuerier, it does not require a *DB reference, making it
+// suitable for use with the TxBeginner interface where *DB is not available.
+// The returned repo must not call DB() or WithTx().
+func NewTxScoped(q database.Querier) *Repository {
+	return &Repository{querier: q}
 }
 
 // WithTx creates a new Repository that uses the given transaction.
@@ -97,7 +111,12 @@ func (r *Repository) WithTx(tx pgx.Tx) Store {
 	}
 }
 
-// DB returns the underlying database connection.
-func (r *Repository) DB() *database.DB {
-	return r.db
+// RunTx executes fn inside a database transaction.
+func (r *Repository) RunTx(ctx context.Context, fn func(tx pgx.Tx) error) error {
+	return r.db.WithTx(ctx, fn)
+}
+
+// Ping checks that the underlying database connection is alive.
+func (r *Repository) Ping(ctx context.Context) error {
+	return r.db.Pool().Ping(ctx)
 }

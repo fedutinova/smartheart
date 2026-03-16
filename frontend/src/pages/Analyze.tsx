@@ -89,11 +89,17 @@ export function Analyze() {
               <textarea
                 id="notes"
                 rows={4}
+                maxLength={2000}
                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                 placeholder="Дополнительная информация о пациенте или ЭКГ..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
+              {notes.length > 1800 && (
+                <p className="mt-1 text-sm text-yellow-600">
+                  {notes.length}/2000 символов
+                </p>
+              )}
             </div>
 
             <div className="flex items-center justify-between pt-4">

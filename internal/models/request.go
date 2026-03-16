@@ -18,6 +18,16 @@ const (
 	StatusFailed     RequestStatus = "failed"
 )
 
+// ValidRequestStatus reports whether s is a known request status.
+func ValidRequestStatus(s RequestStatus) bool {
+	switch s {
+	case StatusPending, StatusProcessing, StatusCompleted, StatusFailed:
+		return true
+	default:
+		return false
+	}
+}
+
 // Request represents an EKG or GPT analysis request
 type Request struct {
 	ID        uuid.UUID     `json:"id"`

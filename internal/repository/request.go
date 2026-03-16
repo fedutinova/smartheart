@@ -127,8 +127,83 @@ func (r *Repository) GetRequestsByUserID(ctx context.Context, userID uuid.UUID, 
 	return requests, rows.Err()
 }
 
-// UpdateRequestStatus updates the status of a request
+// GetRecentRequestsWithResponses retrieves recent requests for a user with their
+// latest response eagerly loaded, avoiding N+1 queries in fallback logic.
+func (r *Repository) GetRecentRequestsWithResponses(ctx context.Context, userID uuid.UUID, limit int) ([]models.Request, error) {
+	query := `
+		SELECT r.id, r.user_id, r.text_query, r.status, r.created_at, r.updated_at,
+		       resp.id, resp.request_id, resp.content, resp.model,
+		       resp.tokens_used, resp.processing_time_ms, resp.created_at
+		FROM requests r
+		LEFT JOIN LATERAL (
+			SELECT * FROM responses WHERE request_id = r.id ORDER BY created_at DESC LIMIT 1
+		) resp ON true
+		WHERE r.user_id = $1
+		ORDER BY r.created_at DESC
+		LIMIT $2
+	`
+
+	rows, err := r.querier.Query(ctx, query, userID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query requests with responses: %w", err)
+	}
+	defer rows.Close()
+
+	var requests []models.Request
+	for rows.Next() {
+		var req models.Request
+		var respID, respReqID *uuid.UUID
+		var respContent, respModel *string
+		var respTokens, respTimeMs *int
+		var respCreatedAt *time.Time
+
+		err := rows.Scan(
+			&req.ID, &req.UserID, &req.TextQuery, &req.Status, &req.CreatedAt, &req.UpdatedAt,
+			&respID, &respReqID, &respContent, &respModel,
+			&respTokens, &respTimeMs, &respCreatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan request with response: %w", err)
+		}
+
+		if respID != nil {
+			resp := &models.Response{
+				ID:               *respID,
+				RequestID:        *respReqID,
+				Content:          *respContent,
+				Model:            *respModel,
+				TokensUsed:       *respTokens,
+				ProcessingTimeMs: *respTimeMs,
+			}
+			if respCreatedAt != nil {
+				resp.CreatedAt = *respCreatedAt
+			}
+			req.Response = resp
+		}
+
+		requests = append(requests, req)
+	}
+
+	return requests, rows.Err()
+}
+
+// CountRequestsByUserID returns the total number of requests for a user.
+func (r *Repository) CountRequestsByUserID(ctx context.Context, userID uuid.UUID) (int, error) {
+	var count int
+	err := r.querier.QueryRow(ctx, `SELECT COUNT(*) FROM requests WHERE user_id = $1`, userID).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count requests: %w", err)
+	}
+	return count, nil
+}
+
+// UpdateRequestStatus updates the status of a request.
+// Returns an error if status is not a known RequestStatus value.
 func (r *Repository) UpdateRequestStatus(ctx context.Context, requestID uuid.UUID, status string) error {
+	if !models.ValidRequestStatus(status) {
+		return fmt.Errorf("invalid request status: %q", status)
+	}
+
 	query := `
 		UPDATE requests
 		SET status = $1, updated_at = NOW()
