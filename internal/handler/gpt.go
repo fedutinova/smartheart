@@ -8,7 +8,6 @@ import (
 	"mime/multipart"
 	"net/http"
 
-	"github.com/fedutinova/smartheart/internal/auth"
 	"github.com/fedutinova/smartheart/internal/gpt"
 	"github.com/fedutinova/smartheart/internal/job"
 	"github.com/fedutinova/smartheart/internal/models"
@@ -17,33 +16,32 @@ import (
 )
 
 // SubmitGPTRequest handles GPT processing request with file uploads
-func (h *Handlers) SubmitGPTRequest(w http.ResponseWriter, r *http.Request) {
+func (h *GPTHandler) SubmitGPTRequest(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
-		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "failed to parse form")
 		return
 	}
+	defer func() {
+		if r.MultipartForm != nil {
+			_ = r.MultipartForm.RemoveAll()
+		}
+	}()
 
 	textQuery := r.FormValue("text_query")
 	files := r.MultipartForm.File["files"]
 
 	if validationErrs := validation.ValidateGPTRequest(textQuery, files); len(validationErrs) > 0 {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(models.APIError{
+		writeJSON(w, http.StatusBadRequest, APIError{
 			Error:   "validation failed",
 			Details: validationErrs,
 		})
 		return
 	}
 
-	var userID uuid.UUID
-	if claims, ok := auth.FromContext(r.Context()); ok {
-		var err error
-		userID, err = uuid.Parse(claims.UserID)
-		if err != nil {
-			http.Error(w, "invalid user ID", http.StatusBadRequest)
-			return
-		}
+	userID, _, ok := extractUserID(r)
+	if !ok {
+		writeError(w, http.StatusBadRequest, "invalid user ID")
+		return
 	}
 
 	request := &models.Request{
@@ -57,7 +55,7 @@ func (h *Handlers) SubmitGPTRequest(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.Repo.CreateRequest(r.Context(), request); err != nil {
 		slog.Error("failed to create request", "error", err)
-		http.Error(w, "failed to create request", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "failed to create request")
 		return
 	}
 
@@ -74,25 +72,27 @@ func (h *Handlers) SubmitGPTRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(fileKeys) == 0 {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(models.APIError{
+		// Mark the request as failed so it doesn't stay in "pending" forever.
+		if err := h.Repo.UpdateRequestStatus(r.Context(), request.ID, models.StatusFailed); err != nil {
+			slog.Error("failed to mark request as failed", "request_id", request.ID, "error", err)
+		}
+		writeJSON(w, http.StatusBadRequest, APIError{
 			Error:        "no files successfully processed",
 			UploadErrors: uploadErrors,
 		})
 		return
 	}
 
-	payload := gpt.GPTJobPayload{
+	payload := gpt.JobPayload{
 		RequestID: request.ID,
 		TextQuery: textQuery,
 		FileKeys:  fileKeys,
-		UserID:    userID.String(),
+		UserID:    userID,
 	}
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		slog.Error("failed to marshal payload", "error", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 
@@ -101,15 +101,14 @@ func (h *Handlers) SubmitGPTRequest(w http.ResponseWriter, r *http.Request) {
 		Payload: payloadBytes,
 	}
 
-	jobID, err := h.Q.Enqueue(r.Context(), j)
+	jobID, err := h.Queue.Enqueue(r.Context(), j)
 	if err != nil {
 		slog.Error("failed to enqueue job", "error", err)
-		http.Error(w, "failed to enqueue job", http.StatusServiceUnavailable)
+		writeError(w, http.StatusServiceUnavailable, "failed to enqueue job")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(models.SubmitGPTResponse{
+	writeJSON(w, http.StatusOK, SubmitGPTResponse{
 		RequestID:      request.ID,
 		JobID:          jobID,
 		Status:         request.Status,
@@ -119,8 +118,7 @@ func (h *Handlers) SubmitGPTRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 // processUploadedFile opens, detects content type, uploads and records a single file.
-// Extracted from the loop to ensure file handles are closed promptly via defer.
-func (h *Handlers) processUploadedFile(r *http.Request, requestID uuid.UUID, fh *multipart.FileHeader) (string, error) {
+func (h *GPTHandler) processUploadedFile(r *http.Request, requestID uuid.UUID, fh *multipart.FileHeader) (string, error) {
 	file, err := fh.Open()
 	if err != nil {
 		return "", fmt.Errorf("open: %w", err)
@@ -129,9 +127,11 @@ func (h *Handlers) processUploadedFile(r *http.Request, requestID uuid.UUID, fh 
 
 	contentType := fh.Header.Get("Content-Type")
 	if contentType == "" {
-		// Read first 512 bytes for detection, then reset reader.
 		buf := make([]byte, 512)
-		n, _ := io.ReadFull(file, buf)
+		n, readErr := io.ReadFull(file, buf)
+		if n == 0 && readErr != nil {
+			return "", fmt.Errorf("detect content type: %w", readErr)
+		}
 		contentType = http.DetectContentType(buf[:n])
 		if _, err := file.Seek(0, io.SeekStart); err != nil {
 			return "", fmt.Errorf("seek: %w", err)
@@ -158,4 +158,3 @@ func (h *Handlers) processUploadedFile(r *http.Request, requestID uuid.UUID, fh 
 
 	return uploadResult.Key, nil
 }
-

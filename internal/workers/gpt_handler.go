@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/fedutinova/smartheart/internal/database"
 	"github.com/fedutinova/smartheart/internal/gpt"
@@ -16,15 +17,15 @@ import (
 
 type GPTHandler struct {
 	db        *database.DB
-	gptClient *gpt.Client
-	repo      *repository.Repository
+	gptClient gpt.Processor
+	repo      repository.RequestRepo
 }
 
-func NewGPTHandler(db *database.DB, gptClient *gpt.Client) *GPTHandler {
+func NewGPTHandler(db *database.DB, gptClient gpt.Processor, repo repository.RequestRepo) *GPTHandler {
 	return &GPTHandler{
 		db:        db,
 		gptClient: gptClient,
-		repo:      repository.New(db),
+		repo:      repo,
 	}
 }
 
@@ -33,7 +34,7 @@ func (h *GPTHandler) HandleGPTJob(ctx context.Context, j *job.Job) error {
 		return fmt.Errorf("unexpected job type: %s", j.Type)
 	}
 
-	var payload gpt.GPTJobPayload
+	var payload gpt.JobPayload
 	if err := json.Unmarshal(j.Payload, &payload); err != nil {
 		return fmt.Errorf("failed to unmarshal job payload: %w", err)
 	}
@@ -42,53 +43,17 @@ func (h *GPTHandler) HandleGPTJob(ctx context.Context, j *job.Job) error {
 		return fmt.Errorf("failed to update request status: %w", err)
 	}
 
-	result, err := h.gptClient.ProcessRequest(ctx, payload.TextQuery, payload.FileKeys)
+	result, err := h.processWithFallback(ctx, payload)
 	if err != nil {
-		slog.Error("GPT processing failed", "request_id", payload.RequestID, "error", err)
-		// Try to create fallback response from EKG analysis data
-		fallbackContent, fallbackErr := h.createFallbackResponse(ctx, payload)
-		if fallbackErr == nil && fallbackContent != "" {
-			slog.Info("created fallback response from EKG analysis", "request_id", payload.RequestID)
-			result = &gpt.ProcessResult{
-				Content:          fallbackContent,
-				Model:            "fallback_ekg_analysis",
-				TokensUsed:       0,
-				ProcessingTimeMs: 0,
-			}
-		} else {
-			if updateErr := h.repo.UpdateRequestStatus(ctx, payload.RequestID, models.StatusFailed); updateErr != nil {
-				slog.Error("failed to update request status to failed", "request_id", payload.RequestID, "error", updateErr)
-			}
-			return fmt.Errorf("GPT processing failed: %w", err)
+		if updateErr := h.repo.UpdateRequestStatus(ctx, payload.RequestID, models.StatusFailed); updateErr != nil {
+			slog.Error("failed to update request status to failed", "request_id", payload.RequestID, "error", updateErr)
 		}
+		return fmt.Errorf("GPT processing failed: %w", err)
 	}
 
-	if gpt.IsRefusal(result.Content) {
-		slog.Warn("GPT returned refusal message, using fallback response",
-			"request_id", payload.RequestID,
-			"response_preview", func() string {
-				if len(result.Content) > 200 {
-					return result.Content[:200] + "..."
-				}
-				return result.Content
-			}())
-		fallbackContent, fallbackErr := h.createFallbackResponse(ctx, payload)
-		if fallbackErr == nil && fallbackContent != "" {
-			slog.Info("replaced GPT refusal with fallback response",
-				"request_id", payload.RequestID,
-				"fallback_length", len(fallbackContent))
-			result.Content = fallbackContent
-			result.Model = result.Model + "_with_fallback"
-		} else {
-			slog.Error("failed to create fallback response",
-				"request_id", payload.RequestID,
-				"error", fallbackErr)
-		}
-	}
-
-	// Save response and update status in a transaction
-	err = h.db.WithTx(ctx, func(tx database.Tx) error {
-		txRepo := h.repo.WithTx(tx)
+	// Save response and update status in a transaction.
+	if txErr := h.db.WithTx(ctx, func(tx database.Tx) error {
+		txRepo := repository.NewWithQuerier(h.db, tx)
 
 		response := &models.Response{
 			RequestID:        payload.RequestID,
@@ -113,13 +78,77 @@ func (h *GPTHandler) HandleGPTJob(ctx context.Context, j *job.Job) error {
 		)
 
 		return nil
-	})
+	}); txErr != nil {
+		// Transaction failed — mark request as failed so it doesn't stay in "processing" forever.
+		if updateErr := h.repo.UpdateRequestStatus(ctx, payload.RequestID, models.StatusFailed); updateErr != nil {
+			slog.Error("failed to update request status to failed after tx error",
+				"request_id", payload.RequestID, "error", updateErr)
+		}
+		return txErr
+	}
 
-	return err
+	return nil
+}
+
+// processWithFallback calls GPT and falls back to EKG data if GPT fails or refuses.
+func (h *GPTHandler) processWithFallback(ctx context.Context, payload gpt.JobPayload) (*gpt.ProcessResult, error) {
+	result, gptErr := h.gptClient.ProcessRequest(ctx, payload.TextQuery, payload.FileKeys)
+
+	// Happy path: GPT succeeded and didn't refuse
+	if gptErr == nil && result != nil && !gpt.IsRefusal(result.Content) {
+		return result, nil
+	}
+
+	// Guard against nil result with nil error (shouldn't happen but prevents panic)
+	if gptErr == nil && result == nil {
+		gptErr = fmt.Errorf("GPT returned nil result without error")
+	}
+
+	// Only attempt EKG fallback for EKG-originated GPT requests.
+	if !isEKGRequest(payload.TextQuery) {
+		if gptErr != nil {
+			return nil, gptErr
+		}
+		return result, nil
+	}
+
+	// Try fallback
+	if gptErr != nil {
+		slog.Warn("GPT failed, attempting EKG fallback", "request_id", payload.RequestID, "error", gptErr)
+	} else {
+		slog.Warn("GPT returned refusal, attempting EKG fallback",
+			"request_id", payload.RequestID,
+			"response_preview", truncate(result.Content, 200))
+	}
+
+	fallbackContent, fallbackErr := h.createFallbackResponse(ctx, payload)
+	if fallbackErr != nil || fallbackContent == "" {
+		if gptErr != nil {
+			return nil, gptErr
+		}
+		// Refusal with no fallback — return original response as-is
+		return result, nil
+	}
+
+	if gptErr != nil {
+		// Complete failure — use fallback as the entire result
+		return &gpt.ProcessResult{
+			Content: fallbackContent,
+			Model:   "fallback_ekg_analysis",
+		}, nil
+	}
+
+	// Refusal — replace content but keep metadata
+	slog.Info("replaced GPT refusal with fallback response",
+		"request_id", payload.RequestID,
+		"fallback_length", len(fallbackContent))
+	result.Content = fallbackContent
+	result.Model = result.Model + "_with_fallback"
+	return result, nil
 }
 
 // createFallbackResponse creates a response from EKG analysis data when GPT fails or refuses
-func (h *GPTHandler) createFallbackResponse(ctx context.Context, payload gpt.GPTJobPayload) (string, error) {
+func (h *GPTHandler) createFallbackResponse(ctx context.Context, payload gpt.JobPayload) (string, error) {
 	request, err := h.repo.GetRequestByID(ctx, payload.RequestID)
 	if err != nil {
 		return "", fmt.Errorf("failed to get request: %w", err)
@@ -132,26 +161,28 @@ func (h *GPTHandler) createFallbackResponse(ctx context.Context, payload gpt.GPT
 
 	// Try to find related EKG response by searching user's recent requests.
 	userRequests, err := h.repo.GetRequestsByUserID(ctx, request.UserID, 10, 0)
-	if err == nil {
-		// First pass: prefer the EKG response that references this exact GPT request
-		for i := 0; i < len(userRequests); i++ {
-			if userRequests[i].ID == payload.RequestID {
-				continue
-			}
-			ekg := h.findEKGContent(ctx, userRequests[i].ID)
-			if ekg != nil && ekg.GPTRequestID == payload.RequestID.String() {
-				return formatEKGFallback(ekg, textQuery), nil
-			}
-		}
+	if err != nil {
+		return formatBasicFallback(textQuery), nil
+	}
 
-		// Second pass: use any recent EKG response
-		for i := 0; i < len(userRequests); i++ {
-			if userRequests[i].ID == payload.RequestID {
-				continue
-			}
-			if ekg := h.findEKGContent(ctx, userRequests[i].ID); ekg != nil {
-				return formatEKGFallback(ekg, textQuery), nil
-			}
+	// First pass: prefer the EKG response that references this exact GPT request
+	for _, ur := range userRequests {
+		if ur.ID == payload.RequestID {
+			continue
+		}
+		ekg := h.findEKGContent(ctx, ur.ID)
+		if ekg != nil && ekg.GPTRequestID == payload.RequestID.String() {
+			return formatEKGFallback(ekg, textQuery), nil
+		}
+	}
+
+	// Second pass: use any recent EKG response
+	for _, ur := range userRequests {
+		if ur.ID == payload.RequestID {
+			continue
+		}
+		if ekg := h.findEKGContent(ctx, ur.ID); ekg != nil {
+			return formatEKGFallback(ekg, textQuery), nil
 		}
 	}
 
@@ -194,4 +225,20 @@ func formatBasicFallback(textQuery string) string {
 
 	result += "Пожалуйста, попробуйте повторить запрос позже."
 	return result
+}
+
+// isEKGRequest checks whether the text query originated from the EKG analysis
+// pipeline (built by buildEKGPrompt) rather than from a direct user GPT request.
+func isEKGRequest(textQuery string) bool {
+	return strings.Contains(textQuery, "Analyze this ECG/EKG image")
+}
+
+// truncate returns the first n runes of s, appending "..." if truncated.
+// Operates on runes to avoid splitting multi-byte UTF-8 characters.
+func truncate(s string, n int) string {
+	runes := []rune(s)
+	if len(runes) <= n {
+		return s
+	}
+	return string(runes[:n]) + "..."
 }

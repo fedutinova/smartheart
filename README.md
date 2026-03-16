@@ -23,7 +23,7 @@ SmartHeart анализирует ЭКГ с использованием OpenCV 
 ## Установка и запуск
 
 ### Требования
-- Go 1.24.4+
+- Go 1.26
 - OpenCV 4.x
 - Docker & Docker Compose
 

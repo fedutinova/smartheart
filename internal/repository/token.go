@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/fedutinova/smartheart/internal/common"
+	"github.com/fedutinova/smartheart/internal/apperr"
 	"github.com/fedutinova/smartheart/internal/models"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -22,7 +22,7 @@ func (r *Repository) CreateRefreshToken(ctx context.Context, token *models.Refre
 		VALUES ($1, $2, $3, $4, NOW())
 	`
 
-	_, err := r.q.Exec(ctx, query, token.ID, token.UserID, token.TokenHash, token.ExpiresAt)
+	_, err := r.querier.Exec(ctx, query, token.ID, token.UserID, token.TokenHash, token.ExpiresAt)
 	return err
 }
 
@@ -35,7 +35,7 @@ func (r *Repository) GetRefreshToken(ctx context.Context, tokenHash string) (*mo
 	`
 
 	var token models.RefreshToken
-	err := r.q.QueryRow(ctx, query, tokenHash).Scan(
+	err := r.querier.QueryRow(ctx, query, tokenHash).Scan(
 		&token.ID,
 		&token.UserID,
 		&token.TokenHash,
@@ -45,7 +45,7 @@ func (r *Repository) GetRefreshToken(ctx context.Context, tokenHash string) (*mo
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, common.ErrInvalidToken
+			return nil, apperr.ErrInvalidToken
 		}
 		return nil, fmt.Errorf("failed to get refresh token: %w", err)
 	}
@@ -61,7 +61,7 @@ func (r *Repository) RevokeRefreshToken(ctx context.Context, tokenHash string) e
 		WHERE token_hash = $1
 	`
 
-	_, err := r.q.Exec(ctx, query, tokenHash)
+	_, err := r.querier.Exec(ctx, query, tokenHash)
 	return err
 }
 

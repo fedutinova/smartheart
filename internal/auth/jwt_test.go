@@ -56,10 +56,8 @@ func TestNewToken_ContainsClaims(t *testing.T) {
 	if claims.UserID != subject {
 		t.Fatalf("expected user_id %q, got %q", subject, claims.UserID)
 	}
-	// Note: Claims defines its own `Sub` field (json:"sub") in addition to RegisteredClaims.Subject.
-	// In the current implementation, `sub` is effectively stored in Claims.Sub.
-	if claims.Sub != subject {
-		t.Fatalf("expected sub %q, got %q", subject, claims.Sub)
+	if claims.Subject != subject {
+		t.Fatalf("expected sub %q, got %q", subject, claims.Subject)
 	}
 	if len(claims.Roles) != len(roles) {
 		t.Fatalf("expected %d roles, got %d", len(roles), len(claims.Roles))

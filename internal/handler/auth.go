@@ -1,55 +1,74 @@
 package handler
 
 import (
-	"encoding/json"
+	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/mail"
+	"strings"
 	"time"
 
 	"github.com/fedutinova/smartheart/internal/auth"
-	"github.com/fedutinova/smartheart/internal/common"
-	"github.com/fedutinova/smartheart/internal/database"
+	"github.com/fedutinova/smartheart/internal/apperr"
 	"github.com/fedutinova/smartheart/internal/models"
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 const maxBodySize = 1 << 20 // 1 MB
 
+type registerRequest struct {
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type loginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type tokenRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
 // Register handles user registration
-func (h *Handlers) Register(w http.ResponseWriter, r *http.Request) {
+func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
-	var req struct {
-		Username string `json:"username"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
+	var req registerRequest
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
 	if req.Username == "" || req.Email == "" || req.Password == "" {
-		http.Error(w, "username, email, and password are required", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "username, email, and password are required")
 		return
 	}
 
 	if _, err := mail.ParseAddress(req.Email); err != nil {
-		http.Error(w, "invalid email format", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid email format")
 		return
 	}
 
-	if len(req.Password) < 6 {
-		http.Error(w, "password must be at least 6 characters", http.StatusBadRequest)
+	if len(req.Password) < 10 {
+		writeError(w, http.StatusBadRequest, "password must be at least 10 characters")
 		return
 	}
 
-	passwordHash, err := h.Repo.HashPassword(req.Password)
+	// bcrypt silently truncates input beyond 72 bytes — two passwords
+	// that differ only after byte 72 would hash identically.
+	if len(req.Password) > 72 {
+		writeError(w, http.StatusBadRequest, "password must not exceed 72 bytes")
+		return
+	}
+
+	passwordHash, err := auth.HashPassword(req.Password)
 	if err != nil {
 		slog.Error("failed to hash password", "error", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 
@@ -59,221 +78,209 @@ func (h *Handlers) Register(w http.ResponseWriter, r *http.Request) {
 		PasswordHash: passwordHash,
 	}
 
-	if err := h.Repo.DB().WithTx(r.Context(), func(tx database.Tx) error {
+	if err := h.Repo.DB().WithTx(r.Context(), func(tx pgx.Tx) error {
 		txRepo := h.Repo.WithTx(tx)
 		if err := txRepo.CreateUser(r.Context(), user); err != nil {
 			return err
 		}
 		return txRepo.AssignRoleToUser(r.Context(), user.ID, auth.RoleUser)
 	}); err != nil {
-		if common.IsConflict(err) {
-			http.Error(w, "username or email already exists", http.StatusConflict)
+		if apperr.IsConflict(err) {
+			writeError(w, http.StatusConflict, "username or email already exists")
 			return
 		}
 		slog.Error("failed to create user", "error", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(models.RegisterResponse{
+	writeJSON(w, http.StatusCreated, RegisterResponse{
 		Message: "user registered successfully",
 		UserID:  user.ID,
 	})
 }
 
 // Login handles user authentication
-func (h *Handlers) Login(w http.ResponseWriter, r *http.Request) {
+func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
-	var req struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
+	var req loginRequest
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
 	if req.Email == "" || req.Password == "" {
-		http.Error(w, "email and password are required", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "email and password are required")
 		return
 	}
 
-	// Brute-force protection: max 10 failed attempts per 15 minutes
+	// Brute-force protection: max 10 failed attempts per 15 minutes.
+	// Atomically increment first to avoid TOCTOU race between GET and INCR.
 	const maxAttempts int64 = 10
 	const lockoutWindow = 15 * time.Minute
 
-	attempts, err := h.Redis.GetLoginAttempts(r.Context(), req.Email)
-	if err == nil && attempts >= maxAttempts {
-		http.Error(w, "too many login attempts, try again later", http.StatusTooManyRequests)
+	attempts, err := h.Sessions.IncrLoginAttempts(r.Context(), req.Email, lockoutWindow)
+	if err != nil {
+		slog.Warn("failed to check login attempts, allowing request", "email", req.Email, "error", err)
+	} else if attempts > maxAttempts {
+		writeError(w, http.StatusTooManyRequests, "too many login attempts, try again later")
 		return
 	}
 
 	user, err := h.Repo.GetUserByEmail(r.Context(), req.Email)
 	if err != nil {
-		if common.IsNotFound(err) {
-			h.Redis.IncrLoginAttempts(r.Context(), req.Email, lockoutWindow)
+		if apperr.IsNotFound(err) {
 			slog.Warn("login attempt with invalid email", "email", req.Email)
-			http.Error(w, "invalid credentials", http.StatusUnauthorized)
+			writeError(w, http.StatusUnauthorized, "invalid credentials")
 			return
 		}
 		slog.Error("failed to get user", "email", req.Email, "error", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 
-	if !h.Repo.CheckPassword(req.Password, user.PasswordHash) {
-		h.Redis.IncrLoginAttempts(r.Context(), req.Email, lockoutWindow)
+	if !auth.CheckPassword(req.Password, user.PasswordHash) {
 		slog.Warn("login attempt with invalid password", "email", req.Email)
-		http.Error(w, "invalid credentials", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "invalid credentials")
 		return
 	}
 
-	h.Redis.ResetLoginAttempts(r.Context(), req.Email)
-
-	roleNames := make([]string, len(user.Roles))
-	for i, role := range user.Roles {
-		roleNames[i] = role.Name
+	// Successful login — reset counter so it doesn't penalize the user.
+	if err := h.Sessions.ResetLoginAttempts(r.Context(), req.Email); err != nil {
+		slog.Warn("failed to reset login attempts", "email", req.Email, "error", err)
 	}
 
-	tokens, err := auth.NewTokenPair(
-		h.Config.JWTSecret,
-		h.Config.JWTIssuer,
-		user.ID,
-		roleNames,
-		h.Config.JWTTTLAccess,
-		h.Config.JWTTTLRefresh,
-	)
+	tokens, err := h.issueTokenPair(r.Context(), user)
 	if err != nil {
-		slog.Error("failed to create token pair", "error", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		slog.Error("failed to issue tokens", "error", err)
+		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 
-	tokenHash := h.Repo.HashRefreshToken(tokens.RefreshToken)
-
-	if err := h.Redis.StoreRefreshToken(r.Context(), user.ID.String(), tokenHash, h.Config.JWTTTLRefresh); err != nil {
-		slog.Error("failed to store refresh token", "error", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
-
-	refreshToken := &models.RefreshToken{
-		UserID:    user.ID,
-		TokenHash: tokenHash,
-		ExpiresAt: time.Now().Add(h.Config.JWTTTLRefresh),
-	}
-
-	if err := h.Repo.CreateRefreshToken(r.Context(), refreshToken); err != nil {
-		slog.Error("failed to create refresh token record", "error", err)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(tokens)
+	writeJSON(w, http.StatusOK, tokens)
 }
 
 // Refresh handles token refresh
-func (h *Handlers) Refresh(w http.ResponseWriter, r *http.Request) {
+func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
-	var req struct {
-		RefreshToken string `json:"refresh_token"`
-	}
+	var req tokenRequest
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
 	if req.RefreshToken == "" {
-		http.Error(w, "refresh_token is required", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "refresh_token is required")
 		return
 	}
 
-	tokenHash := h.Repo.HashRefreshToken(req.RefreshToken)
+	// Rate-limit refresh attempts using the token hash as key.
+	// Atomically increment first to avoid TOCTOU race.
+	tokenHash := auth.HashToken(req.RefreshToken)
 
-	userID, err := h.Redis.GetRefreshTokenUserID(r.Context(), tokenHash)
+	const maxRefreshAttempts int64 = 5
+	const refreshWindow = 5 * time.Minute
+	refreshKey := "refresh:" + tokenHash[:16]
+	attempts, err := h.Sessions.IncrLoginAttempts(r.Context(), refreshKey, refreshWindow)
 	if err != nil {
-		http.Error(w, "invalid refresh token", http.StatusUnauthorized)
+		slog.Warn("failed to check refresh attempts, allowing request", "error", err)
+	} else if attempts > maxRefreshAttempts {
+		writeError(w, http.StatusTooManyRequests, "too many refresh attempts, try again later")
 		return
 	}
 
-	userUUID, err := uuid.Parse(userID)
+	userID, err := h.Sessions.GetRefreshTokenUserID(r.Context(), tokenHash)
+	if err != nil {
+		slog.Warn("refresh token lookup failed", "error", err)
+		writeError(w, http.StatusUnauthorized, "invalid refresh token")
+		return
+	}
+
+	userUUID, err := parseUUID(userID)
 	if err != nil {
 		slog.Error("invalid user ID from refresh token", "user_id", userID)
-		http.Error(w, "invalid refresh token", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "invalid refresh token")
 		return
 	}
 
 	user, err := h.Repo.GetUserByID(r.Context(), userUUID)
 	if err != nil {
 		slog.Error("failed to get user", "error", err)
-		http.Error(w, "invalid refresh token", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "invalid refresh token")
 		return
 	}
 
+	// Revoke old refresh token before issuing new pair
+	if err := h.Sessions.RevokeRefreshToken(r.Context(), tokenHash); err != nil {
+		slog.Error("failed to revoke old refresh token", "error", err)
+	}
+
+	tokens, err := h.issueTokenPair(r.Context(), user)
+	if err != nil {
+		slog.Error("failed to issue tokens", "error", err)
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, tokens)
+}
+
+// issueTokenPair creates a JWT access/refresh token pair, stores the refresh token
+// in Redis and records it in the database. Shared by Login and Refresh handlers.
+func (h *AuthHandler) issueTokenPair(ctx context.Context, user *models.User) (*auth.TokenPair, error) {
 	roleNames := make([]string, len(user.Roles))
 	for i, role := range user.Roles {
 		roleNames[i] = role.Name
 	}
 
 	tokens, err := auth.NewTokenPair(
-		h.Config.JWTSecret,
-		h.Config.JWTIssuer,
+		h.Config.JWT.Secret,
+		h.Config.JWT.Issuer,
 		user.ID,
 		roleNames,
-		h.Config.JWTTTLAccess,
-		h.Config.JWTTTLRefresh,
+		h.Config.JWT.TTLAccess,
+		h.Config.JWT.TTLRefresh,
 	)
 	if err != nil {
-		slog.Error("failed to create token pair", "error", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
+		return nil, fmt.Errorf("create token pair: %w", err)
 	}
 
-	if err := h.Redis.RevokeRefreshToken(r.Context(), tokenHash); err != nil {
-		slog.Error("failed to revoke old refresh token", "error", err)
+	tokenHash := auth.HashToken(tokens.RefreshToken)
+
+	if err := h.Sessions.StoreRefreshToken(ctx, user.ID.String(), tokenHash, h.Config.JWT.TTLRefresh); err != nil {
+		return nil, fmt.Errorf("store refresh token in Redis: %w", err)
 	}
 
-	newTokenHash := h.Repo.HashRefreshToken(tokens.RefreshToken)
-	if err := h.Redis.StoreRefreshToken(r.Context(), user.ID.String(), newTokenHash, h.Config.JWTTTLRefresh); err != nil {
-		slog.Error("failed to store new refresh token", "error", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
-
-	newRefreshToken := &models.RefreshToken{
+	if err := h.Repo.CreateRefreshToken(ctx, &models.RefreshToken{
 		UserID:    user.ID,
-		TokenHash: newTokenHash,
-		ExpiresAt: time.Now().Add(h.Config.JWTTTLRefresh),
+		TokenHash: tokenHash,
+		ExpiresAt: time.Now().Add(h.Config.JWT.TTLRefresh),
+	}); err != nil {
+		// DB record is secondary — log but don't fail the login
+		slog.Error("failed to persist refresh token to DB", "error", err)
 	}
 
-	if err := h.Repo.CreateRefreshToken(r.Context(), newRefreshToken); err != nil {
-		slog.Error("failed to create new refresh token record", "error", err)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(tokens)
+	return tokens, nil
 }
 
 // Logout handles user logout
-func (h *Handlers) Logout(w http.ResponseWriter, r *http.Request) {
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
-	var req struct {
-		RefreshToken string `json:"refresh_token"`
-	}
+	var req tokenRequest
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
 	if req.RefreshToken != "" {
-		tokenHash := h.Repo.HashRefreshToken(req.RefreshToken)
-		if err := h.Redis.RevokeRefreshToken(r.Context(), tokenHash); err != nil {
+		tokenHash := auth.HashToken(req.RefreshToken)
+		if err := h.Sessions.RevokeRefreshToken(r.Context(), tokenHash); err != nil {
 			slog.Error("failed to revoke refresh token", "error", err)
 		}
 		if err := h.Repo.RevokeRefreshToken(r.Context(), tokenHash); err != nil {
@@ -284,19 +291,16 @@ func (h *Handlers) Logout(w http.ResponseWriter, r *http.Request) {
 	// Blacklist the current access token so it can't be reused after logout
 	if claims, ok := auth.FromContext(r.Context()); ok {
 		raw := r.Header.Get("Authorization")
-		if len(raw) > 7 {
-			tokenStr := raw[7:] // strip "Bearer "
-			tokenHash := h.Repo.HashRefreshToken(tokenStr)
+		if tokenStr := strings.TrimPrefix(raw, "Bearer "); tokenStr != raw && tokenStr != "" {
+			tokenHash := auth.HashToken(tokenStr)
 			ttl := time.Until(claims.ExpiresAt.Time)
 			if ttl > 0 {
-				if err := h.Redis.StoreBlacklistedToken(r.Context(), tokenHash, ttl); err != nil {
+				if err := h.Sessions.StoreBlacklistedToken(r.Context(), tokenHash, ttl); err != nil {
 					slog.Error("failed to blacklist access token", "error", err)
 				}
 			}
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"message": "logged out successfully"})
+	writeJSON(w, http.StatusOK, map[string]string{"message": "logged out successfully"})
 }
-

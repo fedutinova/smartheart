@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -29,11 +30,6 @@ func NewLocalStorage(baseDir, baseURL string) (*LocalStorage, error) {
 }
 
 func (s *LocalStorage) UploadFile(ctx context.Context, filename string, content io.Reader, contentType string) (*UploadResult, error) {
-	data, err := io.ReadAll(content)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file content: %w", err)
-	}
-
 	key := s.generateKey(filename)
 	filePath := filepath.Join(s.baseDir, key)
 
@@ -41,13 +37,23 @@ func (s *LocalStorage) UploadFile(ctx context.Context, filename string, content 
 		return nil, fmt.Errorf("failed to create directory structure: %w", err)
 	}
 
-	if err := os.WriteFile(filePath, data, 0644); err != nil {
+	f, err := os.Create(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create file: %w", err)
+	}
+
+	written, err := io.Copy(f, content)
+	if closeErr := f.Close(); closeErr != nil && err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		os.Remove(filePath) // clean up incomplete file
 		return nil, fmt.Errorf("failed to write file: %w", err)
 	}
 
 	url := fmt.Sprintf("%s/%s", s.baseURL, key)
 
-	slog.Info("file uploaded to local storage", "key", key, "path", filePath, "size", len(data))
+	slog.Info("file uploaded to local storage", "key", key, "path", filePath, "size", written)
 
 	return &UploadResult{
 		Key: key,
@@ -61,8 +67,33 @@ func (s *LocalStorage) GetPresignedURL(ctx context.Context, key string, expirati
 	return url, nil
 }
 
+// safePath resolves the key to an absolute path inside baseDir, rejecting
+// any traversal that escapes the storage root (symlinks included).
+func (s *LocalStorage) safePath(key string) (string, error) {
+	baseDir, err := filepath.Abs(filepath.Clean(s.baseDir))
+	if err != nil {
+		return "", fmt.Errorf("invalid base dir: %w", err)
+	}
+
+	cleaned := filepath.Clean("/" + key)
+	full := filepath.Join(baseDir, cleaned)
+
+	real, err := filepath.EvalSymlinks(full)
+	if err != nil {
+		return "", err
+	}
+
+	if !strings.HasPrefix(real, baseDir+string(os.PathSeparator)) && real != baseDir {
+		return "", fmt.Errorf("path escapes storage root")
+	}
+	return real, nil
+}
+
 func (s *LocalStorage) DeleteFile(ctx context.Context, key string) error {
-	filePath := filepath.Join(s.baseDir, key)
+	filePath, err := s.safePath(key)
+	if err != nil {
+		return fmt.Errorf("invalid key: %w", err)
+	}
 
 	if err := os.Remove(filePath); err != nil {
 		return fmt.Errorf("failed to delete file: %w", err)
@@ -73,8 +104,11 @@ func (s *LocalStorage) DeleteFile(ctx context.Context, key string) error {
 }
 
 func (s *LocalStorage) GetFile(ctx context.Context, key string) (io.ReadCloser, string, error) {
-	filePath := filepath.Join(s.baseDir, key)
-	
+	filePath, err := s.safePath(key)
+	if err != nil {
+		return nil, "", fmt.Errorf("invalid key: %w", err)
+	}
+
 	// Check if file exists
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
@@ -122,13 +156,28 @@ func (s *LocalStorage) GetFile(ctx context.Context, key string) (io.ReadCloser, 
 }
 
 func (s *LocalStorage) generateKey(filename string) string {
-	ext := filepath.Ext(filename)
-	basename := filename[:len(filename)-len(ext)]
+	// filepath.Base strips directory components including ".." traversal
+	base := filepath.Base(filename)
+	ext := filepath.Ext(base)
+	basename := strings.TrimSuffix(base, ext)
 
-	safeBasename := filepath.Base(basename)
+	// Remove dangerous characters: null bytes, backslashes, path separators
+	r := strings.NewReplacer(
+		"\x00", "",
+		"\\", "_",
+		"/", "_",
+		" ", "_",
+		"..", "_",
+	)
+	safeBasename := r.Replace(basename)
+	safeExt := r.Replace(ext)
+
+	if safeBasename == "" || safeBasename == "." {
+		safeBasename = "file"
+	}
 
 	timestamp := time.Now().Format("2006/01/02")
 	uniqueID := uuid.New().String()[:8]
 
-	return fmt.Sprintf("uploads/%s/%s_%s%s", timestamp, safeBasename, uniqueID, ext)
+	return fmt.Sprintf("uploads/%s/%s_%s%s", timestamp, safeBasename, uniqueID, safeExt)
 }

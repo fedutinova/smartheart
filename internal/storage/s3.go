@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -30,18 +29,18 @@ func NewS3Storage(ctx context.Context, cfg appconfig.Config) (*S3Storage, error)
 	var err error
 
 	slog.Info("initializing S3 storage",
-		"endpoint", cfg.S3Endpoint,
-		"bucket", cfg.S3Bucket,
-		"region", cfg.S3Region,
-		"force_path_style", cfg.S3ForcePathStyle)
+		"endpoint", cfg.S3.Endpoint,
+		"bucket", cfg.S3.Bucket,
+		"region", cfg.S3.Region,
+		"force_path_style", cfg.S3.ForcePathStyle)
 
-	if cfg.S3Endpoint != "" && (strings.Contains(cfg.S3Endpoint, "localstack") || strings.Contains(cfg.S3Endpoint, "localhost:4566") || strings.Contains(cfg.S3Endpoint, "4566")) {
+	if cfg.S3.Endpoint != "" && (strings.Contains(cfg.S3.Endpoint, "localstack") || strings.Contains(cfg.S3.Endpoint, "localhost:4566") || strings.Contains(cfg.S3.Endpoint, "4566")) {
 		slog.Info("using LocalStack configuration")
 		awsCfg, err = config.LoadDefaultConfig(ctx,
-			config.WithRegion(cfg.S3Region),
+			config.WithRegion(cfg.S3.Region),
 			config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
-				cfg.AWSAccessKey,
-				cfg.AWSSecretKey,
+				cfg.S3.AWSAccessKey,
+				cfg.S3.AWSSecretKey,
 				"",
 			)),
 		)
@@ -50,29 +49,29 @@ func NewS3Storage(ctx context.Context, cfg appconfig.Config) (*S3Storage, error)
 		}
 
 		client := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
-			o.BaseEndpoint = aws.String(cfg.S3Endpoint)
-			o.UsePathStyle = cfg.S3ForcePathStyle
+			o.BaseEndpoint = aws.String(cfg.S3.Endpoint)
+			o.UsePathStyle = cfg.S3.ForcePathStyle
 		})
 
 		return &S3Storage{
 			client:   client,
-			bucket:   cfg.S3Bucket,
-			endpoint: cfg.S3Endpoint,
-			region:   cfg.S3Region,
+			bucket:   cfg.S3.Bucket,
+			endpoint: cfg.S3.Endpoint,
+			region:   cfg.S3.Region,
 		}, nil
 	}
 
-	if cfg.AWSAccessKey != "" && cfg.AWSSecretKey != "" {
+	if cfg.S3.AWSAccessKey != "" && cfg.S3.AWSSecretKey != "" {
 		awsCfg, err = config.LoadDefaultConfig(ctx,
-			config.WithRegion(cfg.S3Region),
+			config.WithRegion(cfg.S3.Region),
 			config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
-				cfg.AWSAccessKey,
-				cfg.AWSSecretKey,
+				cfg.S3.AWSAccessKey,
+				cfg.S3.AWSSecretKey,
 				"",
 			)),
 		)
 	} else {
-		awsCfg, err = config.LoadDefaultConfig(ctx, config.WithRegion(cfg.S3Region))
+		awsCfg, err = config.LoadDefaultConfig(ctx, config.WithRegion(cfg.S3.Region))
 	}
 
 	if err != nil {
@@ -83,24 +82,19 @@ func NewS3Storage(ctx context.Context, cfg appconfig.Config) (*S3Storage, error)
 
 	return &S3Storage{
 		client:   client,
-		bucket:   cfg.S3Bucket,
-		endpoint: cfg.S3Endpoint,
-		region:   cfg.S3Region,
+		bucket:   cfg.S3.Bucket,
+		endpoint: cfg.S3.Endpoint,
+		region:   cfg.S3.Region,
 	}, nil
 }
 
 func (s *S3Storage) UploadFile(ctx context.Context, filename string, content io.Reader, contentType string) (*UploadResult, error) {
-	data, err := io.ReadAll(content)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file content: %w", err)
-	}
-
 	key := s.generateKey(filename)
 
-	_, err = s.client.PutObject(ctx, &s3.PutObjectInput{
+	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket:      aws.String(s.bucket),
 		Key:         aws.String(key),
-		Body:        bytes.NewReader(data),
+		Body:        content,
 		ContentType: aws.String(contentType),
 	})
 	if err != nil {
@@ -114,7 +108,7 @@ func (s *S3Storage) UploadFile(ctx context.Context, filename string, content io.
 		url = fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", s.bucket, s.region, key)
 	}
 
-	slog.Info("file uploaded to S3", "key", key, "bucket", s.bucket, "size", len(data))
+	slog.Info("file uploaded to S3", "key", key, "bucket", s.bucket)
 
 	return &UploadResult{
 		Key: key,
@@ -169,14 +163,28 @@ func (s *S3Storage) GetFile(ctx context.Context, key string) (io.ReadCloser, str
 }
 
 func (s *S3Storage) generateKey(filename string) string {
-	ext := filepath.Ext(filename)
-	basename := strings.TrimSuffix(filepath.Base(filename), ext)
+	// filepath.Base strips directory components including ".." traversal
+	base := filepath.Base(filename)
+	ext := filepath.Ext(base)
+	basename := strings.TrimSuffix(base, ext)
 
-	safeBasename := strings.ReplaceAll(basename, " ", "_")
-	safeBasename = strings.ReplaceAll(safeBasename, "/", "_")
+	// Remove dangerous characters: null bytes, backslashes, path separators
+	r := strings.NewReplacer(
+		"\x00", "",
+		"\\", "_",
+		"/", "_",
+		" ", "_",
+		"..", "_",
+	)
+	safeBasename := r.Replace(basename)
+	safeExt := r.Replace(ext)
+
+	if safeBasename == "" || safeBasename == "." {
+		safeBasename = "file"
+	}
 
 	timestamp := time.Now().Format("2006/01/02")
 	uniqueID := uuid.New().String()[:8]
 
-	return fmt.Sprintf("uploads/%s/%s_%s%s", timestamp, safeBasename, uniqueID, ext)
+	return fmt.Sprintf("uploads/%s/%s_%s%s", timestamp, safeBasename, uniqueID, safeExt)
 }

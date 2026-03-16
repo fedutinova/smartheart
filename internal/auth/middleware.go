@@ -2,15 +2,25 @@ package auth
 
 import (
 	"context"
-	"crypto/sha256"
+	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
 )
+
+// writeJSONError writes a JSON error response from middleware.
+// Uses the same {"error":"..."} shape as handler.writeError for consistency.
+func writeJSONError(w http.ResponseWriter, code int, msg string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	type errBody struct {
+		Error string `json:"error"`
+	}
+	json.NewEncoder(w).Encode(errBody{Error: msg}) //nolint:errcheck
+}
 
 type ctxKey string
 
@@ -21,6 +31,11 @@ const (
 func FromContext(ctx context.Context) (*Claims, bool) {
 	cl, ok := ctx.Value(ctxKeyClaims).(*Claims)
 	return cl, ok
+}
+
+// NewContext returns a context carrying the given claims.
+func NewContext(ctx context.Context, claims *Claims) context.Context {
+	return context.WithValue(ctx, ctxKeyClaims, claims)
 }
 
 // TokenBlacklistChecker checks whether a token hash has been blacklisted.
@@ -37,7 +52,7 @@ func JWTMiddleware(secret, issuer string, opts ...func(*jwtMWConfig)) func(http.
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			raw := r.Header.Get("Authorization")
 			if raw == "" || !strings.HasPrefix(raw, "Bearer ") {
-				http.Error(w, "missing bearer token", http.StatusUnauthorized)
+				writeJSONError(w, http.StatusUnauthorized, "missing bearer token")
 				return
 			}
 			tokenStr := strings.TrimPrefix(raw, "Bearer ")
@@ -49,19 +64,29 @@ func JWTMiddleware(secret, issuer string, opts ...func(*jwtMWConfig)) func(http.
 			})
 			if err != nil {
 				slog.Warn("jwt parse failed", "error", err)
-				http.Error(w, "invalid token", http.StatusUnauthorized)
+				writeJSONError(w, http.StatusUnauthorized, "invalid token")
 				return
 			}
 			if cl.Issuer != issuer {
-				http.Error(w, "invalid issuer", http.StatusUnauthorized)
+				writeJSONError(w, http.StatusUnauthorized, "invalid issuer")
+				return
+			}
+			if cl.UserID == "" {
+				writeJSONError(w, http.StatusUnauthorized, "invalid token: missing user_id")
 				return
 			}
 
-			// Check token blacklist (for logged-out tokens)
+			// Check token blacklist (for logged-out tokens).
+			// Fail-open: if the blacklist store is unreachable we log the
+			// error but allow the request so that a Redis outage does not
+			// cause a full authentication outage.
 			if cfg.blacklist != nil {
-				tokenHash := hashToken(tokenStr)
-				if blacklisted, err := cfg.blacklist.IsTokenBlacklisted(r.Context(), tokenHash); err == nil && blacklisted {
-					http.Error(w, "token has been revoked", http.StatusUnauthorized)
+				tokenHash := HashToken(tokenStr)
+				blacklisted, err := cfg.blacklist.IsTokenBlacklisted(r.Context(), tokenHash)
+				if err != nil {
+					slog.Error("failed to check token blacklist, allowing request", "error", err)
+				} else if blacklisted {
+					writeJSONError(w, http.StatusUnauthorized, "token has been revoked")
 					return
 				}
 			}
@@ -81,17 +106,12 @@ func WithBlacklist(bl TokenBlacklistChecker) func(*jwtMWConfig) {
 	return func(c *jwtMWConfig) { c.blacklist = bl }
 }
 
-func hashToken(token string) string {
-	h := sha256.Sum256([]byte(token))
-	return fmt.Sprintf("%x", h)
-}
-
 func RequirePerm(required string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			cl, ok := FromContext(r.Context())
 			if !ok {
-				http.Error(w, "no auth context", http.StatusUnauthorized)
+				writeJSONError(w, http.StatusUnauthorized, "no auth context")
 				return
 			}
 			perms := PermsForRoles(cl.Roles)
@@ -100,7 +120,7 @@ func RequirePerm(required string) func(http.Handler) http.Handler {
 				return
 			}
 			if _, ok := perms[required]; !ok {
-				http.Error(w, "forbidden", http.StatusForbidden)
+				writeJSONError(w, http.StatusForbidden, "forbidden")
 				return
 			}
 			next.ServeHTTP(w, r)

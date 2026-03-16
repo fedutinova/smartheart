@@ -2,17 +2,14 @@ package repository
 
 import (
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"time"
 
-	"github.com/fedutinova/smartheart/internal/common"
+	"github.com/fedutinova/smartheart/internal/apperr"
 	"github.com/fedutinova/smartheart/internal/models"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // CreateUser creates a new user
@@ -26,79 +23,85 @@ func (r *Repository) CreateUser(ctx context.Context, user *models.User) error {
 		VALUES ($1, $2, $3, $4, NOW(), NOW())
 	`
 
-	_, err := r.q.Exec(ctx, query, user.ID, user.Username, user.Email, user.PasswordHash)
+	_, err := r.querier.Exec(ctx, query, user.ID, user.Username, user.Email, user.PasswordHash)
 	if err != nil {
 		if isUniqueViolation(err) {
-			return fmt.Errorf("user with this email or username %w", common.ErrConflict)
+			return fmt.Errorf("user with this email or username %w", apperr.ErrConflict)
 		}
 		return fmt.Errorf("failed to create user: %w", err)
 	}
 	return nil
 }
 
-// GetUserByEmail retrieves a user by email
+// GetUserByEmail retrieves a user by email with roles in a single query.
 func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	query := `
-		SELECT id, username, email, password_hash, created_at, updated_at
-		FROM users
-		WHERE email = $1
+		SELECT u.id, u.username, u.email, u.password_hash, u.created_at, u.updated_at,
+		       r.id, r.name, r.description, r.created_at
+		FROM users u
+		LEFT JOIN user_roles ur ON u.id = ur.user_id
+		LEFT JOIN roles r ON ur.role_id = r.id
+		WHERE u.email = $1
+		ORDER BY r.name
 	`
-
-	var user models.User
-	err := r.q.QueryRow(ctx, query, email).Scan(
-		&user.ID,
-		&user.Username,
-		&user.Email,
-		&user.PasswordHash,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, common.ErrUserNotFound
-		}
-		return nil, fmt.Errorf("failed to get user by email: %w", err)
-	}
-
-	roles, err := r.GetUserRoles(ctx, user.ID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user roles: %w", err)
-	}
-	user.Roles = roles
-
-	return &user, nil
+	return r.scanUserWithRoles(ctx, query, email)
 }
 
-// GetUserByID retrieves a user by ID
+// GetUserByID retrieves a user by ID with roles in a single query.
 func (r *Repository) GetUserByID(ctx context.Context, userID uuid.UUID) (*models.User, error) {
 	query := `
-		SELECT id, username, email, created_at, updated_at
-		FROM users
-		WHERE id = $1
+		SELECT u.id, u.username, u.email, u.password_hash, u.created_at, u.updated_at,
+		       r.id, r.name, r.description, r.created_at
+		FROM users u
+		LEFT JOIN user_roles ur ON u.id = ur.user_id
+		LEFT JOIN roles r ON ur.role_id = r.id
+		WHERE u.id = $1
+		ORDER BY r.name
 	`
+	return r.scanUserWithRoles(ctx, query, userID)
+}
 
-	var user models.User
-	err := r.q.QueryRow(ctx, query, userID).Scan(
-		&user.ID,
-		&user.Username,
-		&user.Email,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
+// scanUserWithRoles executes a user+roles query and assembles the result.
+func (r *Repository) scanUserWithRoles(ctx context.Context, query string, arg any) (*models.User, error) {
+	rows, err := r.querier.Query(ctx, query, arg)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, common.ErrUserNotFound
+		return nil, fmt.Errorf("failed to query user: %w", err)
+	}
+	defer rows.Close()
+
+	var user *models.User
+	for rows.Next() {
+		var u models.User
+		var roleID *int
+		var roleName, roleDesc *string
+		var roleCreated *time.Time
+
+		if err := rows.Scan(
+			&u.ID, &u.Username, &u.Email, &u.PasswordHash, &u.CreatedAt, &u.UpdatedAt,
+			&roleID, &roleName, &roleDesc, &roleCreated,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan user row: %w", err)
 		}
-		return nil, fmt.Errorf("failed to get user by ID: %w", err)
-	}
 
-	roles, err := r.GetUserRoles(ctx, user.ID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user roles: %w", err)
+		if user == nil {
+			user = &u
+		}
+		if roleID != nil {
+			user.Roles = append(user.Roles, models.Role{
+				ID:          *roleID,
+				Name:        *roleName,
+				Description: *roleDesc,
+				CreatedAt:   *roleCreated,
+			})
+		}
 	}
-	user.Roles = roles
-
-	return &user, nil
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate user rows: %w", err)
+	}
+	if user == nil {
+		return nil, apperr.ErrUserNotFound
+	}
+	return user, nil
 }
 
 // GetUserRoles retrieves all roles with permissions for a user in a single query.
@@ -114,7 +117,7 @@ func (r *Repository) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]mode
 		ORDER BY r.name, p.name
 	`
 
-	rows, err := r.q.Query(ctx, query, userID)
+	rows, err := r.querier.Query(ctx, query, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +167,8 @@ func (r *Repository) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]mode
 	return roles, rows.Err()
 }
 
-// AssignRoleToUser assigns a role to a user
+// AssignRoleToUser assigns a role to a user.
+// Returns an error if the role does not exist.
 func (r *Repository) AssignRoleToUser(ctx context.Context, userID uuid.UUID, roleName string) error {
 	query := `
 		INSERT INTO user_roles (user_id, role_id)
@@ -172,26 +176,14 @@ func (r *Repository) AssignRoleToUser(ctx context.Context, userID uuid.UUID, rol
 		ON CONFLICT (user_id, role_id) DO NOTHING
 	`
 
-	_, err := r.q.Exec(ctx, query, userID, roleName)
-	return err
-}
-
-// HashPassword hashes a password using bcrypt
-func (r *Repository) HashPassword(password string) (string, error) {
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	return string(bytes), err
-}
-
-// CheckPassword verifies a password against a hash
-func (r *Repository) CheckPassword(password, hash string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-	return err == nil
-}
-
-// HashRefreshToken creates a hash of the refresh token
-func (r *Repository) HashRefreshToken(token string) string {
-	hash := sha256.Sum256([]byte(token))
-	return fmt.Sprintf("%x", hash)
+	tag, err := r.querier.Exec(ctx, query, userID, roleName)
+	if err != nil {
+		return fmt.Errorf("failed to assign role %q: %w", roleName, err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("role %q does not exist", roleName)
+	}
+	return nil
 }
 
 // LoadRolePermissions returns the role->permissions mapping from the database,
@@ -205,7 +197,7 @@ func (r *Repository) LoadRolePermissions(ctx context.Context) (map[string][]stri
 		ORDER BY r.name, p.name
 	`
 
-	rows, err := r.q.Query(ctx, query)
+	rows, err := r.querier.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load role permissions: %w", err)
 	}

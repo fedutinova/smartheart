@@ -15,7 +15,7 @@ func TestEKGJobPayload_MarshalUnmarshal(t *testing.T) {
 	original := job.EKGJobPayload{
 		ImageTempURL: "http://example.com/test.jpg",
 		Notes:        "Test EKG analysis",
-		UserID:       uuid.New().String(),
+		UserID:       uuid.New(),
 	}
 
 	// Marshal to JSON
@@ -72,7 +72,7 @@ func TestIsValidImageContentType(t *testing.T) {
 }
 
 func TestCreateMockEKGJob(t *testing.T) {
-	userID := uuid.New().String()
+	userID := uuid.New()
 	imageURL := "http://example.com/test.jpg"
 
 	payload := job.EKGJobPayload{
@@ -118,12 +118,12 @@ func BenchmarkEKGJobPayload_Marshal(b *testing.B) {
 	payload := job.EKGJobPayload{
 		ImageTempURL: "http://example.com/test.jpg",
 		Notes:        "Test EKG analysis with some notes",
-		UserID:       uuid.New().String(),
+		UserID:       uuid.New(),
 	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		json.Marshal(payload)
+		_, _ = json.Marshal(payload)
 	}
 }
 
@@ -131,7 +131,7 @@ func BenchmarkEKGJobPayload_Unmarshal(b *testing.B) {
 	payload := job.EKGJobPayload{
 		ImageTempURL: "http://example.com/test.jpg",
 		Notes:        "Test EKG analysis with some notes",
-		UserID:       uuid.New().String(),
+		UserID:       uuid.New(),
 	}
 
 	jsonData, _ := json.Marshal(payload)
@@ -139,7 +139,7 @@ func BenchmarkEKGJobPayload_Unmarshal(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		var unmarshaled job.EKGJobPayload
-		json.Unmarshal(jsonData, &unmarshaled)
+		_ = json.Unmarshal(jsonData, &unmarshaled)
 	}
 }
 

@@ -2,11 +2,11 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
-	"github.com/fedutinova/smartheart/internal/common"
+	"github.com/fedutinova/smartheart/internal/apperr"
 	"github.com/fedutinova/smartheart/internal/models"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -23,56 +23,69 @@ func (r *Repository) CreateRequest(ctx context.Context, req *models.Request) err
 		VALUES ($1, $2, $3, $4, NOW(), NOW())
 	`
 
-	var textQuery sql.NullString
-	if req.TextQuery != nil {
-		textQuery = sql.NullString{String: *req.TextQuery, Valid: true}
+	_, err := r.querier.Exec(ctx, query, req.ID, req.UserID, req.TextQuery, req.Status)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
 	}
-
-	_, err := r.q.Exec(ctx, query, req.ID, req.UserID, textQuery, req.Status)
-	return err
+	return nil
 }
 
-// GetRequestByID retrieves a request by ID with files and response
+// GetRequestByID retrieves a request by ID with files and response using a single query
+// for the request + response, and a separate query for files.
 func (r *Repository) GetRequestByID(ctx context.Context, id uuid.UUID) (*models.Request, error) {
 	query := `
-		SELECT id, user_id, text_query, status, created_at, updated_at
-		FROM requests
-		WHERE id = $1
+		SELECT r.id, r.user_id, r.text_query, r.status, r.created_at, r.updated_at,
+		       resp.id, resp.request_id, resp.content, resp.model,
+		       resp.tokens_used, resp.processing_time_ms, resp.created_at
+		FROM requests r
+		LEFT JOIN LATERAL (
+			SELECT * FROM responses WHERE request_id = r.id ORDER BY created_at DESC LIMIT 1
+		) resp ON true
+		WHERE r.id = $1
 	`
 
 	var req models.Request
-	var textQuery sql.NullString
 
-	err := r.q.QueryRow(ctx, query, id).Scan(
-		&req.ID,
-		&req.UserID,
-		&textQuery,
-		&req.Status,
-		&req.CreatedAt,
-		&req.UpdatedAt,
+	// Response columns (nullable because of LEFT JOIN)
+	var respID, respReqID *uuid.UUID
+	var respContent, respModel *string
+	var respTokens, respTimeMs *int
+	var respCreatedAt *time.Time
+
+	err := r.querier.QueryRow(ctx, query, id).Scan(
+		&req.ID, &req.UserID, &req.TextQuery, &req.Status, &req.CreatedAt, &req.UpdatedAt,
+		&respID, &respReqID, &respContent, &respModel,
+		&respTokens, &respTimeMs, &respCreatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, common.ErrRequestNotFound
+			return nil, apperr.ErrRequestNotFound
 		}
 		return nil, fmt.Errorf("failed to get request: %w", err)
 	}
 
-	if textQuery.Valid {
-		req.TextQuery = &textQuery.String
+	// Assemble response if the JOIN returned data
+	if respID != nil {
+		resp := &models.Response{
+			ID:               *respID,
+			RequestID:        *respReqID,
+			Content:          *respContent,
+			Model:            *respModel,
+			TokensUsed:       *respTokens,
+			ProcessingTimeMs: *respTimeMs,
+		}
+		if respCreatedAt != nil {
+			resp.CreatedAt = *respCreatedAt
+		}
+		req.Response = resp
 	}
 
+	// Files still need a separate query (one-to-many)
 	files, err := r.GetFilesByRequestID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get files: %w", err)
 	}
 	req.Files = files
-
-	response, err := r.GetResponseByRequestID(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get response: %w", err)
-	}
-	req.Response = response
 
 	return &req, nil
 }
@@ -87,31 +100,25 @@ func (r *Repository) GetRequestsByUserID(ctx context.Context, userID uuid.UUID, 
 		LIMIT $2 OFFSET $3
 	`
 
-	rows, err := r.q.Query(ctx, query, userID, limit, offset)
+	rows, err := r.querier.Query(ctx, query, userID, limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query requests: %w", err)
 	}
 	defer rows.Close()
 
 	var requests []models.Request
 	for rows.Next() {
 		var req models.Request
-		var textQuery sql.NullString
-
 		err := rows.Scan(
 			&req.ID,
 			&req.UserID,
-			&textQuery,
+			&req.TextQuery,
 			&req.Status,
 			&req.CreatedAt,
 			&req.UpdatedAt,
 		)
 		if err != nil {
-			return nil, err
-		}
-
-		if textQuery.Valid {
-			req.TextQuery = &textQuery.String
+			return nil, fmt.Errorf("failed to scan request: %w", err)
 		}
 
 		requests = append(requests, req)
@@ -128,13 +135,12 @@ func (r *Repository) UpdateRequestStatus(ctx context.Context, requestID uuid.UUI
 		WHERE id = $2
 	`
 
-	tag, err := r.q.Exec(ctx, query, status, requestID)
+	tag, err := r.querier.Exec(ctx, query, status, requestID)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update request status: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return common.ErrRequestNotFound
+		return apperr.ErrRequestNotFound
 	}
 	return nil
 }
-

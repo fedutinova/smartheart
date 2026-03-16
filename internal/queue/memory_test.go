@@ -1,4 +1,4 @@
-package memq
+package queue
 
 import (
 	"context"
@@ -95,14 +95,24 @@ func TestStartConsumers_TimeoutMarksFailed(t *testing.T) {
 		t.Fatalf("timeout waiting for job handler")
 	}
 
-	st, ok := q.Status(context.Background(), id)
-	if !ok {
-		t.Fatalf("job not found")
-	}
-	if st.Status != job.StatusFailed {
-		t.Fatalf("expected failed, got %s", st.Status)
-	}
-	if st.Error == "" {
-		t.Fatalf("expected error message to be set")
+	// The consumer calls SetFinished after the handler returns, so poll briefly.
+	deadline := time.After(1 * time.Second)
+	for {
+		st, ok := q.Status(context.Background(), id)
+		if !ok {
+			t.Fatalf("job not found")
+		}
+		if st.Status == job.StatusFailed {
+			if st.Error == "" {
+				t.Fatalf("expected error message to be set")
+			}
+			break
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("expected failed, got %s", st.Status)
+		default:
+			time.Sleep(time.Millisecond)
+		}
 	}
 }

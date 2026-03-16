@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"runtime"
@@ -37,22 +36,20 @@ const (
 	StatusHealthy   = "healthy"
 	StatusUnhealthy = "unhealthy"
 	StatusDegraded  = "degraded"
+
+	queueBacklogThreshold = 500 // warn when queue has more pending jobs
 )
 
 // Health returns basic health status (for load balancer)
-func (h *Handlers) Health(w http.ResponseWriter, r *http.Request) {
-	status := HealthStatus{
+func (h *HealthHandler) Health(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, HealthStatus{
 		Status:    StatusHealthy,
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(status)
+	})
 }
 
 // Ready performs full readiness check including dependencies
-func (h *Handlers) Ready(w http.ResponseWriter, r *http.Request) {
+func (h *HealthHandler) Ready(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
@@ -70,6 +67,15 @@ func (h *Handlers) Ready(w http.ResponseWriter, r *http.Request) {
 	redisCheck := h.checkRedis(ctx)
 	checks["redis"] = redisCheck
 	if redisCheck.Status != StatusHealthy {
+		if overallStatus == StatusHealthy {
+			overallStatus = StatusDegraded
+		}
+	}
+
+	// Check storage
+	storageCheck := h.checkStorage(ctx)
+	checks["storage"] = storageCheck
+	if storageCheck.Status != StatusHealthy {
 		if overallStatus == StatusHealthy {
 			overallStatus = StatusDegraded
 		}
@@ -96,19 +102,15 @@ func (h *Handlers) Ready(w http.ResponseWriter, r *http.Request) {
 		System:    sysInfo,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	code := http.StatusOK
 	if overallStatus == StatusUnhealthy {
-		w.WriteHeader(http.StatusServiceUnavailable)
-	} else {
-		w.WriteHeader(http.StatusOK)
+		code = http.StatusServiceUnavailable
 	}
-	json.NewEncoder(w).Encode(status)
+	writeJSON(w, code, status)
 }
 
-// checkDatabase verifies database connectivity
-func (h *Handlers) checkDatabase(ctx context.Context) Check {
+func (h *HealthHandler) checkDatabase(ctx context.Context) Check {
 	start := time.Now()
-
 	err := h.Repo.DB().Pool().Ping(ctx)
 	duration := time.Since(start)
 
@@ -127,11 +129,9 @@ func (h *Handlers) checkDatabase(ctx context.Context) Check {
 	}
 }
 
-// checkRedis verifies Redis connectivity
-func (h *Handlers) checkRedis(ctx context.Context) Check {
+func (h *HealthHandler) checkRedis(ctx context.Context) Check {
 	start := time.Now()
-
-	err := h.Redis.Client().Ping(ctx).Err()
+	err := h.Sessions.Ping(ctx)
 	duration := time.Since(start)
 
 	if err != nil {
@@ -149,15 +149,33 @@ func (h *Handlers) checkRedis(ctx context.Context) Check {
 	}
 }
 
-// checkQueue returns queue status
-func (h *Handlers) checkQueue() Check {
-	queueLen := h.Q.Len()
+func (h *HealthHandler) checkStorage(ctx context.Context) Check {
+	start := time.Now()
+	_, err := h.Storage.GetPresignedURL(ctx, "healthcheck", 1*time.Minute)
+	duration := time.Since(start)
+
+	if err != nil {
+		return Check{
+			Status:   StatusUnhealthy,
+			Message:  err.Error(),
+			Duration: duration.String(),
+		}
+	}
+
+	return Check{
+		Status:   StatusHealthy,
+		Message:  "storage accessible",
+		Duration: duration.String(),
+	}
+}
+
+func (h *HealthHandler) checkQueue() Check {
+	queueLen := h.Queue.Len()
 
 	status := StatusHealthy
 	message := "queue operational"
 
-	// Warn if queue is getting full (arbitrary threshold)
-	if queueLen > 500 {
+	if queueLen > queueBacklogThreshold {
 		status = StatusDegraded
 		message = "queue backlog detected"
 	}
@@ -167,4 +185,3 @@ func (h *Handlers) checkQueue() Check {
 		Message: fmt.Sprintf("%s (pending: %d)", message, queueLen),
 	}
 }
-

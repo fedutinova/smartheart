@@ -1,4 +1,4 @@
-package testdata
+package fixtures
 
 import (
 	"encoding/json"
@@ -155,22 +155,6 @@ func GetTestRequestJSON(requestType string) (string, error) {
 	}
 
 	return string(jsonData), nil
-}
-
-// GetTestImageData returns test image data by type
-func GetTestImageData(imageType string) []byte {
-	switch imageType {
-	case "ekg":
-		return CreateTestEKGImage()
-	case "png":
-		return CreateTestPNGImage()
-	case "large":
-		return CreateLargeImage()
-	case "corrupted":
-		return CreateCorruptedImage()
-	default:
-		return CreateTestEKGImage()
-	}
 }
 
 // PrintTestExamples prints all test examples to console

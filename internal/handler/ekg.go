@@ -5,34 +5,35 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/fedutinova/smartheart/internal/auth"
 	"github.com/fedutinova/smartheart/internal/job"
 	"github.com/fedutinova/smartheart/internal/models"
 	"github.com/google/uuid"
 )
 
+type ekgAnalyzeRequest struct {
+	ImageTempURL string `json:"image_temp_url"`
+	Notes        string `json:"notes,omitempty"`
+}
+
 // SubmitEKGAnalyze handles EKG image analysis submission
-func (h *Handlers) SubmitEKGAnalyze(w http.ResponseWriter, r *http.Request) {
+func (h *EKGHandler) SubmitEKGAnalyze(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
-	var req struct {
-		ImageTempURL string `json:"image_temp_url"`
-		Notes        string `json:"notes,omitempty"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ImageTempURL == "" {
-		http.Error(w, "bad request", http.StatusBadRequest)
+	var req ekgAnalyzeRequest
+	if err := decodeJSON(r, &req); err != nil || req.ImageTempURL == "" {
+		writeError(w, http.StatusBadRequest, "bad request")
 		return
 	}
 
-	// Get user ID from JWT context
-	var userID string
-	if claims, ok := auth.FromContext(r.Context()); ok {
-		userID = claims.UserID
+	const maxNotesLen = 2000
+	if len(req.Notes) > maxNotesLen {
+		writeError(w, http.StatusBadRequest, "notes too long")
+		return
 	}
 
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		http.Error(w, "invalid user ID", http.StatusBadRequest)
+	userID, _, ok := extractUserID(r)
+	if !ok {
+		writeError(w, http.StatusBadRequest, "invalid user ID")
 		return
 	}
 
@@ -40,7 +41,7 @@ func (h *Handlers) SubmitEKGAnalyze(w http.ResponseWriter, r *http.Request) {
 	requestID := uuid.New()
 	request := &models.Request{
 		ID:     requestID,
-		UserID: userUUID,
+		UserID: userID,
 		Status: models.StatusPending,
 	}
 	if req.Notes != "" {
@@ -49,7 +50,7 @@ func (h *Handlers) SubmitEKGAnalyze(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.Repo.CreateRequest(r.Context(), request); err != nil {
 		slog.Error("failed to create request", "error", err)
-		http.Error(w, "failed to create request", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "failed to create request")
 		return
 	}
 
@@ -58,11 +59,11 @@ func (h *Handlers) SubmitEKGAnalyze(w http.ResponseWriter, r *http.Request) {
 		ImageTempURL: req.ImageTempURL,
 		Notes:        req.Notes,
 		UserID:       userID,
-		RequestID:    requestID.String(),
+		RequestID:    requestID,
 	})
 	if err != nil {
 		slog.Error("failed to marshal EKG payload", "error", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 
@@ -70,25 +71,22 @@ func (h *Handlers) SubmitEKGAnalyze(w http.ResponseWriter, r *http.Request) {
 		Type:    job.TypeEKGAnalyze,
 		Payload: payload,
 	}
-	id, err := h.Q.Enqueue(r.Context(), j)
+	id, err := h.Queue.Enqueue(r.Context(), j)
 	if err != nil {
 		slog.Error("failed to enqueue EKG job", "error", err)
-		http.Error(w, "enqueue failed", http.StatusServiceUnavailable)
+		writeError(w, http.StatusServiceUnavailable, "enqueue failed")
 		return
 	}
 
 	slog.Info("EKG analysis job enqueued",
 		"job_id", id,
 		"request_id", requestID,
-		"user_id", userID,
-		"image_url", req.ImageTempURL)
+		"user_id", userID)
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(models.SubmitEKGResponse{
-		JobID:     id.String(),
-		RequestID: requestID.String(),
+	writeJSON(w, http.StatusOK, SubmitEKGResponse{
+		JobID:     id,
+		RequestID: requestID,
 		Status:    string(j.Status),
 		Message:   "EKG analysis job submitted successfully",
 	})
 }
-

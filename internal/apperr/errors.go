@@ -1,4 +1,4 @@
-package common
+package apperr
 
 import (
 	"errors"
@@ -29,21 +29,6 @@ var (
 	// Validation errors
 	ErrValidation = errors.New("validation error")
 )
-
-// ValidationError represents a validation error with field details
-type ValidationError struct {
-	Field   string
-	Message string
-}
-
-func (e ValidationError) Error() string {
-	return fmt.Sprintf("%s: %s", e.Field, e.Message)
-}
-
-// Is implements errors.Is for ValidationError
-func (e ValidationError) Is(target error) bool {
-	return target == ErrValidation
-}
 
 // WrapNotFound wraps an error as a not found error with context
 func WrapNotFound(resource string, err error) error {

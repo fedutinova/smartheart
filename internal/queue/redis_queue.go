@@ -10,9 +10,15 @@ import (
 	"time"
 
 	"github.com/fedutinova/smartheart/internal/job"
-	"github.com/fedutinova/smartheart/internal/memq"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
+)
+
+const (
+	maxRetries        = 3 // max retries before dead-letter
+	cleanupInterval   = 5 * time.Minute
+	cleanupMaxAge     = 30 * time.Minute
+	consumerBlockTime = 5 * time.Second
 )
 
 // RedisQueue implements JobQueue using Redis Streams
@@ -24,8 +30,7 @@ type RedisQueue struct {
 	claimInterval time.Duration // how often to check for stuck jobs
 	claimTimeout  time.Duration // consider job stuck after this duration
 
-	mu      sync.RWMutex
-	jobs    map[uuid.UUID]*job.Job // local cache for status lookups
+	cache   *job.Cache
 	wg      sync.WaitGroup
 	closing chan struct{}
 }
@@ -59,7 +64,7 @@ func NewRedisQueue(client *redis.Client, cfg RedisQueueConfig) (*RedisQueue, err
 		maxWait:       cfg.MaxJobTime,
 		claimInterval: cfg.ClaimInterval,
 		claimTimeout:  cfg.ClaimTimeout,
-		jobs:          make(map[uuid.UUID]*job.Job),
+		cache:         job.NewCache(0).WithMaxSize(10000),
 		closing:       make(chan struct{}),
 	}
 
@@ -87,16 +92,12 @@ func (q *RedisQueue) Enqueue(ctx context.Context, j *job.Job) (uuid.UUID, error)
 	j.Status = job.StatusQueued
 	j.Enqueued = time.Now()
 
-	q.mu.Lock()
-	q.jobs[j.ID] = j
-	q.mu.Unlock()
+	q.cache.Put(j)
 
 	// Serialize job
 	data, err := json.Marshal(j)
 	if err != nil {
-		q.mu.Lock()
-		delete(q.jobs, j.ID)
-		q.mu.Unlock()
+		q.cache.Delete(j.ID)
 		return uuid.Nil, fmt.Errorf("failed to marshal job: %w", err)
 	}
 
@@ -109,9 +110,7 @@ func (q *RedisQueue) Enqueue(ctx context.Context, j *job.Job) (uuid.UUID, error)
 		},
 	}).Result()
 	if err != nil {
-		q.mu.Lock()
-		delete(q.jobs, j.ID)
-		q.mu.Unlock()
+		q.cache.Delete(j.ID)
 		return uuid.Nil, fmt.Errorf("failed to add job to stream: %w", err)
 	}
 
@@ -121,15 +120,13 @@ func (q *RedisQueue) Enqueue(ctx context.Context, j *job.Job) (uuid.UUID, error)
 
 // Status returns the current status of a job
 func (q *RedisQueue) Status(ctx context.Context, id uuid.UUID) (*job.Job, bool) {
-	q.mu.RLock()
-	defer q.mu.RUnlock()
-	j, ok := q.jobs[id]
-	return j, ok
+	return q.cache.Get(id)
 }
 
 // Len returns approximate number of pending jobs
 func (q *RedisQueue) Len() int {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	info, err := q.client.XInfoGroups(ctx, q.stream).Result()
 	if err != nil {
 		return 0
@@ -143,7 +140,7 @@ func (q *RedisQueue) Len() int {
 }
 
 // StartConsumers starts n consumer goroutines
-func (q *RedisQueue) StartConsumers(ctx context.Context, n int, handler memq.JobHandler) {
+func (q *RedisQueue) StartConsumers(ctx context.Context, n int, handler job.Handler) {
 	// Start consumers
 	for i := 0; i < n; i++ {
 		q.wg.Add(1)
@@ -154,11 +151,29 @@ func (q *RedisQueue) StartConsumers(ctx context.Context, n int, handler memq.Job
 	q.wg.Add(1)
 	go q.claimer(ctx, handler)
 
+	// Periodically clean up finished jobs older than cleanupMaxAge
+	q.wg.Add(1)
+	go func() {
+		defer q.wg.Done()
+		ticker := time.NewTicker(cleanupInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-q.closing:
+				return
+			case <-ticker.C:
+				q.cache.CleanupOlderThan(cleanupMaxAge)
+			}
+		}
+	}()
+
 	slog.Info("Started queue consumers", "count", n)
 }
 
 // consumer processes jobs from the stream
-func (q *RedisQueue) consumer(ctx context.Context, workerID int, handler memq.JobHandler) {
+func (q *RedisQueue) consumer(ctx context.Context, workerID int, handler job.Handler) {
 	defer q.wg.Done()
 	consumerName := fmt.Sprintf("worker-%d", workerID)
 
@@ -179,7 +194,7 @@ func (q *RedisQueue) consumer(ctx context.Context, workerID int, handler memq.Jo
 			Consumer: consumerName,
 			Streams:  []string{q.stream, ">"},
 			Count:    1,
-			Block:    5 * time.Second,
+			Block:    consumerBlockTime,
 		}).Result()
 
 		if err != nil {
@@ -200,7 +215,7 @@ func (q *RedisQueue) consumer(ctx context.Context, workerID int, handler memq.Jo
 }
 
 // claimer reclaims stuck jobs from dead consumers
-func (q *RedisQueue) claimer(ctx context.Context, handler memq.JobHandler) {
+func (q *RedisQueue) claimer(ctx context.Context, handler job.Handler) {
 	defer q.wg.Done()
 	ticker := time.NewTicker(q.claimInterval)
 	defer ticker.Stop()
@@ -218,7 +233,7 @@ func (q *RedisQueue) claimer(ctx context.Context, handler memq.JobHandler) {
 }
 
 // claimStuckJobs finds and reclaims jobs that have been pending too long
-func (q *RedisQueue) claimStuckJobs(ctx context.Context, handler memq.JobHandler) {
+func (q *RedisQueue) claimStuckJobs(ctx context.Context, handler job.Handler) {
 	// Get pending entries that are older than claimTimeout
 	pending, err := q.client.XPendingExt(ctx, &redis.XPendingExtArgs{
 		Stream: q.stream,
@@ -261,19 +276,23 @@ func (q *RedisQueue) claimStuckJobs(ctx context.Context, handler memq.JobHandler
 				"retry_count", p.RetryCount)
 
 			// Check retry count - if too many retries, move to dead letter
-			if p.RetryCount > 3 {
+			if p.RetryCount > maxRetries {
 				q.moveToDeadLetter(ctx, msg, fmt.Sprintf("exceeded max retries: %d", p.RetryCount))
 				continue
 			}
 
-			// Reprocess
-			go q.processMessage(ctx, msg, handler, 0)
+			// Reprocess in a tracked goroutine to avoid leaks on shutdown
+			q.wg.Add(1)
+			go func(m redis.XMessage) {
+				defer q.wg.Done()
+				q.processMessage(ctx, m, handler, 0)
+			}(msg)
 		}
 	}
 }
 
 // processMessage handles a single message from the stream
-func (q *RedisQueue) processMessage(ctx context.Context, msg redis.XMessage, handler memq.JobHandler, workerID int) {
+func (q *RedisQueue) processMessage(ctx context.Context, msg redis.XMessage, handler job.Handler, workerID int) {
 	// Parse job data
 	data, ok := msg.Values["data"].(string)
 	if !ok {
@@ -289,41 +308,26 @@ func (q *RedisQueue) processMessage(ctx context.Context, msg redis.XMessage, han
 		return
 	}
 
-	// Update job status
-	now := time.Now()
-	j.Status = job.StatusRunning
-	j.Started = &now
+	j.SetRunning()
+	q.cache.Put(&j)
 
-	// Update cache with running status
-	q.mu.Lock()
-	q.jobs[j.ID] = &j
-	q.mu.Unlock()
-
-	slog.Info("Processing job", "job_id", j.ID, "type", j.Type, "worker", workerID)
+	slog.Info("processing job", "job_id", j.ID, "type", j.Type, "worker", workerID)
 
 	// Execute with timeout
 	runCtx, cancel := context.WithTimeout(ctx, q.maxWait)
 	err := handler(runCtx, &j)
 	cancel()
 
-	// Update final status
-	fin := time.Now()
-	j.Finished = &fin
+	j.SetFinished(err)
 
 	if err != nil {
-		j.Status = job.StatusFailed
-		j.Error = err.Error()
-		slog.Error("Job failed", "job_id", j.ID, "type", j.Type, "error", err, "worker", workerID)
+		slog.Error("job failed", "job_id", j.ID, "type", j.Type, "error", err, "worker", workerID)
 	} else {
-		j.Status = job.StatusSucceeded
-		slog.Info("Job completed", "job_id", j.ID, "type", j.Type, "worker", workerID,
-			"duration", fin.Sub(*j.Started))
+		slog.Info("job completed", "job_id", j.ID, "type", j.Type, "worker", workerID)
 	}
 
 	// Update cache with final status
-	q.mu.Lock()
-	q.jobs[j.ID] = &j
-	q.mu.Unlock()
+	q.cache.Put(&j)
 
 	// Acknowledge the message
 	q.ackMessage(ctx, msg.ID)
@@ -344,12 +348,14 @@ func (q *RedisQueue) moveToDeadLetter(ctx context.Context, msg redis.XMessage, r
 	}).Result()
 
 	if err != nil {
-		slog.Error("Failed to move to dead letter", "message_id", msg.ID, "error", err)
-	} else {
-		slog.Warn("Moved job to dead letter queue", "message_id", msg.ID, "reason", reason)
+		slog.Error("Failed to move to dead letter, not acking original message",
+			"message_id", msg.ID, "error", err)
+		return // Don't ACK — message stays pending so claimer can retry
 	}
 
-	// Ack the original message
+	slog.Warn("Moved job to dead letter queue", "message_id", msg.ID, "reason", reason)
+
+	// Only ACK after successful DL insert to avoid message loss
 	q.ackMessage(ctx, msg.ID)
 }
 

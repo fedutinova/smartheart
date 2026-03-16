@@ -11,7 +11,6 @@ import (
 
 type Claims struct {
 	UserID string   `json:"user_id"`
-	Sub    string   `json:"sub"`
 	Roles  []string `json:"roles"`
 	jwt.RegisteredClaims
 }
@@ -21,18 +20,21 @@ type TokenPair struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
-func NewToken(secret, issuer, subject string, roles []string, ttl time.Duration) (string, error) {
+func NewToken(secret, issuer, subject string, roles []string, ttl time.Duration, audiences ...string) (string, error) {
 	now := time.Now()
+	aud := audiences
+	if len(aud) == 0 {
+		aud = []string{"smartheart"}
+	}
 	cl := Claims{
 		UserID: subject,
-		Sub:    subject,
 		Roles:  roles,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    issuer,
 			Subject:   subject,
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
-			Audience:  []string{"smartheart"}, // TODO change this later
+			Audience:  aud,
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, cl)

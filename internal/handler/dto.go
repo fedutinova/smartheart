@@ -1,4 +1,4 @@
-package models
+package handler
 
 import "github.com/google/uuid"
 
@@ -26,8 +26,8 @@ type SubmitGPTResponse struct {
 
 // SubmitEKGResponse is returned when an EKG analysis job is enqueued.
 type SubmitEKGResponse struct {
-	JobID     string `json:"job_id"`
-	RequestID string `json:"request_id"`
-	Status    string `json:"status"`
-	Message   string `json:"message"`
+	JobID     uuid.UUID `json:"job_id"`
+	RequestID uuid.UUID `json:"request_id"`
+	Status    string    `json:"status"`
+	Message   string    `json:"message"`
 }

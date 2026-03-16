@@ -11,12 +11,19 @@ import (
 	"time"
 
 	"github.com/fedutinova/smartheart/internal/storage"
+	"github.com/fedutinova/smartheart/internal/validation"
 	"github.com/sashabaranov/go-openai"
 )
+
+// Processor is the interface for GPT processing, enabling testability.
+type Processor interface {
+	ProcessRequest(ctx context.Context, textQuery string, fileKeys []string) (*ProcessResult, error)
+}
 
 type Client struct {
 	openAI      *openai.Client
 	storage     storage.Storage
+	model       string                // GPT model name
 	imageDetail openai.ImageURLDetail // Detail level for images (Auto, Low, High)
 	timeout     time.Duration         // Request timeout
 }
@@ -38,6 +45,15 @@ func WithTimeout(timeout time.Duration) ClientOption {
 	}
 }
 
+// WithModel sets the GPT model name
+func WithModel(model string) ClientOption {
+	return func(c *Client) {
+		if model != "" {
+			c.model = model
+		}
+	}
+}
+
 type ProcessResult struct {
 	Content          string
 	Model            string
@@ -49,8 +65,9 @@ func NewClient(apiKey string, storageService storage.Storage, opts ...ClientOpti
 	client := &Client{
 		openAI:      openai.NewClient(apiKey),
 		storage:     storageService,
-		imageDetail: openai.ImageURLDetailAuto, // Default to Auto for cost/performance balance
-		timeout:     60 * time.Second,          // Default timeout
+		model:       openai.GPT4o,
+		imageDetail: openai.ImageURLDetailAuto,
+		timeout:     60 * time.Second,
 	}
 	for _, opt := range opts {
 		opt(client)
@@ -61,7 +78,6 @@ func NewClient(apiKey string, storageService storage.Storage, opts ...ClientOpti
 func (c *Client) ProcessRequest(ctx context.Context, textQuery string, fileKeys []string) (*ProcessResult, error) {
 	start := time.Now()
 
-	// Add timeout to context
 	reqCtx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
 
@@ -85,8 +101,7 @@ func (c *Client) ProcessRequest(ctx context.Context, textQuery string, fileKeys 
 
 	var content []openai.ChatMessagePart
 
-	// Add images FIRST, then text query
-	// OpenAI recommends this order for better image understanding
+	// Add images FIRST, then text query (OpenAI recommends this order)
 	for _, key := range fileKeys {
 		filePart, err := c.createMessagePartFromFile(reqCtx, key)
 		if err != nil {
@@ -95,22 +110,9 @@ func (c *Client) ProcessRequest(ctx context.Context, textQuery string, fileKeys 
 		}
 		if filePart != nil {
 			content = append(content, *filePart)
-			if filePart.Type == openai.ChatMessagePartTypeImageURL {
-				// Log only non-sensitive metadata
-				slog.Info("added image to GPT request",
-					"key", key,
-					"detail", filePart.ImageURL.Detail)
-			} else {
-				slog.Warn("added non-image file to GPT request",
-					"key", key,
-					"type", filePart.Type)
-			}
-		} else {
-			slog.Error("filePart is nil after processing", "key", key)
 		}
 	}
 
-	// Add text query AFTER images
 	if textQuery != "" {
 		content = append(content, openai.ChatMessagePart{
 			Type: openai.ChatMessagePartTypeText,
@@ -122,79 +124,25 @@ func (c *Client) ProcessRequest(ctx context.Context, textQuery string, fileKeys 
 		return nil, fmt.Errorf("no valid content to process")
 	}
 
-	imagesCount := 0
-	for _, part := range content {
-		if part.Type == openai.ChatMessagePartTypeImageURL {
-			imagesCount++
-		}
-	}
-
-	slog.Info("GPT request prepared",
-		"text_query_length", len(textQuery),
-		"files_count", len(fileKeys),
-		"images_count", imagesCount,
-		"content_parts", len(content),
-		"has_image", imagesCount > 0)
-
-	// Verify that we have at least one image part
-	if imagesCount == 0 && len(fileKeys) > 0 {
-		slog.Error("WARNING: fileKeys provided but no images in content!",
-			"file_keys", fileKeys,
-			"content_parts_count", len(content))
-	}
-
 	messages = append(messages, openai.ChatCompletionMessage{
 		Role:         openai.ChatMessageRoleUser,
 		MultiContent: content,
 	})
 
 	slog.Info("sending request to OpenAI",
-		"model", openai.GPT4o,
-		"messages_count", len(messages),
-		"content_parts_in_user_message", len(content))
+		"model", c.model,
+		"files", len(fileKeys),
+		"content_parts", len(content))
 
 	resp, err := c.openAI.CreateChatCompletion(reqCtx, openai.ChatCompletionRequest{
-		// Using gpt-4o for better image analysis capabilities
-		Model:     openai.GPT4o,
+		Model:     c.model,
 		Messages:  messages,
-		MaxTokens: 2000, // Increased for detailed medical analysis
+		MaxTokens: 2000,
 	})
 	if err != nil {
-		logAttrs := []any{
-			"error", err.Error(),
-			"model", string(openai.GPT4o),
-			"messages", len(messages),
-			"content_parts", len(content),
-		}
-		errorStr := err.Error()
-
-		// Check for specific error types
-		if strings.Contains(errorStr, "insufficient_quota") || strings.Contains(errorStr, "quota") {
-			slog.Error("OpenAI API error: Insufficient quota/tokens", append(logAttrs, "hint", "Check your OpenAI account balance and usage limits")...)
-			return nil, fmt.Errorf("OpenAI API quota exceeded: %w", err)
-		}
-		if strings.Contains(errorStr, "invalid_api_key") || strings.Contains(errorStr, "authentication") {
-			slog.Error("OpenAI API error: Invalid API key", append(logAttrs, "hint", "Check OPENAI_API_KEY environment variable")...)
-			return nil, fmt.Errorf("OpenAI API authentication failed: %w", err)
-		}
-		if strings.Contains(errorStr, "rate_limit") {
-			slog.Error("OpenAI API error: Rate limit exceeded", append(logAttrs, "hint", "Too many requests, please retry later")...)
-			return nil, fmt.Errorf("OpenAI API rate limit exceeded: %w", err)
-		}
-		if strings.Contains(errorStr, "content_filter") || strings.Contains(errorStr, "safety") {
-			slog.Error("OpenAI API error: Content filtered/safety", append(logAttrs, "hint", "Request was filtered by content moderation")...)
-			return nil, fmt.Errorf("OpenAI API content filtered: %w", err)
-		}
-		if reqCtx.Err() == context.DeadlineExceeded {
-			slog.Error("OpenAI API error: Timeout", append(logAttrs, "timeout", c.timeout)...)
-			return nil, fmt.Errorf("OpenAI API request timeout: %w", err)
-		}
-
-		slog.Error("OpenAI API error: Unknown error", logAttrs...)
-		return nil, fmt.Errorf("OpenAI API error: %w", err)
+		return nil, classifyOpenAIError(err, reqCtx, c.timeout)
 	}
 
-	// Check response validity BEFORE accessing Choices[0]
 	if len(resp.Choices) == 0 {
 		slog.Error("OpenAI API returned empty choices",
 			"model", resp.Model,
@@ -206,26 +154,13 @@ func (c *Client) ProcessRequest(ctx context.Context, textQuery string, fileKeys 
 	responseContent := resp.Choices[0].Message.Content
 
 	if IsRefusal(responseContent) {
-		slog.Warn("OpenAI returned refusal message",
-			"response_length", len(responseContent),
-			"response_preview", func() string {
-				if len(responseContent) > 200 {
-					return responseContent[:200] + "..."
-				}
-				return responseContent
-			}(),
-			"hint", "This might be due to content moderation or safety filters",
-			"tokens_used", resp.Usage.TotalTokens,
-			"finish_reason", resp.Choices[0].FinishReason)
+		slog.Warn("OpenAI returned refusal", "tokens", resp.Usage.TotalTokens, "finish_reason", resp.Choices[0].FinishReason)
 	}
 
-	slog.Info("received response from OpenAI",
+	slog.Info("OpenAI response received",
 		"model", resp.Model,
-		"tokens_prompt", resp.Usage.PromptTokens,
-		"tokens_completion", resp.Usage.CompletionTokens,
-		"tokens_total", resp.Usage.TotalTokens,
-		"response_length", len(responseContent),
-		"finish_reason", resp.Choices[0].FinishReason)
+		"tokens", resp.Usage.TotalTokens,
+		"response_len", len(responseContent))
 
 	processingTime := time.Since(start)
 
@@ -238,115 +173,36 @@ func (c *Client) ProcessRequest(ctx context.Context, textQuery string, fileKeys 
 }
 
 func (c *Client) createMessagePartFromFile(ctx context.Context, key string) (*openai.ChatMessagePart, error) {
-	// First, check if we need to detect content type
 	reader, contentType, err := c.storage.GetFile(ctx, key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get file from storage: %w", err)
 	}
+	defer reader.Close()
 
-	// Detect content type if not provided or generic
+	const maxFileSize = 20 * 1024 * 1024 // 20 MB
+	data, err := io.ReadAll(io.LimitReader(reader, maxFileSize+1))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file data: %w", err)
+	}
+	if len(data) == 0 {
+		return nil, fmt.Errorf("file is empty: %s", key)
+	}
+	if len(data) > maxFileSize {
+		return nil, fmt.Errorf("file too large: %s (%d bytes, max %d)", key, len(data), maxFileSize)
+	}
+
+	// Detect content type from file header if not provided or generic
 	if contentType == "" || contentType == "application/octet-stream" {
-		buffer := make([]byte, 512)
-		n, readErr := reader.Read(buffer)
-		reader.Close() // Close after reading header
-
-		if readErr != nil && readErr != io.EOF {
-			return nil, fmt.Errorf("failed to read file header: %w", readErr)
-		}
-
-		detected := http.DetectContentType(buffer[:n])
+		sniffLen := min(512, len(data))
+		detected := http.DetectContentType(data[:sniffLen])
 		if detected != "application/octet-stream" {
 			contentType = detected
 			slog.Debug("detected content type", "key", key, "detected_type", contentType)
 		}
-	} else {
-		reader.Close() // Close if we don't need it
 	}
 
-	// For images, check if we can use presigned URL or need base64
 	if isImageType(contentType) {
-		// Try to get presigned URL first
-		presignedURL, err := c.storage.GetPresignedURL(ctx, key, 10*time.Minute)
-		if err != nil {
-			slog.Warn("failed to get presigned URL, falling back to base64", "key", key, "error", err)
-			// Fall through to base64 encoding
-		} else {
-			// Check if URL is publicly accessible (not localhost)
-			// OpenAI cannot access localhost URLs
-			if !strings.Contains(presignedURL, "localhost") && !strings.Contains(presignedURL, "127.0.0.1") && !strings.Contains(presignedURL, "::1") {
-				slog.Info("using presigned URL for image",
-					"key", key,
-					"content_type", contentType,
-					"detail", c.imageDetail)
-
-				return &openai.ChatMessagePart{
-					Type: openai.ChatMessagePartTypeImageURL,
-					ImageURL: &openai.ChatMessageImageURL{
-						URL:    presignedURL,
-						Detail: c.imageDetail,
-					},
-				}, nil
-			}
-			slog.Info("presigned URL is localhost, using base64 instead",
-				"key", key,
-				"url", presignedURL)
-			// Fall through to base64 encoding for localhost
-		}
-
-		// For local storage or when presigned URL is not available/public,
-		// use base64 encoding (less efficient but works everywhere)
-		reader, _, err := c.storage.GetFile(ctx, key)
-		if err != nil {
-			return nil, fmt.Errorf("failed to re-open file for base64 encoding: %w", err)
-		}
-		defer reader.Close()
-
-		data, err := io.ReadAll(reader)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read file data: %w", err)
-		}
-
-		// Check size limit (OpenAI limit is ~20MB for base64)
-		const maxBase64Size = 20 * 1024 * 1024     // 20MB
-		estimatedBase64Size := (len(data) * 4) / 3 // Approximate base64 size
-		if estimatedBase64Size > maxBase64Size {
-			return nil, fmt.Errorf("image too large for base64 encoding: %d bytes (estimated base64: %d)", len(data), estimatedBase64Size)
-		}
-
-		encodedData := base64.StdEncoding.EncodeToString(data)
-
-		imageURL := fmt.Sprintf("data:%s;base64,%s", contentType, encodedData)
-
-		slog.Info("using base64 encoding for image",
-			"key", key,
-			"content_type", contentType,
-			"original_size", len(data),
-			"base64_size", len(encodedData),
-			"detail", c.imageDetail)
-
-		return &openai.ChatMessagePart{
-			Type: openai.ChatMessagePartTypeImageURL,
-			ImageURL: &openai.ChatMessageImageURL{
-				URL:    imageURL,
-				Detail: c.imageDetail,
-			},
-		}, nil
-	}
-
-	// For non-images, read the full data
-	reader, _, err = c.storage.GetFile(ctx, key)
-	if err != nil {
-		return nil, fmt.Errorf("failed to re-open file for reading: %w", err)
-	}
-	defer reader.Close()
-
-	data, err := io.ReadAll(reader)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file data: %w", err)
-	}
-
-	if len(data) == 0 {
-		return nil, fmt.Errorf("file is empty: %s", key)
+		return c.buildImagePart(ctx, key, data, contentType)
 	}
 
 	if isTextType(contentType) {
@@ -362,15 +218,88 @@ func (c *Client) createMessagePartFromFile(ctx context.Context, key string) (*op
 	}, nil
 }
 
-func isImageType(contentType string) bool {
-	imageTypes := map[string]bool{
-		"image/jpeg": true,
-		"image/jpg":  true,
-		"image/png":  true,
-		"image/gif":  true,
-		"image/webp": true,
+// buildImagePart creates an image message part, preferring presigned URL over base64.
+func (c *Client) buildImagePart(ctx context.Context, key string, data []byte, contentType string) (*openai.ChatMessagePart, error) {
+	// Try presigned URL first — avoids base64 overhead
+	presignedURL, err := c.storage.GetPresignedURL(ctx, key, 10*time.Minute)
+	if err == nil && !isLocalhostURL(presignedURL) {
+		slog.Info("using presigned URL for image", "key", key, "content_type", contentType, "detail", c.imageDetail)
+		return &openai.ChatMessagePart{
+			Type: openai.ChatMessagePartTypeImageURL,
+			ImageURL: &openai.ChatMessageImageURL{
+				URL:    presignedURL,
+				Detail: c.imageDetail,
+			},
+		}, nil
 	}
-	return imageTypes[contentType]
+
+	// Fall back to base64 encoding
+	const maxBase64Size = 20 * 1024 * 1024
+	estimatedBase64Size := (len(data) * 4) / 3
+	if estimatedBase64Size > maxBase64Size {
+		return nil, fmt.Errorf("image too large for base64 encoding: %d bytes (estimated base64: %d)", len(data), estimatedBase64Size)
+	}
+
+	encodedData := base64.StdEncoding.EncodeToString(data)
+	imageURL := fmt.Sprintf("data:%s;base64,%s", contentType, encodedData)
+
+	slog.Info("using base64 encoding for image",
+		"key", key,
+		"content_type", contentType,
+		"original_size", len(data),
+		"detail", c.imageDetail)
+
+	return &openai.ChatMessagePart{
+		Type: openai.ChatMessagePartTypeImageURL,
+		ImageURL: &openai.ChatMessageImageURL{
+			URL:    imageURL,
+			Detail: c.imageDetail,
+		},
+	}, nil
+}
+
+// isLocalhostURL checks whether a URL points to a local address that OpenAI cannot reach.
+func isLocalhostURL(u string) bool {
+	return strings.Contains(u, "localhost") || strings.Contains(u, "127.0.0.1") || strings.Contains(u, "::1")
+}
+
+// classifyOpenAIError wraps an OpenAI API error with a descriptive message based on its type.
+func classifyOpenAIError(err error, reqCtx context.Context, timeout time.Duration) error {
+	errStr := err.Error()
+
+	type errClass struct {
+		keywords []string
+		message  string
+		hint     string
+	}
+
+	classes := []errClass{
+		{[]string{"insufficient_quota", "quota"}, "OpenAI API quota exceeded", "Check your OpenAI account balance and usage limits"},
+		{[]string{"invalid_api_key", "authentication"}, "OpenAI API authentication failed", "Check OPENAI_API_KEY environment variable"},
+		{[]string{"rate_limit"}, "OpenAI API rate limit exceeded", "Too many requests, please retry later"},
+		{[]string{"content_filter", "safety"}, "OpenAI API content filtered", "Request was filtered by content moderation"},
+	}
+
+	for _, c := range classes {
+		for _, kw := range c.keywords {
+			if strings.Contains(errStr, kw) {
+				slog.Error(c.message, "error", err, "hint", c.hint)
+				return fmt.Errorf("%s: %w", c.message, err)
+			}
+		}
+	}
+
+	if reqCtx.Err() == context.DeadlineExceeded {
+		slog.Error("OpenAI API request timeout", "error", err, "timeout", timeout)
+		return fmt.Errorf("OpenAI API request timeout: %w", err)
+	}
+
+	slog.Error("OpenAI API error", "error", err)
+	return fmt.Errorf("OpenAI API error: %w", err)
+}
+
+func isImageType(contentType string) bool {
+	return validation.IsImageType(contentType)
 }
 
 func isTextType(contentType string) bool {

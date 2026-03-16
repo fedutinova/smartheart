@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/fedutinova/smartheart/internal/auth"
-	"github.com/fedutinova/smartheart/internal/common"
+	"github.com/fedutinova/smartheart/internal/apperr"
 	"github.com/fedutinova/smartheart/internal/models"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -18,16 +18,10 @@ import (
 
 // GetUserRequests returns requests for the authenticated user with pagination.
 // Query params: ?limit=N&offset=N (defaults: limit=50, offset=0)
-func (h *Handlers) GetUserRequests(w http.ResponseWriter, r *http.Request) {
-	claims, ok := auth.FromContext(r.Context())
+func (h *RequestHandler) GetUserRequests(w http.ResponseWriter, r *http.Request) {
+	userID, _, ok := extractUserID(r)
 	if !ok {
-		http.Error(w, "no auth context", http.StatusUnauthorized)
-		return
-	}
-
-	userID, err := uuid.Parse(claims.UserID)
-	if err != nil {
-		http.Error(w, "invalid user ID", http.StatusBadRequest)
+		writeError(w, http.StatusUnauthorized, "no auth context")
 		return
 	}
 
@@ -47,178 +41,130 @@ func (h *Handlers) GetUserRequests(w http.ResponseWriter, r *http.Request) {
 	requests, err := h.Repo.GetRequestsByUserID(r.Context(), userID, limit, offset)
 	if err != nil {
 		slog.Error("failed to get user requests", "user_id", userID, "error", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(requests); err != nil {
-		slog.Warn("encode requests", "err", err)
+	// Ensure JSON serializes as [] instead of null for empty results.
+	if requests == nil {
+		requests = []models.Request{}
 	}
+
+	writeJSON(w, http.StatusOK, requests)
 }
 
 // GetRequest returns a specific request by ID
-func (h *Handlers) GetRequest(w http.ResponseWriter, r *http.Request) {
+func (h *RequestHandler) GetRequest(w http.ResponseWriter, r *http.Request) {
 	raw := chi.URLParam(r, "id")
 	id, err := uuid.Parse(raw)
 	if err != nil {
-		http.Error(w, "bad id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "bad id")
 		return
 	}
 
-	claims, ok := auth.FromContext(r.Context())
+	_, claims, ok := extractUserID(r)
 	if !ok {
-		http.Error(w, "no auth context", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "no auth context")
 		return
 	}
 
 	request, err := h.Repo.GetRequestByID(r.Context(), id)
 	if err != nil {
-		if common.IsNotFound(err) {
-			http.Error(w, "not found", http.StatusNotFound)
+		if apperr.IsNotFound(err) {
+			writeError(w, http.StatusNotFound, "not found")
 			return
 		}
 		slog.Error("failed to get request", "id", id, "error", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 
-	perms := auth.PermsForRoles(claims.Roles)
-
-	// Check access permissions
-	if _, hasAdminPerm := perms[auth.PermAdminAll]; !hasAdminPerm {
-		if _, hasReadAllPerm := perms[auth.PermJobReadAll]; !hasReadAllPerm {
-			userID, err := uuid.Parse(claims.UserID)
-			if err != nil || request.UserID != userID {
-				http.Error(w, "forbidden", http.StatusForbidden)
-				return
-			}
-		}
+	if !auth.CanAccessResource(claims, request.UserID) {
+		writeError(w, http.StatusForbidden, "forbidden")
+		return
 	}
 
 	// Enrich and parse EKG responses
 	if request.Response != nil && request.Response.Model == models.EKGModelDirect {
-		h.enrichEKGResponse(r, request, claims, perms)
+		enrichEKGResponse(r.Context(), h.Repo, request, claims)
 
 		if parsed, err := request.Response.ParseContent(); err == nil {
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(request.WithParsedResponse(parsed)); err != nil {
-				slog.Warn("encode request", "err", err)
-			}
+			writeJSON(w, http.StatusOK, request.WithParsedResponse(parsed))
 			return
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(request); err != nil {
-		slog.Warn("encode request", "err", err)
-	}
-}
-
-// enrichEKGResponse adds GPT interpretation to EKG response
-func (h *Handlers) enrichEKGResponse(r *http.Request, request *models.Request, claims *auth.Claims, perms map[string]struct{}) {
-	ekg, err := models.ParseEKGContent(request.Response.Content)
-	if err != nil || ekg == nil || ekg.GPTRequestID == "" {
-		return
-	}
-
-	gptRequestID, err := uuid.Parse(ekg.GPTRequestID)
-	if err != nil {
-		return
-	}
-
-	gptRequest, err := h.Repo.GetRequestByID(r.Context(), gptRequestID)
-	if err != nil {
-		return
-	}
-
-	// Check permissions for GPT request
-	hasAccess := false
-	if _, hasAdminPerm := perms[auth.PermAdminAll]; hasAdminPerm {
-		hasAccess = true
-	} else if _, hasReadAllPerm := perms[auth.PermJobReadAll]; hasReadAllPerm {
-		hasAccess = true
-	} else {
-		userID, _ := uuid.Parse(claims.UserID)
-		hasAccess = (gptRequest.UserID == userID)
-	}
-
-	if !hasAccess {
-		return
-	}
-
-	ekg.GPTInterpretationStatus = gptRequest.Status
-	if gptRequest.Status == models.StatusCompleted && gptRequest.Response != nil {
-		gptContent := gptRequest.Response.Content
-		conclusion := extractConclusion(gptContent)
-		ekg.GPTInterpretation = &conclusion
-		ekg.GPTFullResponse = &gptContent
-	} else if gptRequest.Status == models.StatusFailed {
-		failed := "GPT analysis failed"
-		ekg.GPTInterpretation = &failed
-	}
-
-	if updatedContent, err := ekg.Marshal(); err == nil {
-		request.Response.Content = updatedContent
-	}
+	writeJSON(w, http.StatusOK, request)
 }
 
 // GetJob returns the status of a job by ID
-func (h *Handlers) GetJob(w http.ResponseWriter, r *http.Request) {
+func (h *RequestHandler) GetJob(w http.ResponseWriter, r *http.Request) {
 	raw := chi.URLParam(r, "id")
 	id, err := uuid.Parse(raw)
 	if err != nil {
-		http.Error(w, "bad id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "bad id")
 		return
 	}
 
-	claims, ok := auth.FromContext(r.Context())
+	_, claims, ok := extractUserID(r)
 	if !ok {
-		http.Error(w, "no auth context", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "no auth context")
 		return
 	}
 
-	j, ok := h.Q.Status(r.Context(), id)
+	j, ok := h.Queue.Status(r.Context(), id)
 	if !ok {
-		http.Error(w, "not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "not found")
 		return
 	}
 
 	// Check ownership unless admin or read-all
-	perms := auth.PermsForRoles(claims.Roles)
-	if _, hasAdmin := perms[auth.PermAdminAll]; !hasAdmin {
-		if _, hasReadAll := perms[auth.PermJobReadAll]; !hasReadAll {
-			var payload struct {
-				UserID string `json:"user_id"`
-			}
-			if err := json.Unmarshal(j.Payload, &payload); err != nil || payload.UserID != claims.UserID {
-				http.Error(w, "forbidden", http.StatusForbidden)
-				return
-			}
-		}
+	var payload struct {
+		UserID uuid.UUID `json:"user_id"`
+	}
+	if err := json.Unmarshal(j.Payload, &payload); err != nil {
+		writeError(w, http.StatusForbidden, "forbidden")
+		return
+	}
+	if !auth.CanAccessResource(claims, payload.UserID) {
+		writeError(w, http.StatusForbidden, "forbidden")
+		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(j); err != nil {
-		slog.Warn("encode job", "err", err)
-	}
+	writeJSON(w, http.StatusOK, j)
 }
 
 // ServeFiles serves static files from local storage
-func (h *Handlers) ServeFiles(w http.ResponseWriter, r *http.Request) {
+func (h *RequestHandler) ServeFiles(w http.ResponseWriter, r *http.Request) {
 	filePath := strings.TrimPrefix(r.URL.Path, "/files/")
 	if filePath == "" {
-		http.Error(w, "file path required", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "file path required")
 		return
 	}
 
-	baseDir := filepath.Clean(h.Config.LocalStorageDir)
-	fullPath := filepath.Join(baseDir, filepath.Clean("/"+filePath))
-	if !strings.HasPrefix(fullPath, baseDir+string(os.PathSeparator)) {
-		http.Error(w, "invalid file path", http.StatusBadRequest)
+	// Resolve baseDir to absolute path to prevent bypass via symlinks
+	baseDir, err := filepath.Abs(filepath.Clean(h.Config.Storage.LocalDir))
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "invalid storage config")
 		return
 	}
 
-	http.ServeFile(w, r, fullPath)
+	// Clean the requested path and join with base
+	cleaned := filepath.Clean("/" + filePath)
+	fullPath := filepath.Join(baseDir, cleaned)
+
+	// Resolve symlinks before checking prefix
+	realPath, err := filepath.EvalSymlinks(fullPath)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "file not found")
+		return
+	}
+
+	// Ensure resolved path is strictly inside base directory (not the directory itself).
+	if !strings.HasPrefix(realPath, baseDir+string(os.PathSeparator)) {
+		writeError(w, http.StatusBadRequest, "invalid file path")
+		return
+	}
+
+	http.ServeFile(w, r, realPath)
 }
-

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -11,15 +10,14 @@ import (
 	"time"
 
 	"github.com/fedutinova/smartheart/internal/auth"
+	"github.com/fedutinova/smartheart/internal/session"
 	appconfig "github.com/fedutinova/smartheart/internal/config"
 	"github.com/fedutinova/smartheart/internal/database"
 	"github.com/fedutinova/smartheart/internal/gpt"
-	"github.com/fedutinova/smartheart/internal/job"
-	"github.com/fedutinova/smartheart/internal/memq"
-	"github.com/fedutinova/smartheart/internal/queue"
-	"github.com/fedutinova/smartheart/internal/redis"
-	"github.com/fedutinova/smartheart/internal/repository"
 	"github.com/fedutinova/smartheart/internal/handler"
+	"github.com/fedutinova/smartheart/internal/job"
+	"github.com/fedutinova/smartheart/internal/queue"
+	"github.com/fedutinova/smartheart/internal/repository"
 	"github.com/fedutinova/smartheart/internal/server"
 	"github.com/fedutinova/smartheart/internal/storage"
 	"github.com/fedutinova/smartheart/internal/workers"
@@ -27,12 +25,15 @@ import (
 
 func main() {
 	cfg := appconfig.Load()
-	slog.Info("starting smartheart", "addr", cfg.HTTPAddr, "workers", cfg.QueueWorkers)
+	slog.Info("starting smartheart", "addr", cfg.HTTPAddr, "workers", cfg.Queue.Workers)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	db, err := database.NewDB(ctx, cfg.DatabaseURL)
+	db, err := database.NewDB(ctx, cfg.DB.URL, func(pc *database.PoolConfig) {
+		pc.MaxConns = int32(cfg.DB.MaxConns)
+		pc.MinConns = int32(cfg.DB.MinConns)
+	})
 	if err != nil {
 		slog.Error("failed to connect to database", "err", err)
 		os.Exit(1)
@@ -48,15 +49,15 @@ func main() {
 	storageType := storage.GetStorageType(cfg)
 	slog.Info("storage initialized", "type", storageType)
 
-	redisService, err := redis.New(cfg.RedisURL)
+	sessions, err := session.New(cfg.RedisURL)
 	if err != nil {
 		slog.Error("failed to connect to Redis", "err", err)
 		os.Exit(1)
 	}
-	defer redisService.Close()
+	defer sessions.Close()
 
-	gptClient := gpt.NewClient(cfg.OpenAIAPIKey, storageService)
-	repo := repository.New(db)
+	gptClient := gpt.NewClient(cfg.GPT.APIKey, storageService, gpt.WithModel(cfg.GPT.Model))
+	repo := repository.New(db, repository.WithQueryTimeout(cfg.DB.QueryTimeout))
 
 	// Load role→permissions mapping from DB so auth middleware uses DB as source of truth
 	if rolePerms, err := repo.LoadRolePermissions(ctx); err != nil {
@@ -67,54 +68,41 @@ func main() {
 	}
 
 	// Initialize job queue based on configuration
-	var q memq.JobQueue
-	switch cfg.QueueMode {
+	var q job.Queue
+	switch cfg.Queue.Mode {
 	case "redis":
-		redisQueue, err := queue.NewRedisQueue(redisService.Client(), queue.RedisQueueConfig{
-			Stream:        cfg.QueueStream,
-			Group:         cfg.QueueGroup,
-			MaxJobTime:    cfg.JobMaxDuration,
+		redisQueue, err := queue.NewRedisQueue(sessions.Client(), queue.RedisQueueConfig{
+			Stream:        cfg.Queue.Stream,
+			Group:         cfg.Queue.Group,
+			MaxJobTime:    cfg.Queue.MaxDuration,
 			ClaimInterval: 10 * time.Second,
-			ClaimTimeout:  cfg.JobClaimTimeout,
+			ClaimTimeout:  cfg.Queue.ClaimTimeout,
 		})
 		if err != nil {
 			slog.Error("failed to create Redis queue", "err", err)
 			os.Exit(1)
 		}
 		q = redisQueue
-		slog.Info("using Redis Streams queue", "stream", cfg.QueueStream, "group", cfg.QueueGroup)
+		slog.Info("using Redis Streams queue", "stream", cfg.Queue.Stream, "group", cfg.Queue.Group)
 	default:
-		q = memq.NewMemoryQueue(cfg.QueueBuf, cfg.JobMaxDuration)
+		q = queue.NewMemoryQueue(cfg.Queue.Buffer, cfg.Queue.MaxDuration)
 		slog.Warn("using in-memory queue (not recommended for production)")
 	}
 	defer q.Close()
 
-	gptHandler := workers.NewGPTHandler(db, gptClient)
+	gptHandler := workers.NewGPTHandler(db, gptClient, repo)
 	ekgHandler := workers.NewEKGHandler(db, q, storageService, repo)
 
-	handlers := &handler.Handlers{
-		Q:       q,
-		Repo:    repo,
-		Storage: storageService,
-		Redis:   redisService,
-		Config:  cfg,
-	}
+	handlers := handler.NewHandler(q, repo, sessions, storageService, cfg)
 	r := server.NewRouter(handlers, cfg)
 
-	// Job handler function
-	jobHandler := func(ctx context.Context, j *job.Job) error {
-		switch j.Type {
-		case job.TypeEKGAnalyze:
-			return ekgHandler.HandleEKGJob(ctx, j)
-		case job.TypeGPTProcess:
-			return gptHandler.HandleGPTJob(ctx, j)
-		default:
-			return fmt.Errorf("unknown job type: %s", j.Type)
-		}
-	}
+	// Register job handlers
+	registry := job.NewRegistry()
+	registry.Register(job.TypeEKGAnalyze, ekgHandler.HandleEKGJob)
+	registry.Register(job.TypeGPTProcess, gptHandler.HandleGPTJob)
 
 	// Start queue consumers
-	q.StartConsumers(ctx, cfg.QueueWorkers, jobHandler)
+	q.StartConsumers(ctx, cfg.Queue.Workers, registry.Dispatch)
 
 	srv := &http.Server{
 		Addr:         cfg.HTTPAddr,
@@ -144,6 +132,8 @@ func main() {
 
 	shCtx, shCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shCancel()
-	_ = srv.Shutdown(shCtx)
+	if err := srv.Shutdown(shCtx); err != nil {
+		slog.Error("HTTP server shutdown error", "err", err)
+	}
 	cancel()
 }

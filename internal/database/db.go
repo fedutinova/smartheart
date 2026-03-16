@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -24,8 +25,38 @@ type DB struct {
 	pool *pgxpool.Pool
 }
 
-func NewDB(ctx context.Context, databaseURL string) (*DB, error) {
-	pool, err := pgxpool.New(ctx, databaseURL)
+// PoolConfig holds optional connection pool tuning parameters.
+type PoolConfig struct {
+	MaxConns          int32
+	MinConns          int32
+	MaxConnLifetime   time.Duration
+	MaxConnIdleTime   time.Duration
+}
+
+func NewDB(ctx context.Context, databaseURL string, opts ...func(*PoolConfig)) (*DB, error) {
+	cfg, err := pgxpool.ParseConfig(databaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse database URL: %w", err)
+	}
+
+	pc := PoolConfig{}
+	for _, o := range opts {
+		o(&pc)
+	}
+	if pc.MaxConns > 0 {
+		cfg.MaxConns = pc.MaxConns
+	}
+	if pc.MinConns > 0 {
+		cfg.MinConns = pc.MinConns
+	}
+	if pc.MaxConnLifetime > 0 {
+		cfg.MaxConnLifetime = pc.MaxConnLifetime
+	}
+	if pc.MaxConnIdleTime > 0 {
+		cfg.MaxConnIdleTime = pc.MaxConnIdleTime
+	}
+
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connection pool: %w", err)
 	}
@@ -34,7 +65,9 @@ func NewDB(ctx context.Context, databaseURL string) (*DB, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	slog.Info("database connection established")
+	slog.Info("database connection established",
+		"max_conns", cfg.MaxConns,
+		"min_conns", cfg.MinConns)
 	return &DB{pool: pool}, nil
 }
 

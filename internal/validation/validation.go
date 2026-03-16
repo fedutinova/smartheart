@@ -14,15 +14,33 @@ const (
 )
 
 var AllowedMimeTypes = map[string]bool{
-	"image/jpeg":                 true,
-	"image/png":                  true,
-	"image/gif":                  true,
-	"image/webp":                 true,
-	"application/pdf":            true,
-	"text/plain":                 true,
-	"application/json":           true,
-	"text/csv":                   true,
-	// TODO add here more filetypes for pics, e.g. HEIC support
+	"image/jpeg":       true,
+	"image/jpg":        true,
+	"image/png":        true,
+	"image/gif":        true,
+	"image/webp":       true,
+	"image/bmp":        true,
+	"image/tiff":       true,
+	"application/pdf":  true,
+	"text/plain":       true,
+	"application/json": true,
+	"text/csv":         true,
+}
+
+// ImageMimeTypes is the subset of AllowedMimeTypes that are image formats.
+var ImageMimeTypes = map[string]bool{
+	"image/jpeg": true,
+	"image/jpg":  true,
+	"image/png":  true,
+	"image/gif":  true,
+	"image/webp": true,
+	"image/bmp":  true,
+	"image/tiff": true,
+}
+
+// IsImageType reports whether the content type is an image format.
+func IsImageType(contentType string) bool {
+	return ImageMimeTypes[contentType]
 }
 
 type ValidationError struct {
@@ -87,8 +105,13 @@ func ValidateGPTRequest(textQuery string, files []*multipart.FileHeader) Validat
 		}
 
 		contentType := file.Header.Get("Content-Type")
-		if contentType == "" {
-			contentType = http.DetectContentType([]byte(file.Filename))
+		if contentType == "" || contentType == "application/octet-stream" {
+			if f, err := file.Open(); err == nil {
+				buf := make([]byte, 512)
+				n, _ := f.Read(buf)
+				contentType = http.DetectContentType(buf[:n])
+				f.Close()
+			}
 		}
 
 		if !AllowedMimeTypes[contentType] {

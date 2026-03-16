@@ -21,7 +21,7 @@ func (r *Repository) CreateResponse(ctx context.Context, resp *models.Response) 
 		VALUES ($1, $2, $3, $4, $5, $6, NOW())
 	`
 
-	_, err := r.q.Exec(ctx, query,
+	_, err := r.querier.Exec(ctx, query,
 		resp.ID,
 		resp.RequestID,
 		resp.Content,
@@ -29,7 +29,10 @@ func (r *Repository) CreateResponse(ctx context.Context, resp *models.Response) 
 		resp.TokensUsed,
 		resp.ProcessingTimeMs,
 	)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to create response: %w", err)
+	}
+	return nil
 }
 
 // GetResponseByRequestID retrieves the latest response for a request
@@ -43,7 +46,7 @@ func (r *Repository) GetResponseByRequestID(ctx context.Context, requestID uuid.
 	`
 
 	var resp models.Response
-	err := r.q.QueryRow(ctx, query, requestID).Scan(
+	err := r.querier.QueryRow(ctx, query, requestID).Scan(
 		&resp.ID,
 		&resp.RequestID,
 		&resp.Content,

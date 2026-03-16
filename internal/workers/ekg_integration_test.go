@@ -23,22 +23,22 @@ func createTestImageServer() *httptest.Server {
 			w.Header().Set("Content-Length", "1024")
 			w.WriteHeader(http.StatusOK)
 			// Write some mock JPEG data
-			w.Write([]byte{0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46})
+			_, _ = w.Write([]byte{0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46})
 		case "/invalid-content-type.txt":
 			w.Header().Set("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("This is not an image"))
+			_, _ = w.Write([]byte("This is not an image"))
 		case "/large-file.jpg":
 			w.Header().Set("Content-Type", "image/jpeg")
 			w.Header().Set("Content-Length", "10485760") // 10MB + 1 byte
 			w.WriteHeader(http.StatusOK)
 			// Write large amount of data
 			for i := 0; i < 1000; i++ {
-				w.Write(make([]byte, 1024))
+				_, _ = w.Write(make([]byte, 1024))
 			}
 		case "/not-found.jpg":
 			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte("Not Found"))
+			_, _ = w.Write([]byte("Not Found"))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -53,7 +53,7 @@ func TestEKGHandler_Integration_ValidImage(t *testing.T) {
 	payload := job.EKGJobPayload{
 		ImageTempURL: server.URL + "/valid-image.jpg",
 		Notes:        "Integration test",
-		UserID:       uuid.New().String(),
+		UserID:       uuid.New(),
 	}
 
 	payloadBytes, _ := json.Marshal(payload)
@@ -78,7 +78,7 @@ func TestEKGHandler_Integration_InvalidContentType(t *testing.T) {
 	payload := job.EKGJobPayload{
 		ImageTempURL: server.URL + "/invalid-content-type.txt",
 		Notes:        "Integration test",
-		UserID:       uuid.New().String(),
+		UserID:       uuid.New(),
 	}
 
 	payloadBytes, _ := json.Marshal(payload)
@@ -104,7 +104,7 @@ func TestEKGHandler_Integration_LargeFile(t *testing.T) {
 	payload := job.EKGJobPayload{
 		ImageTempURL: server.URL + "/large-file.jpg",
 		Notes:        "Integration test",
-		UserID:       uuid.New().String(),
+		UserID:       uuid.New(),
 	}
 
 	payloadBytes, _ := json.Marshal(payload)
@@ -129,7 +129,7 @@ func TestEKGHandler_Integration_NotFound(t *testing.T) {
 	payload := job.EKGJobPayload{
 		ImageTempURL: server.URL + "/not-found.jpg",
 		Notes:        "Integration test",
-		UserID:       uuid.New().String(),
+		UserID:       uuid.New(),
 	}
 
 	payloadBytes, _ := json.Marshal(payload)
@@ -159,7 +159,7 @@ func TestEKGHandler_Integration_ConcurrentProcessing(t *testing.T) {
 		payloads[i] = job.EKGJobPayload{
 			ImageTempURL: server.URL + "/valid-image.jpg",
 			Notes:        "Concurrent test",
-			UserID:       uuid.New().String(),
+			UserID:       uuid.New(),
 		}
 	}
 
@@ -208,12 +208,12 @@ func BenchmarkEKGHandler_Integration_ContentTypeValidation(b *testing.B) {
 		payload := job.EKGJobPayload{
 			ImageTempURL: url,
 			Notes:        "Benchmark test",
-			UserID:       uuid.New().String(),
+			UserID:       uuid.New(),
 		}
 
 		payloadBytes, _ := json.Marshal(payload)
 		var testPayload job.EKGJobPayload
-		json.Unmarshal(payloadBytes, &testPayload)
+		_ = json.Unmarshal(payloadBytes, &testPayload)
 	}
 }
 
@@ -224,13 +224,13 @@ func BenchmarkEKGHandler_Integration_PayloadProcessing(b *testing.B) {
 	payload := job.EKGJobPayload{
 		ImageTempURL: server.URL + "/valid-image.jpg",
 		Notes:        "Benchmark test with longer notes to test processing performance",
-		UserID:       uuid.New().String(),
+		UserID:       uuid.New(),
 	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		payloadBytes, _ := json.Marshal(payload)
 		var testPayload job.EKGJobPayload
-		json.Unmarshal(payloadBytes, &testPayload)
+		_ = json.Unmarshal(payloadBytes, &testPayload)
 	}
 }

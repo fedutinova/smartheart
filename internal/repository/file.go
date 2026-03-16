@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/fedutinova/smartheart/internal/models"
 	"github.com/google/uuid"
@@ -18,7 +19,7 @@ func (r *Repository) CreateFile(ctx context.Context, file *models.File) error {
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
 	`
 
-	_, err := r.q.Exec(ctx, query,
+	_, err := r.querier.Exec(ctx, query,
 		file.ID,
 		file.RequestID,
 		file.OriginalFilename,
@@ -28,7 +29,10 @@ func (r *Repository) CreateFile(ctx context.Context, file *models.File) error {
 		file.S3Key,
 		file.S3URL,
 	)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to create file: %w", err)
+	}
+	return nil
 }
 
 // GetFilesByRequestID retrieves all files for a request
@@ -40,9 +44,9 @@ func (r *Repository) GetFilesByRequestID(ctx context.Context, requestID uuid.UUI
 		ORDER BY created_at
 	`
 
-	rows, err := r.q.Query(ctx, query, requestID)
+	rows, err := r.querier.Query(ctx, query, requestID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query files: %w", err)
 	}
 	defer rows.Close()
 

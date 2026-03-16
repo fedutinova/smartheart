@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/fedutinova/smartheart/testdata"
+	"github.com/fedutinova/smartheart/internal/testutil/fixtures"
 )
 
 func main() {
@@ -15,14 +15,14 @@ func main() {
 	fmt.Println("Setting up test data...")
 
 	// Create test images
-	if err := testdata.SaveTestImagesToFile(testDir); err != nil {
+	if err := fixtures.SaveTestImagesToFile(testDir); err != nil {
 		log.Fatalf("Failed to save test images: %v", err)
 	}
 
 	fmt.Printf("Test images saved to: %s\n", testDir)
 
 	// Print test image information
-	info := testdata.GetTestImageInfo()
+	info := fixtures.GetTestImageInfo()
 	fmt.Println("\nTest image information:")
 	for name, details := range info {
 		fmt.Printf("  %s: %+v\n", name, details)
@@ -99,7 +99,7 @@ LOG_LEVEL=debug
 	fmt.Println("\nTest data setup complete!")
 
 	// Print test examples
-	testdata.PrintTestExamples()
+	fixtures.PrintTestExamples()
 
 	fmt.Println("\nNext steps:")
 	fmt.Println("1. Copy .env.example to .env and configure your settings")
