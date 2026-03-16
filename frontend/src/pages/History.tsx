@@ -1,10 +1,19 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { formatDate, formatStatus, getStatusColor } from '@/utils/format';
 import { Layout } from '@/components/Layout';
 import { useUserRequests } from '@/hooks/useUserRequests';
 
+const PAGE_SIZE = 20;
+
 export function History() {
-  const { requests: filteredRequests, isLoading, error } = useUserRequests();
+  const [page, setPage] = useState(0);
+  const offset = page * PAGE_SIZE;
+  const { requests: filteredRequests, isLoading, error, total } = useUserRequests(PAGE_SIZE, offset);
+
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const hasNext = page < totalPages - 1;
+  const hasPrev = page > 0;
 
   return (
     <Layout>
@@ -85,9 +94,33 @@ export function History() {
               </table>
             )}
           </div>
+
+          {/* Pagination */}
+          {total > PAGE_SIZE && (
+            <div className="px-6 py-3 border-t border-gray-200 flex items-center justify-between">
+              <p className="text-sm text-gray-500">
+                {offset + 1}&ndash;{Math.min(offset + PAGE_SIZE, total)} из {total}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPage((p) => p - 1)}
+                  disabled={!hasPrev}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-default"
+                >
+                  Назад
+                </button>
+                <button
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={!hasNext}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-default"
+                >
+                  Вперёд
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </Layout>
   );
 }
-

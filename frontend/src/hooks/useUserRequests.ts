@@ -3,6 +3,7 @@ import { requestAPI } from '@/services/api';
 import type { PaginatedResponse, Request } from '@/types';
 
 const INTERNAL_MARKER = 'Analyze this ECG/EKG image';
+const PAGE_SIZE = 20;
 
 function filterInternalRequests(requests: Request[]): Request[] {
   return requests.filter(
@@ -10,10 +11,10 @@ function filterInternalRequests(requests: Request[]): Request[] {
   );
 }
 
-export function useUserRequests() {
+export function useUserRequests(limit = PAGE_SIZE, offset = 0) {
   const query = useQuery<PaginatedResponse<Request>>({
-    queryKey: ['requests'],
-    queryFn: () => requestAPI.getUserRequests(),
+    queryKey: ['requests', limit, offset],
+    queryFn: () => requestAPI.getUserRequests(limit, offset),
   });
 
   const filtered = query.data?.data
@@ -23,5 +24,7 @@ export function useUserRequests() {
   return {
     ...query,
     requests: filtered,
+    total: query.data?.total ?? 0,
+    pageSize: limit,
   };
 }
