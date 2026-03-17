@@ -107,8 +107,9 @@ services:
           cpus: "2"
           memory: 2G
     environment:
-      LLM_API_KEY: ${LLM_API_KEY:-}
-      LLM_BASE_URL: ${LLM_BASE_URL:-https://bothub.chat/api/v2/openai/v1}
+      LLM_API_KEY: ${LLM_API_KEY:-${OPENAI_API_KEY:-}}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
+      LLM_MODEL: ${LLM_MODEL:-gpt-5}
       LLM_TEMPERATURE: "0.2"
     volumes:
       - ./rag_pipeline/documents:/app/documents:ro

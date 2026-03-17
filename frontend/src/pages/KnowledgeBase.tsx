@@ -2,7 +2,7 @@ import { Layout } from '@/components/Layout';
 import { useState, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { ragAPI } from '@/services/api';
-import type { RAGSource } from '@/services/api';
+import type { RAGSource, RAGQueryMeta } from '@/services/api';
 
 interface Message {
   id: number;
@@ -10,6 +10,7 @@ interface Message {
   content: string;
   sources?: RAGSource[];
   elapsedMs?: number;
+  meta?: RAGQueryMeta;
 }
 
 const EXAMPLE_QUESTIONS = [
@@ -50,6 +51,7 @@ export function KnowledgeBase() {
         content: res.answer,
         sources: res.sources,
         elapsedMs: res.elapsed_ms,
+        meta: res.meta,
       };
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err) {
@@ -118,6 +120,7 @@ export function KnowledgeBase() {
                         <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700">
                           Источники ({msg.sources.length})
                           {msg.elapsedMs && <span className="ml-2">| {(msg.elapsedMs / 1000).toFixed(1)}s</span>}
+                          {msg.meta && <span className="ml-2">| {msg.meta.model}, t={msg.meta.temperature}</span>}
                         </summary>
                         <ul className="mt-2 space-y-1">
                           {msg.sources.map((src, i) => (

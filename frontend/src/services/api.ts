@@ -194,10 +194,17 @@ export interface RAGSource {
   preview: string;
 }
 
+export interface RAGQueryMeta {
+  model: string;
+  temperature: number;
+  n_results: number;
+}
+
 export interface RAGQueryResponse {
   answer: string;
   sources: RAGSource[];
   elapsed_ms: number;
+  meta?: RAGQueryMeta;
 }
 
 export const ragAPI = {

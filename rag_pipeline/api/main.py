@@ -18,6 +18,10 @@ app = FastAPI(title="SmartHeart RAG API", version="1.0.0")
 _engine = None
 _chain = None
 
+# LLM config (read once on first _get_chain call)
+_llm_model: str = ""
+_llm_temperature: float = 0.2
+
 
 class QueryRequest(BaseModel):
     question: str = Field(..., min_length=2, max_length=2000)
@@ -31,10 +35,16 @@ class Source(BaseModel):
     preview: str
 
 
+class QueryMeta(BaseModel):
+    model: str
+    temperature: float
+    n_results: int
+
 class QueryResponse(BaseModel):
     answer: str
     sources: list[Source]
     elapsed_ms: int
+    meta: QueryMeta | None = None
 
 
 def _get_engine():
@@ -134,23 +144,24 @@ def _get_engine():
 
 def _get_chain():
     """Build or return the cached LLM chain."""
-    global _chain
+    global _chain, _llm_model, _llm_temperature
     if _chain is not None:
         return _chain
 
     from rag_pipeline.generation import build_prompt, build_llm
 
-    base_url = os.getenv("LLM_BASE_URL", "https://bothub.chat/api/v2/openai/v1")
+    base_url = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1")
     api_key = os.getenv("LLM_API_KEY", "")
     if not api_key:
         raise RuntimeError("LLM_API_KEY environment variable is required")
 
-    temperature = float(os.getenv("LLM_TEMPERATURE", "0.2"))
+    _llm_model = os.getenv("LLM_MODEL", "gpt-5")
+    _llm_temperature = float(os.getenv("LLM_TEMPERATURE", "0.2"))
 
     prompt = build_prompt()
-    llm = build_llm(base_url=base_url, api_key=api_key, temperature=temperature)
+    llm = build_llm(base_url=base_url, api_key=api_key, model=_llm_model, temperature=_llm_temperature)
     _chain = prompt | llm
-    logger.info("LLM chain ready (base_url=%s)", base_url)
+    logger.info("LLM chain ready (model=%s, base_url=%s)", _llm_model, base_url)
     return _chain
 
 
@@ -225,4 +236,9 @@ def query(req: QueryRequest):
     elapsed_ms = int((time.monotonic() - start) * 1000)
     logger.info("query answered in %dms: %s", elapsed_ms, req.question[:80])
 
-    return QueryResponse(answer=answer, sources=sources, elapsed_ms=elapsed_ms)
+    return QueryResponse(
+        answer=answer,
+        sources=sources,
+        elapsed_ms=elapsed_ms,
+        meta=QueryMeta(model=_llm_model, temperature=_llm_temperature, n_results=req.n_results),
+    )

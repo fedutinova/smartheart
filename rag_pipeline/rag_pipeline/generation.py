@@ -48,8 +48,8 @@ def build_prompt() -> PromptTemplate:
 """,
     )
 
-def build_llm(base_url: str, api_key: str, temperature: float = 0.2):
-    return ChatOpenAI(base_url=base_url, api_key=api_key, temperature=temperature)
+def build_llm(base_url: str, api_key: str, model: str = "gpt-4o", temperature: float = 0.2, max_tokens: int = 1500):
+    return ChatOpenAI(base_url=base_url, api_key=api_key, model=model, temperature=temperature, max_tokens=max_tokens)
 
 def retrieve_context(engine: HybridSearchEngine, question: str, n_results: int = 5, vector_k: int = 40, bm25_k: int = 40):
     res = engine.search(question, n_results=n_results, vector_k=vector_k, bm25_k=bm25_k)
