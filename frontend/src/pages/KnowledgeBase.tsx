@@ -1,191 +1,186 @@
 import { Layout } from '@/components/Layout';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
+import { ragAPI } from '@/services/api';
+import type { RAGSource } from '@/services/api';
 
-interface KnowledgeArticle {
-  id: string;
-  title: string;
-  category: string;
-  description: string;
-  icon: string;
+interface Message {
+  id: number;
+  role: 'user' | 'assistant';
+  content: string;
+  sources?: RAGSource[];
+  elapsedMs?: number;
 }
 
-const categories = ['Все', 'ЭКГ', 'Диагностика', 'Симптомы', 'Лечение'];
-
-const mockArticles: KnowledgeArticle[] = [
-  {
-    id: '1',
-    title: 'Основы электрокардиографии',
-    category: 'ЭКГ',
-    description: 'Изучите основы чтения и интерпретации электрокардиограмм',
-    icon: '📊',
-  },
-  {
-    id: '2',
-    title: 'Нормальные показатели ЭКГ',
-    category: 'ЭКГ',
-    description: 'Какие значения считаются нормальными для здорового сердца',
-    icon: '✅',
-  },
-  {
-    id: '3',
-    title: 'Аритмии: виды и признаки',
-    category: 'Диагностика',
-    description: 'Различные типы нарушений сердечного ритма и их проявления',
-    icon: '💓',
-  },
-  {
-    id: '4',
-    title: 'Ишемическая болезнь сердца',
-    category: 'Диагностика',
-    description: 'Признаки ишемии на электрокардиограмме',
-    icon: '🩺',
-  },
-  {
-    id: '5',
-    title: 'Боль в груди: когда обращаться к врачу',
-    category: 'Симптомы',
-    description: 'Важные признаки, требующие немедленной медицинской помощи',
-    icon: '⚠️',
-  },
-  {
-    id: '6',
-    title: 'Одышка и сердечные заболевания',
-    category: 'Симптомы',
-    description: 'Как одышка может указывать на проблемы с сердцем',
-    icon: '😮‍💨',
-  },
-  {
-    id: '7',
-    title: 'Медикаментозное лечение аритмий',
-    category: 'Лечение',
-    description: 'Обзор препаратов для лечения нарушений ритма',
-    icon: '💊',
-  },
-  {
-    id: '8',
-    title: 'Профилактика сердечно-сосудистых заболеваний',
-    category: 'Лечение',
-    description: 'Образ жизни и привычки для здорового сердца',
-    icon: '❤️',
-  },
+const EXAMPLE_QUESTIONS = [
+  'Признаки фибрилляции предсердий на ЭКГ',
+  'Как отличить желудочковую тахикардию от наджелудочковой?',
+  'Критерии гипертрофии левого желудочка',
+  'Признаки инфаркта миокарда на ЭКГ',
+  'АВ-блокады: виды и ЭКГ-признаки',
 ];
 
 export function KnowledgeBase() {
-  const [selectedCategory, setSelectedCategory] = useState('Все');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const nextId = useRef(1);
 
-  const filteredArticles = mockArticles.filter((article) => {
-    const matchesCategory =
-      selectedCategory === 'Все' || article.category === selectedCategory;
-    const matchesSearch =
-      searchQuery === '' ||
-      article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      article.description.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  const scrollToBottom = () => {
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+  };
+
+  const handleSubmit = async (question: string) => {
+    if (!question.trim() || isLoading) return;
+
+    const userMsg: Message = { id: nextId.current++, role: 'user', content: question.trim() };
+    setMessages((prev) => [...prev, userMsg]);
+    setInput('');
+    setError(null);
+    setIsLoading(true);
+    scrollToBottom();
+
+    try {
+      const res = await ragAPI.query(question.trim());
+      const assistantMsg: Message = {
+        id: nextId.current++,
+        role: 'assistant',
+        content: res.answer,
+        sources: res.sources,
+        elapsedMs: res.elapsed_ms,
+      };
+      setMessages((prev) => [...prev, assistantMsg]);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Ошибка при получении ответа';
+      setError(msg);
+    } finally {
+      setIsLoading(false);
+      scrollToBottom();
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(input);
+    }
+  };
 
   return (
     <Layout>
-      <div className="px-4 sm:px-0">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            База знаний
-          </h1>
-          <p className="text-gray-600">
-            Полезная информация о здоровье сердца и электрокардиографии
+      <div className="px-4 sm:px-0 flex flex-col" style={{ height: 'calc(100vh - 10rem)' }}>
+        <div className="mb-4">
+          <h1 className="text-3xl font-bold text-gray-900 mb-1">База знаний</h1>
+          <p className="text-gray-500 text-sm">
+            Задайте вопрос по ЭКГ и кардиологии — ответ формируется на основе медицинской литературы
           </p>
         </div>
 
-        {/* Search */}
-        <div className="mb-6">
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <span className="text-gray-400 text-xl">🔍</span>
+        {/* Messages area */}
+        <div className="flex-1 overflow-y-auto bg-white rounded-lg shadow border border-gray-200 p-4 mb-4 space-y-4">
+          {messages.length === 0 && !isLoading && (
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <p className="text-gray-400 mb-6">Задайте вопрос по ЭКГ или выберите из примеров:</p>
+              <div className="flex flex-wrap gap-2 justify-center max-w-2xl">
+                {EXAMPLE_QUESTIONS.map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => handleSubmit(q)}
+                    className="px-3 py-2 text-sm bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 border border-blue-200 transition-colors text-left"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
             </div>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Поиск по базе знаний..."
-              className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-        </div>
+          )}
 
-        {/* Categories */}
-        <div className="mb-6 flex flex-wrap gap-2">
-          {categories.map((category) => (
-            <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                selectedCategory === category
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-              }`}
-            >
-              {category}
-            </button>
-          ))}
-        </div>
-
-        {/* Articles Grid */}
-        {filteredArticles.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
-            <p className="text-gray-500 text-lg">
-              Статьи не найдены. Попробуйте изменить параметры поиска.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredArticles.map((article) => (
+          {messages.map((msg) => (
+            <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div
-                key={article.id}
-                className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 cursor-pointer border border-gray-200 hover:border-blue-300"
+                className={`max-w-3xl rounded-lg px-4 py-3 ${
+                  msg.role === 'user'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-50 border border-gray-200 text-gray-900'
+                }`}
               >
-                <div className="flex items-start">
-                  <div className="text-4xl mr-4">{article.icon}</div>
-                  <div className="flex-1">
-                    <div className="mb-2">
-                      <span className="inline-block px-2 py-1 text-xs font-semibold rounded bg-blue-100 text-blue-800">
-                        {article.category}
-                      </span>
-                    </div>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                      {article.title}
-                    </h3>
-                    <p className="text-gray-600 text-sm">{article.description}</p>
-                    <div className="mt-4">
-                      <button className="text-blue-600 hover:text-blue-800 font-medium text-sm">
-                        Читать далее →
-                      </button>
-                    </div>
+                {msg.role === 'user' ? (
+                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                ) : (
+                  <>
+                    <ReactMarkdown className="prose prose-sm max-w-none prose-gray">
+                      {msg.content}
+                    </ReactMarkdown>
+                    {msg.sources && msg.sources.length > 0 && (
+                      <details className="mt-3 pt-3 border-t border-gray-200">
+                        <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700">
+                          Источники ({msg.sources.length})
+                          {msg.elapsedMs && <span className="ml-2">| {(msg.elapsedMs / 1000).toFixed(1)}s</span>}
+                        </summary>
+                        <ul className="mt-2 space-y-1">
+                          {msg.sources.map((src, i) => (
+                            <li key={i} className="text-xs text-gray-500">
+                              <span className="font-medium text-gray-700">{src.doc_name}</span>
+                              <span className="text-gray-400"> #{src.chunk_index}</span>
+                              <span className="text-gray-400 ml-1">(score: {src.score.toFixed(3)})</span>
+                              <p className="text-gray-400 truncate">{src.preview}</p>
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
+                <div className="flex items-center space-x-2 text-gray-400">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                   </div>
+                  <span className="text-sm">Поиск по базе знаний...</span>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+          )}
 
-        {/* Info Message */}
-        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <span className="text-2xl">ℹ️</span>
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+              {error}
             </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-blue-800">
-                Информация
-              </h3>
-              <p className="mt-1 text-sm text-blue-700">
-                База знаний находится в разработке. Содержимое будет пополняться
-                новыми статьями и материалами.
-              </p>
-            </div>
-          </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input */}
+        <div className="flex gap-2">
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Задайте вопрос по ЭКГ..."
+            rows={1}
+            disabled={isLoading}
+            className="flex-1 resize-none rounded-lg border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:bg-gray-50"
+          />
+          <button
+            onClick={() => handleSubmit(input)}
+            disabled={!input.trim() || isLoading}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isLoading ? '...' : 'Спросить'}
+          </button>
         </div>
       </div>
     </Layout>
   );
 }
-

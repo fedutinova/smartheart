@@ -34,3 +34,8 @@ uploads/
 # Editor/IDE
 .idea/
 .vscode/
+
+# RAG pipeline: medical PDFs and generated indexes
+rag_pipeline/documents/*.pdf
+rag_pipeline/chroma_data/
+rag_pipeline/processed/

@@ -78,6 +78,11 @@ type QuotaConfig struct {
 	DailyLimit int // max submissions per user per day (0 = unlimited)
 }
 
+// RAGConfig holds RAG microservice settings.
+type RAGConfig struct {
+	URL string // Base URL of the RAG service (e.g. http://rag:8000)
+}
+
 type Config struct {
 	HTTPAddr  string
 	JWT       JWTConfig
@@ -90,6 +95,7 @@ type Config struct {
 	CORS      CORSConfig
 	RateLimit RateLimitConfig
 	Quota     QuotaConfig
+	RAG       RAGConfig
 }
 
 // Storage mode constants for compile-time safety.
@@ -284,6 +290,9 @@ func Load() Config {
 		},
 		Quota: QuotaConfig{
 			DailyLimit: envInt("QUOTA_DAILY_LIMIT", 50),
+		},
+		RAG: RAGConfig{
+			URL: envString("RAG_URL", "http://localhost:8000"),
 		},
 	}
 }

@@ -48,6 +48,7 @@ type Handler struct {
 	Request *RequestHandler
 	Healthz *HealthHandler
 	Events  *EventsHandler
+	RAG     *RAGHandler
 	Config  config.Config
 }
 
@@ -70,6 +71,7 @@ func NewHandler(
 		Request: &RequestHandler{Service: requestSvc, Config: cfg},
 		Healthz: &HealthHandler{Queue: queue, Repo: repo, Sessions: sessions, Storage: storageService},
 		Events:  &EventsHandler{Hub: hub},
+		RAG:     NewRAGHandler(cfg.RAG.URL),
 		Config:  cfg,
 	}
 }
@@ -109,6 +111,9 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 
 		// SSE event stream
 		r.Get("/v1/events", h.Events.StreamEvents)
+
+		// RAG knowledge base query
+		r.Post("/v1/rag/query", h.RAG.Query)
 
 		// Admin-only endpoints
 		r.With(auth.RequirePerm(auth.PermAdminAll)).Get("/ready", h.Healthz.Ready)

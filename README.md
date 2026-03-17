@@ -18,6 +18,15 @@ back-api/          Go (chi router, pgx, Redis)
   ├── workers/     Фоновые обработчики (EKG, GPT)
   ├── queue/       Очередь задач (Redis / in-memory)
   └── storage/     Хранилище файлов (S3 / local)
+rag_pipeline/      Python RAG-сервис (FastAPI)
+  ├── api/         FastAPI-сервер (/query)
+  ├── rag_pipeline/
+  │   ├── ingestion.py    Загрузка и индексация документов
+  │   ├── hybrid.py       Гибридный поиск (vector + BM25 + RRF)
+  │   ├── generation.py   LLM-генерация ответов
+  │   ├── chunking.py     Семантическое разбиение текста
+  │   └── tokenization.py Русский медицинский токенизатор
+  └── documents/   Медицинские PDF (кардиология, ЭКГ)
 migrations/        SQL-миграции
 ```
 
@@ -153,6 +162,28 @@ curl -N -H "Authorization: Bearer TOKEN" http://localhost:8080/v1/events
 ```
 
 > EventSource API не поддерживает заголовки — фронтенд передает токен через query-параметр `?token=`.
+
+### RAG — база знаний по ЭКГ
+
+Вопросно-ответная система на основе медицинской литературы. Гибридный поиск (vector + BM25) + LLM-генерация.
+
+```bash
+curl -X POST http://localhost:8080/v1/rag/query \
+  -H "Authorization: Bearer TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"question": "Признаки фибрилляции предсердий на ЭКГ"}'
+```
+
+Ответ:
+```json
+{
+  "answer": "Фибрилляция предсердий характеризуется...",
+  "sources": [
+    {"doc_name": "Азбука_ЭКГ.pdf", "chunk_index": 42, "score": 0.0312, "preview": "..."}
+  ],
+  "elapsed_ms": 3200
+}
+```
 
 ### Health check
 

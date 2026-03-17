@@ -176,5 +176,28 @@ export const requestAPI = {
   },
 };
 
+export interface RAGSource {
+  doc_name: string;
+  chunk_index: number;
+  score: number;
+  preview: string;
+}
+
+export interface RAGQueryResponse {
+  answer: string;
+  sources: RAGSource[];
+  elapsed_ms: number;
+}
+
+export const ragAPI = {
+  query: async (question: string, nResults = 5) => {
+    const response = await api.post<RAGQueryResponse>('/v1/rag/query', {
+      question,
+      n_results: nResults,
+    }, { timeout: 120_000 });
+    return response.data;
+  },
+};
+
 export default api;
 
