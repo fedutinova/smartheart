@@ -21,12 +21,11 @@ const api = axios.create({
 });
 
 // Retry network errors and 5xx with exponential backoff (max 3 attempts).
+// Only retry idempotent methods (GET, HEAD, OPTIONS) — never retry POST/PUT/DELETE.
 axiosRetry(api, {
   retries: 3,
   retryDelay: axiosRetry.exponentialDelay,
-  retryCondition: (error) =>
-    axiosRetry.isNetworkOrIdempotentRequestError(error) ||
-    (error.response?.status !== undefined && error.response.status >= 500),
+  retryCondition: (error) => axiosRetry.isNetworkOrIdempotentRequestError(error),
 });
 
 let isRefreshing = false;
@@ -214,6 +213,9 @@ export const ragAPI = {
       n_results: nResults,
     }, { timeout: API_TIMEOUT_RAG });
     return response.data;
+  },
+  submitFeedback: async (question: string, answer: string, rating: -1 | 1) => {
+    await api.post('/v1/rag/feedback', { question, answer, rating });
   },
 };
 

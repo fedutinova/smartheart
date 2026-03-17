@@ -177,6 +177,53 @@ func (_c *MockStore_CreateFile_Call) RunAndReturn(run func(context.Context, *mod
 	return _c
 }
 
+// CreateRAGFeedback provides a mock function with given fields: ctx, feedback
+func (_m *MockStore) CreateRAGFeedback(ctx context.Context, feedback *models.RAGFeedback) error {
+	ret := _m.Called(ctx, feedback)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateRAGFeedback")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *models.RAGFeedback) error); ok {
+		r0 = rf(ctx, feedback)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockStore_CreateRAGFeedback_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateRAGFeedback'
+type MockStore_CreateRAGFeedback_Call struct {
+	*mock.Call
+}
+
+// CreateRAGFeedback is a helper method to define mock.On call
+//   - ctx context.Context
+//   - feedback *models.RAGFeedback
+func (_e *MockStore_Expecter) CreateRAGFeedback(ctx interface{}, feedback interface{}) *MockStore_CreateRAGFeedback_Call {
+	return &MockStore_CreateRAGFeedback_Call{Call: _e.mock.On("CreateRAGFeedback", ctx, feedback)}
+}
+
+func (_c *MockStore_CreateRAGFeedback_Call) Run(run func(ctx context.Context, feedback *models.RAGFeedback)) *MockStore_CreateRAGFeedback_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*models.RAGFeedback))
+	})
+	return _c
+}
+
+func (_c *MockStore_CreateRAGFeedback_Call) Return(_a0 error) *MockStore_CreateRAGFeedback_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockStore_CreateRAGFeedback_Call) RunAndReturn(run func(context.Context, *models.RAGFeedback) error) *MockStore_CreateRAGFeedback_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateRefreshToken provides a mock function with given fields: ctx, token
 func (_m *MockStore) CreateRefreshToken(ctx context.Context, token *models.RefreshToken) error {
 	ret := _m.Called(ctx, token)

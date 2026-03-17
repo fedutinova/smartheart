@@ -8,19 +8,26 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/fedutinova/smartheart/back-api/auth"
+	"github.com/fedutinova/smartheart/back-api/models"
+	"github.com/fedutinova/smartheart/back-api/repository"
+	"github.com/google/uuid"
 )
 
 // RAGHandler proxies knowledge-base queries to the RAG microservice.
 type RAGHandler struct {
 	ragURL string
 	client *http.Client
+	repo   repository.Store
 }
 
 // NewRAGHandler creates a handler that forwards requests to the RAG service.
-func NewRAGHandler(ragURL string) *RAGHandler {
+func NewRAGHandler(ragURL string, repo repository.Store) *RAGHandler {
 	return &RAGHandler{
 		ragURL: ragURL,
 		client: &http.Client{Timeout: 120 * time.Second},
+		repo:   repo,
 	}
 }
 
@@ -31,6 +38,8 @@ type ragQueryRequest struct {
 
 // Query handles POST /v1/rag/query — validates input, proxies to RAG service.
 func (h *RAGHandler) Query(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+
 	if h.ragURL == "" {
 		writeError(w, http.StatusServiceUnavailable, "RAG service not configured")
 		return
@@ -74,7 +83,51 @@ func (h *RAGHandler) Query(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	if _, err := io.Copy(w, resp.Body); err != nil {
+	if _, err := io.Copy(w, io.LimitReader(resp.Body, 1<<20)); err != nil {
 		slog.Warn("failed to write RAG response", "error", err)
 	}
+}
+
+type ragFeedbackRequest struct {
+	Question string `json:"question" validate:"required"`
+	Answer   string `json:"answer" validate:"required"`
+	Rating   int    `json:"rating" validate:"required,oneof=-1 1"`
+}
+
+// Feedback handles POST /v1/rag/feedback — stores user feedback on RAG answers.
+func (h *RAGHandler) Feedback(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+
+	var req ragFeedbackRequest
+	if !decodeAndValidate(w, r, &req) {
+		return
+	}
+
+	claims, ok := auth.FromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	userID, err := uuid.Parse(claims.UserID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid user ID")
+		return
+	}
+
+	feedback := &models.RAGFeedback{
+		ID:       uuid.New(),
+		UserID:   userID,
+		Question: req.Question,
+		Answer:   req.Answer,
+		Rating:   req.Rating,
+	}
+
+	if err := h.repo.CreateRAGFeedback(r.Context(), feedback); err != nil {
+		slog.Error("failed to save RAG feedback", "error", err)
+		writeError(w, http.StatusInternalServerError, "failed to save feedback")
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, map[string]string{"status": "ok"})
 }

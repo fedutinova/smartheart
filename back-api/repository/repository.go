@@ -50,6 +50,11 @@ type RoleRepo interface {
 	LoadRolePermissions(ctx context.Context) (map[string][]string, error)
 }
 
+// RAGFeedbackRepo provides RAG feedback data access.
+type RAGFeedbackRepo interface {
+	CreateRAGFeedback(ctx context.Context, feedback *models.RAGFeedback) error
+}
+
 // Store is the composite interface that embeds all focused interfaces.
 type Store interface {
 	UserRepo
@@ -57,6 +62,7 @@ type Store interface {
 	TokenRepo
 	RoleRepo
 	QuotaRepo
+	RAGFeedbackRepo
 
 	// Transaction support
 	RunTx(ctx context.Context, fn func(tx pgx.Tx) error) error

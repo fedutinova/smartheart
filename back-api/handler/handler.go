@@ -71,7 +71,7 @@ func NewHandler(
 		Request: &RequestHandler{Service: requestSvc, Config: cfg},
 		Healthz: &HealthHandler{Queue: queue, Repo: repo, Sessions: sessions, Storage: storageService},
 		Events:  &EventsHandler{Hub: hub},
-		RAG:     NewRAGHandler(cfg.RAG.URL),
+		RAG:     NewRAGHandler(cfg.RAG.URL, repo),
 		Config:  cfg,
 	}
 }
@@ -112,8 +112,9 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		// SSE event stream
 		r.Get("/v1/events", h.Events.StreamEvents)
 
-		// RAG knowledge base query
+		// RAG knowledge base
 		r.Post("/v1/rag/query", h.RAG.Query)
+		r.Post("/v1/rag/feedback", h.RAG.Feedback)
 
 		// Admin-only endpoints
 		r.With(auth.RequirePerm(auth.PermAdminAll)).Get("/ready", h.Healthz.Ready)

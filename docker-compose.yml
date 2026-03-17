@@ -42,13 +42,11 @@ services:
     environment:
       - SERVICES=s3
       - DEBUG=1
-      - DOCKER_HOST=unix:///var/run/docker.sock
       - AWS_DEFAULT_REGION=us-east-1
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
     volumes:
       - localstack_data:/var/lib/localstack
-      - "/var/run/docker.sock:/var/run/docker.sock"
       - ./scripts/init-s3.sh:/etc/localstack/init/ready.d/init-s3.sh
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
@@ -109,8 +107,9 @@ services:
     environment:
       LLM_API_KEY: ${LLM_API_KEY:-${OPENAI_API_KEY:-}}
       LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
-      LLM_MODEL: ${LLM_MODEL:-gpt-5}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o}
       LLM_TEMPERATURE: "0.2"
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-}
     volumes:
       - ./rag_pipeline/documents:/app/documents:ro
       - rag_chroma_data:/app/chroma_db_4
