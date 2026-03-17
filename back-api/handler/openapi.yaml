@@ -19,6 +19,8 @@ tags:
     description: Request & job queries
   - name: system
     description: Health & admin endpoints
+  - name: rag
+    description: RAG knowledge base
   - name: events
     description: Real-time notifications
 
@@ -246,6 +248,33 @@ paths:
                   limit: { type: integer }
                   offset: { type: integer }
 
+  /v1/rag/query:
+    post:
+      tags: [rag]
+      summary: Query the RAG knowledge base
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question]
+              properties:
+                question: { type: string, minLength: 2, maxLength: 2000 }
+                n_results: { type: integer, default: 5, minimum: 1, maximum: 20 }
+      responses:
+        "200":
+          description: RAG answer with sources
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RAGQueryResponse" }
+        "502":
+          description: RAG service unavailable
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /v1/events:
     get:
       tags: [events]
@@ -367,6 +396,21 @@ components:
         tokens_used: { type: integer }
         processing_time_ms: { type: integer }
         created_at: { type: string, format: date-time }
+
+    RAGQueryResponse:
+      type: object
+      properties:
+        answer: { type: string }
+        sources:
+          type: array
+          items:
+            type: object
+            properties:
+              doc_name: { type: string }
+              chunk_index: { type: integer }
+              score: { type: number }
+              preview: { type: string }
+        elapsed_ms: { type: integer }
 
     Error:
       type: object

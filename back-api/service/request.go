@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 
 	"github.com/fedutinova/smartheart/back-api/apperr"
@@ -48,12 +47,12 @@ func (s *requestService) GetUserRequests(ctx context.Context, userID uuid.UUID, 
 
 	requests, err := s.repo.GetRequestsByUserID(ctx, userID, limit, offset)
 	if err != nil {
-		return nil, fmt.Errorf("get requests: %w", err)
+		return nil, apperr.WrapInternal("get user requests", err)
 	}
 
 	total, err := s.repo.CountRequestsByUserID(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("count requests: %w", err)
+		return nil, apperr.WrapInternal("count user requests", err)
 	}
 
 	if requests == nil {
@@ -71,7 +70,10 @@ func (s *requestService) GetUserRequests(ctx context.Context, userID uuid.UUID, 
 func (s *requestService) GetRequest(ctx context.Context, requestID uuid.UUID, claims *auth.Claims) (*models.Request, error) {
 	request, err := s.repo.GetRequestByID(ctx, requestID)
 	if err != nil {
-		return nil, err
+		if apperr.IsNotFound(err) {
+			return nil, err
+		}
+		return nil, apperr.WrapInternal("get request", err)
 	}
 
 	if !auth.CanAccessResource(claims, request.UserID) {

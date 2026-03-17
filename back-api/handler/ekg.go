@@ -9,8 +9,8 @@ import (
 )
 
 type ekgAnalyzeRequest struct {
-	ImageTempURL string `json:"image_temp_url"`
-	Notes        string `json:"notes,omitempty"`
+	ImageTempURL string `json:"image_temp_url" validate:"required,url"`
+	Notes        string `json:"notes,omitempty" validate:"max=2000"`
 }
 
 // SubmitEKGAnalyze handles EKG image analysis submission.
@@ -31,8 +31,7 @@ func (h *EKGHandler) submitEKGURL(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
 	var req ekgAnalyzeRequest
-	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid JSON body")
+	if !decodeAndValidate(w, r, &req) {
 		return
 	}
 

@@ -9,7 +9,12 @@ RUN go mod download
 
 COPY . .
 
-RUN GOOS=linux go build -a -installsuffix cgo -o smartheart ./cmd
+ARG VERSION=dev
+ARG COMMIT=unknown
+
+RUN GOOS=linux go build -a -installsuffix cgo \
+    -ldflags "-X main.Version=${VERSION} -X main.Commit=${COMMIT}" \
+    -o smartheart ./cmd
 
 FROM alpine:latest
 

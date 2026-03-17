@@ -124,7 +124,7 @@ func TestGetUserRequests_RepoError(t *testing.T) {
 
 	_, err := svc.GetUserRequests(ctx, userID, 50, 0)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "get requests")
+	assert.Contains(t, err.Error(), "get user requests")
 }
 
 func TestGetUserRequests_CountError(t *testing.T) {
@@ -142,7 +142,7 @@ func TestGetUserRequests_CountError(t *testing.T) {
 
 	_, err := svc.GetUserRequests(ctx, userID, 50, 0)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "count requests")
+	assert.Contains(t, err.Error(), "count user requests")
 }
 
 // --- GetRequest ---

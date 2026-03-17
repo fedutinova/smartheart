@@ -172,14 +172,10 @@ func TestSubmitEKGAnalyze_InvalidJSON(t *testing.T) {
 
 func TestSubmitEKGAnalyze_MissingImageURL(t *testing.T) {
 	d := newTestDeps(t)
-
-	d.submissionSvc.EXPECT().
-		SubmitEKG(mock.Anything, mock.Anything, "", mock.Anything).
-		Return(nil, apperr.ErrValidation)
-
 	h := d.handler()
 	userID := uuid.New()
 
+	// Missing image_temp_url is caught by struct tag validation (required)
 	body, _ := json.Marshal(map[string]string{"notes": "test"})
 	req := httptest.NewRequest("POST", "/v1/ekg/analyze", bytes.NewReader(body))
 	req = withAuthContext(req, userID, []string{"user"})
@@ -361,13 +357,9 @@ func TestSubmitEKGResponse_Roundtrip(t *testing.T) {
 
 func TestRegister_MissingFields(t *testing.T) {
 	d := newTestDeps(t)
-
-	d.authSvc.EXPECT().
-		Register(mock.Anything, mock.Anything, "alice@example.com", mock.Anything).
-		Return(uuid.Nil, apperr.ErrValidation)
-
 	h := d.handler()
 
+	// Missing username and password caught by struct tag validation
 	body, _ := json.Marshal(map[string]string{"email": "alice@example.com"})
 	req := httptest.NewRequest("POST", "/v1/auth/register", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -381,13 +373,9 @@ func TestRegister_MissingFields(t *testing.T) {
 
 func TestRegister_InvalidEmail(t *testing.T) {
 	d := newTestDeps(t)
-
-	d.authSvc.EXPECT().
-		Register(mock.Anything, "alice", "not-an-email", "securepassword123").
-		Return(uuid.Nil, apperr.ErrValidation)
-
 	h := d.handler()
 
+	// Invalid email caught by struct tag validation (email)
 	body, _ := json.Marshal(map[string]string{
 		"username": "alice",
 		"email":    "not-an-email",
@@ -405,13 +393,9 @@ func TestRegister_InvalidEmail(t *testing.T) {
 
 func TestRegister_ShortPassword(t *testing.T) {
 	d := newTestDeps(t)
-
-	d.authSvc.EXPECT().
-		Register(mock.Anything, "alice", "alice@example.com", "short").
-		Return(uuid.Nil, apperr.ErrValidation)
-
 	h := d.handler()
 
+	// Short password caught by struct tag validation (min=10)
 	body, _ := json.Marshal(map[string]string{
 		"username": "alice",
 		"email":    "alice@example.com",
@@ -429,14 +413,10 @@ func TestRegister_ShortPassword(t *testing.T) {
 
 func TestRegister_PasswordTooLong(t *testing.T) {
 	d := newTestDeps(t)
+	h := d.handler()
 	longPassword := strings.Repeat("a", 73)
 
-	d.authSvc.EXPECT().
-		Register(mock.Anything, "alice", "alice@example.com", longPassword).
-		Return(uuid.Nil, apperr.ErrValidation)
-
-	h := d.handler()
-
+	// Password too long caught by struct tag validation (max=72)
 	body, _ := json.Marshal(map[string]string{
 		"username": "alice",
 		"email":    "alice@example.com",
@@ -468,13 +448,9 @@ func TestLogin_InvalidJSON(t *testing.T) {
 
 func TestLogin_MissingFields(t *testing.T) {
 	d := newTestDeps(t)
-
-	d.authSvc.EXPECT().
-		Login(mock.Anything, "alice@example.com", "").
-		Return(nil, apperr.ErrValidation)
-
 	h := d.handler()
 
+	// Missing password caught by struct tag validation (required)
 	body, _ := json.Marshal(map[string]string{"email": "alice@example.com"})
 	req := httptest.NewRequest("POST", "/v1/auth/login", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -567,13 +543,9 @@ func TestLogin_Success(t *testing.T) {
 
 func TestRefresh_MissingToken(t *testing.T) {
 	d := newTestDeps(t)
-
-	d.authSvc.EXPECT().
-		Refresh(mock.Anything, "").
-		Return(nil, apperr.ErrValidation)
-
 	h := d.handler()
 
+	// Missing refresh_token caught by struct tag validation (required)
 	body, _ := json.Marshal(map[string]string{})
 	req := httptest.NewRequest("POST", "/v1/auth/refresh", bytes.NewReader(body))
 	w := httptest.NewRecorder()

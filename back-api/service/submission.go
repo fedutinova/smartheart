@@ -109,7 +109,7 @@ func (s *submissionService) SubmitEKG(ctx context.Context, userID uuid.UUID, ima
 	}
 
 	if err := s.repo.CreateRequest(ctx, request); err != nil {
-		return nil, fmt.Errorf("create request: %w", err)
+		return nil, apperr.WrapInternal("create request", err)
 	}
 
 	payload, err := json.Marshal(job.EKGJobPayload{
@@ -119,13 +119,13 @@ func (s *submissionService) SubmitEKG(ctx context.Context, userID uuid.UUID, ima
 		RequestID:    requestID,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("marshal EKG payload: %w", err)
+		return nil, apperr.WrapInternal("marshal EKG payload", err)
 	}
 
 	j := &job.Job{Type: job.TypeEKGAnalyze, Payload: payload}
 	jobID, err := s.queue.Enqueue(ctx, j)
 	if err != nil {
-		return nil, fmt.Errorf("enqueue EKG job: %w", err)
+		return nil, apperr.WrapInternal("enqueue EKG job", err)
 	}
 
 	slog.Info("ekg analysis job enqueued", "job_id", jobID, "request_id", requestID, "user_id", userID)
@@ -151,18 +151,18 @@ func (s *submissionService) SubmitEKGFile(ctx context.Context, userID uuid.UUID,
 		buf := make([]byte, 512)
 		n, readErr := io.ReadFull(file.Reader, buf)
 		if n == 0 && readErr != nil {
-			return nil, fmt.Errorf("detect content type: %w", readErr)
+			return nil, apperr.WrapInternal("detect content type", readErr)
 		}
 		contentType = http.DetectContentType(buf[:n])
 		if _, err := file.Reader.Seek(0, io.SeekStart); err != nil {
-			return nil, fmt.Errorf("seek: %w", err)
+			return nil, apperr.WrapInternal("seek file", err)
 		}
 	}
 
 	// Upload to storage
 	uploadResult, err := s.storage.UploadFile(ctx, file.Filename, file.Reader, contentType)
 	if err != nil {
-		return nil, fmt.Errorf("upload EKG image: %w", err)
+		return nil, apperr.WrapInternal("upload EKG image", err)
 	}
 
 	requestID := uuid.New()
@@ -176,7 +176,7 @@ func (s *submissionService) SubmitEKGFile(ctx context.Context, userID uuid.UUID,
 	}
 
 	if err := s.repo.CreateRequest(ctx, request); err != nil {
-		return nil, fmt.Errorf("create request: %w", err)
+		return nil, apperr.WrapInternal("create request", err)
 	}
 
 	fileModel := &models.File{
@@ -189,7 +189,7 @@ func (s *submissionService) SubmitEKGFile(ctx context.Context, userID uuid.UUID,
 		S3URL:            uploadResult.URL,
 	}
 	if err := s.repo.CreateFile(ctx, fileModel); err != nil {
-		return nil, fmt.Errorf("create file record: %w", err)
+		return nil, apperr.WrapInternal("create file record", err)
 	}
 
 	payload, err := json.Marshal(job.EKGJobPayload{
@@ -199,13 +199,13 @@ func (s *submissionService) SubmitEKGFile(ctx context.Context, userID uuid.UUID,
 		RequestID:    requestID,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("marshal EKG payload: %w", err)
+		return nil, apperr.WrapInternal("marshal EKG payload", err)
 	}
 
 	j := &job.Job{Type: job.TypeEKGAnalyze, Payload: payload}
 	jobID, err := s.queue.Enqueue(ctx, j)
 	if err != nil {
-		return nil, fmt.Errorf("enqueue EKG job: %w", err)
+		return nil, apperr.WrapInternal("enqueue EKG job", err)
 	}
 
 	slog.Info("ekg file analysis job enqueued", "job_id", jobID, "request_id", requestID, "user_id", userID, "file_key", uploadResult.Key)
@@ -232,7 +232,7 @@ func (s *submissionService) SubmitGPT(ctx context.Context, userID uuid.UUID, tex
 	}
 
 	if err := s.repo.CreateRequest(ctx, request); err != nil {
-		return nil, fmt.Errorf("create request: %w", err)
+		return nil, apperr.WrapInternal("create request", err)
 	}
 
 	var fileKeys []string
@@ -264,13 +264,13 @@ func (s *submissionService) SubmitGPT(ctx context.Context, userID uuid.UUID, tex
 	}
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
-		return nil, fmt.Errorf("marshal GPT payload: %w", err)
+		return nil, apperr.WrapInternal("marshal GPT payload", err)
 	}
 
 	j := &job.Job{Type: job.TypeGPTProcess, Payload: payloadBytes}
 	jobID, err := s.queue.Enqueue(ctx, j)
 	if err != nil {
-		return nil, fmt.Errorf("enqueue GPT job: %w", err)
+		return nil, apperr.WrapInternal("enqueue GPT job", err)
 	}
 
 	return &GPTSubmitResult{
@@ -290,17 +290,17 @@ func (s *submissionService) processFile(ctx context.Context, requestID uuid.UUID
 		buf := make([]byte, 512)
 		n, readErr := io.ReadFull(f.Reader, buf)
 		if n == 0 && readErr != nil {
-			return "", fmt.Errorf("detect content type: %w", readErr)
+			return "", apperr.WrapInternal("detect content type", readErr)
 		}
 		contentType = http.DetectContentType(buf[:n])
 		if _, err := f.Reader.Seek(0, io.SeekStart); err != nil {
-			return "", fmt.Errorf("seek: %w", err)
+			return "", apperr.WrapInternal("seek file", err)
 		}
 	}
 
 	uploadResult, err := s.storage.UploadFile(ctx, f.Filename, f.Reader, contentType)
 	if err != nil {
-		return "", fmt.Errorf("upload: %w", err)
+		return "", apperr.WrapInternal("upload file", err)
 	}
 
 	fileModel := &models.File{
@@ -313,7 +313,7 @@ func (s *submissionService) processFile(ctx context.Context, requestID uuid.UUID
 		S3URL:            uploadResult.URL,
 	}
 	if err := s.repo.CreateFile(ctx, fileModel); err != nil {
-		return "", fmt.Errorf("create file record: %w", err)
+		return "", apperr.WrapInternal("create file record", err)
 	}
 
 	return uploadResult.Key, nil

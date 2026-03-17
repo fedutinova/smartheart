@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -13,17 +14,21 @@ import (
 const maxBodySize = 1 << 20 // 1 MB
 
 type registerRequest struct {
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Username string `json:"username" validate:"required,max=100"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,min=10,max=72"`
 }
 
 type loginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required"`
 }
 
 type tokenRequest struct {
+	RefreshToken string `json:"refresh_token" validate:"required"`
+}
+
+type logoutRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
@@ -32,8 +37,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
 	var req registerRequest
-	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if !decodeAndValidate(w, r, &req) {
 		return
 	}
 
@@ -54,8 +58,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
 	var req loginRequest
-	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if !decodeAndValidate(w, r, &req) {
 		return
 	}
 
@@ -73,8 +76,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
 	var req tokenRequest
-	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if !decodeAndValidate(w, r, &req) {
 		return
 	}
 
@@ -91,9 +93,8 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
-	var req tokenRequest
-	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	var req logoutRequest
+	if !decodeAndValidate(w, r, &req) {
 		return
 	}
 
@@ -127,6 +128,7 @@ func handleServiceError(w http.ResponseWriter, err error) {
 	case apperr.IsForbidden(err):
 		writeError(w, http.StatusForbidden, "forbidden")
 	default:
+		slog.Error("unhandled service error", "error", err)
 		writeError(w, http.StatusInternalServerError, "internal error")
 	}
 }

@@ -51,7 +51,7 @@ func (h *RequestHandler) GetRequest(w http.ResponseWriter, r *http.Request) {
 	raw := chi.URLParam(r, "id")
 	id, err := parseUUID(raw)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad id")
+		writeError(w, http.StatusBadRequest, "invalid request ID")
 		return
 	}
 
@@ -75,7 +75,7 @@ func (h *RequestHandler) GetJob(w http.ResponseWriter, r *http.Request) {
 	raw := chi.URLParam(r, "id")
 	id, err := parseUUID(raw)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad id")
+		writeError(w, http.StatusBadRequest, "invalid request ID")
 		return
 	}
 

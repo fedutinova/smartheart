@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -217,6 +218,34 @@ func loadEnvFiles() {
 	if !loadedAny {
 		slog.Debug("no .env files found, using system environment variables only")
 	}
+}
+
+// Validate checks for conflicting or missing configuration values.
+func (c Config) Validate() error {
+	var errs []string
+
+	if c.Storage.Mode == StorageModeS3 || c.Storage.Mode == StorageModeAWS {
+		if c.S3.Bucket == "" {
+			errs = append(errs, "S3_BUCKET is required when STORAGE_MODE is s3/aws")
+		}
+	}
+
+	if c.Queue.Mode == QueueModeRedis && c.RedisURL == "" {
+		errs = append(errs, "REDIS_URL is required when QUEUE_MODE is redis")
+	}
+
+	if c.Queue.Workers <= 0 {
+		errs = append(errs, "QUEUE_WORKERS must be > 0")
+	}
+
+	if c.DB.MaxConns < c.DB.MinConns {
+		errs = append(errs, "DB_MAX_CONNS must be >= DB_MIN_CONNS")
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("config validation failed: %s", strings.Join(errs, "; "))
+	}
+	return nil
 }
 
 func Load() Config {

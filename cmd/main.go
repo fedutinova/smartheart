@@ -25,15 +25,43 @@ import (
 	"github.com/fedutinova/smartheart/back-api/workers"
 )
 
+// Set at build time via -ldflags.
+var (
+	Version = "dev"
+	Commit  = "unknown"
+)
+
 func main() {
 	cfg := appconfig.Load()
+
+	// Structured JSON logging for production readiness.
+	logLevel := slog.LevelInfo
+	if v := os.Getenv("LOG_LEVEL"); v != "" {
+		switch v {
+		case "debug":
+			logLevel = slog.LevelDebug
+		case "warn":
+			logLevel = slog.LevelWarn
+		case "error":
+			logLevel = slog.LevelError
+		}
+	}
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+		Level:     logLevel,
+		AddSource: logLevel == slog.LevelDebug,
+	})))
+
+	if err := cfg.Validate(); err != nil {
+		slog.Error("invalid configuration", "err", err)
+		os.Exit(1)
+	}
 
 	if err := auth.ValidateSecret(cfg.JWT.Secret); err != nil {
 		slog.Error("invalid configuration", "err", err)
 		os.Exit(1)
 	}
 
-	slog.Info("starting smartheart", "addr", cfg.HTTPAddr, "workers", cfg.Queue.Workers)
+	slog.Info("starting smartheart", "addr", cfg.HTTPAddr, "workers", cfg.Queue.Workers, "version", Version, "commit", Commit)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

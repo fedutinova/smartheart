@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios';
+import axiosRetry from 'axios-retry';
 import type {
   LoginRequest,
   RegisterRequest,
@@ -8,15 +9,24 @@ import type {
   Request,
   PaginatedResponse,
 } from '@/types';
-import { API_BASE_URL, JWT_STORAGE_KEY, REFRESH_TOKEN_KEY } from '@/config';
+import { API_BASE_URL, API_TIMEOUT, API_TIMEOUT_UPLOAD, API_TIMEOUT_RAG, JWT_STORAGE_KEY, REFRESH_TOKEN_KEY } from '@/config';
 import { useAuthStore } from '@/store/auth';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000,
+  timeout: API_TIMEOUT,
   headers: {
     'Content-Type': 'application/json',
   },
+});
+
+// Retry network errors and 5xx with exponential backoff (max 3 attempts).
+axiosRetry(api, {
+  retries: 3,
+  retryDelay: axiosRetry.exponentialDelay,
+  retryCondition: (error) =>
+    axiosRetry.isNetworkOrIdempotentRequestError(error) ||
+    (error.response?.status !== undefined && error.response.status >= 500),
 });
 
 let isRefreshing = false;
@@ -150,6 +160,7 @@ export const ekgAPI = {
     }
     const response = await api.post<EKGSubmitResponse>('/v1/ekg/analyze', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: API_TIMEOUT_UPLOAD,
     });
     return response.data;
   },
@@ -194,7 +205,7 @@ export const ragAPI = {
     const response = await api.post<RAGQueryResponse>('/v1/rag/query', {
       question,
       n_results: nResults,
-    }, { timeout: 120_000 });
+    }, { timeout: API_TIMEOUT_RAG });
     return response.data;
   },
 };

@@ -25,8 +25,8 @@ func NewRAGHandler(ragURL string) *RAGHandler {
 }
 
 type ragQueryRequest struct {
-	Question  string `json:"question"`
-	NResults  int    `json:"n_results,omitempty"`
+	Question string `json:"question" validate:"required,min=2,max=2000"`
+	NResults int    `json:"n_results,omitempty" validate:"omitempty,gte=1,lte=20"`
 }
 
 // Query handles POST /v1/rag/query — validates input, proxies to RAG service.
@@ -37,16 +37,7 @@ func (h *RAGHandler) Query(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req ragQueryRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-	if len(req.Question) < 2 {
-		writeError(w, http.StatusBadRequest, "question is too short")
-		return
-	}
-	if len(req.Question) > 2000 {
-		writeError(w, http.StatusBadRequest, "question is too long")
+	if !decodeAndValidate(w, r, &req) {
 		return
 	}
 	if req.NResults <= 0 {
@@ -83,5 +74,7 @@ func (h *RAGHandler) Query(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	io.Copy(w, resp.Body) //nolint:errcheck
+	if _, err := io.Copy(w, resp.Body); err != nil {
+		slog.Warn("failed to write RAG response", "error", err)
+	}
 }

@@ -65,7 +65,7 @@ func (s *authService) Register(ctx context.Context, username, email, password st
 
 	passwordHash, err := auth.HashPassword(password)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("hash password: %w", err)
+		return uuid.Nil, apperr.WrapInternal("hash password", err)
 	}
 
 	user := &models.User{
@@ -81,7 +81,7 @@ func (s *authService) Register(ctx context.Context, username, email, password st
 		}
 		return txRepo.AssignRoleToUser(ctx, user.ID, auth.RoleUser)
 	}); err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, apperr.WrapInternal("register user", err)
 	}
 
 	return user.ID, nil
@@ -105,7 +105,7 @@ func (s *authService) Login(ctx context.Context, email, password string) (*auth.
 		if apperr.IsNotFound(err) {
 			return nil, fmt.Errorf("invalid email or password: %w", apperr.ErrInvalidCredentials)
 		}
-		return nil, fmt.Errorf("get user: %w", err)
+		return nil, apperr.WrapInternal("get user by email", err)
 	}
 
 	if !auth.CheckPassword(password, user.PasswordHash) {
@@ -203,13 +203,13 @@ func (s *authService) issueTokenPair(ctx context.Context, user *models.User) (*a
 		s.cfg.TTLRefresh,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("create token pair: %w", err)
+		return nil, apperr.WrapInternal("create token pair", err)
 	}
 
 	tokenHash := auth.HashToken(tokens.RefreshToken)
 
 	if err := s.sessions.StoreRefreshToken(ctx, user.ID.String(), tokenHash, s.cfg.TTLRefresh); err != nil {
-		return nil, fmt.Errorf("store refresh token in Redis: %w", err)
+		return nil, apperr.WrapInternal("store refresh token", err)
 	}
 
 	if err := s.repo.CreateRefreshToken(ctx, &models.RefreshToken{
