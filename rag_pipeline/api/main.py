@@ -159,6 +159,39 @@ def health():
     return {"status": "ok"}
 
 
+class SearchResponse(BaseModel):
+    sources: list[Source]
+    elapsed_ms: int
+
+
+@app.post("/search", response_model=SearchResponse)
+def search(req: QueryRequest):
+    """Retrieval only — no LLM call. Useful for testing search quality."""
+    start = time.monotonic()
+
+    try:
+        engine = _get_engine()
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+
+    from rag_pipeline.generation import retrieve_context
+
+    _, items = retrieve_context(engine, req.question, n_results=req.n_results)
+
+    sources = []
+    for it in items[:6]:
+        meta = it["meta"]
+        sources.append(Source(
+            doc_name=meta.get("doc_name", "unknown"),
+            chunk_index=meta.get("chunk_index", 0),
+            score=round(it["combined"], 4),
+            preview=it["doc"][:200].replace("\n", " ").strip(),
+        ))
+
+    elapsed_ms = int((time.monotonic() - start) * 1000)
+    return SearchResponse(sources=sources, elapsed_ms=elapsed_ms)
+
+
 @app.post("/query", response_model=QueryResponse)
 def query(req: QueryRequest):
     start = time.monotonic()

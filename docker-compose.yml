@@ -101,6 +101,11 @@ services:
     restart: unless-stopped
     ports:
       - "8000:8000"
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
     environment:
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_BASE_URL: ${LLM_BASE_URL:-https://bothub.chat/api/v2/openai/v1}
