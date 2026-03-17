@@ -33,8 +33,33 @@ var (
 
 func main() {
 	cfg := appconfig.Load()
+	initLogger()
+	validateConfig(cfg)
 
-	// Structured JSON logging for production readiness.
+	slog.Info("starting smartheart", "addr", cfg.HTTPAddr, "workers", cfg.Queue.Workers, "version", Version, "commit", Commit)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	db, sessions, storageService := initInfra(ctx, cfg)
+	defer db.Close()
+	defer sessions.Close()
+
+	repo := repository.New(db, repository.WithQueryTimeout(cfg.DB.QueryTimeout))
+	loadPermissions(ctx, repo)
+
+	q := initQueue(cfg, sessions)
+	defer q.Close()
+
+	hub := notify.NewHub()
+	startWorkers(ctx, cfg, db, q, storageService, repo, hub)
+
+	srv := startHTTPServer(cfg, repo, sessions, storageService, q, hub)
+
+	waitForShutdown(srv, cancel)
+}
+
+func initLogger() {
 	logLevel := slog.LevelInfo
 	if v := os.Getenv("LOG_LEVEL"); v != "" {
 		switch v {
@@ -50,22 +75,20 @@ func main() {
 		Level:     logLevel,
 		AddSource: logLevel == slog.LevelDebug,
 	})))
+}
 
+func validateConfig(cfg appconfig.Config) {
 	if err := cfg.Validate(); err != nil {
 		slog.Error("invalid configuration", "err", err)
 		os.Exit(1)
 	}
-
 	if err := auth.ValidateSecret(cfg.JWT.Secret); err != nil {
 		slog.Error("invalid configuration", "err", err)
 		os.Exit(1)
 	}
+}
 
-	slog.Info("starting smartheart", "addr", cfg.HTTPAddr, "workers", cfg.Queue.Workers, "version", Version, "commit", Commit)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+func initInfra(ctx context.Context, cfg appconfig.Config) (*database.DB, *session.Service, storage.Storage) {
 	db, err := database.NewDB(ctx, cfg.DB.URL, func(pc *database.PoolConfig) {
 		pc.MaxConns = int32(cfg.DB.MaxConns)
 		pc.MinConns = int32(cfg.DB.MinConns)
@@ -74,37 +97,36 @@ func main() {
 		slog.Error("failed to connect to database", "err", err)
 		os.Exit(1)
 	}
-	defer db.Close()
 
 	storageService, err := storage.NewStorage(ctx, cfg)
 	if err != nil {
 		slog.Error("failed to initialize storage", "err", err)
 		os.Exit(1)
 	}
-
-	storageType := storage.GetStorageType(cfg)
-	slog.Info("storage initialized", "type", storageType)
+	slog.Info("storage initialized", "type", storage.GetStorageType(cfg))
 
 	sessions, err := session.New(cfg.RedisURL)
 	if err != nil {
 		slog.Error("failed to connect to Redis", "err", err)
 		os.Exit(1)
 	}
-	defer sessions.Close()
 
-	gptClient := gpt.NewClient(cfg.GPT.APIKey, storageService, gpt.WithModel(cfg.GPT.Model))
-	repo := repository.New(db, repository.WithQueryTimeout(cfg.DB.QueryTimeout))
+	return db, sessions, storageService
+}
 
-	// Load role→permissions mapping from DB so auth middleware uses DB as source of truth
-	if rolePerms, err := repo.LoadRolePermissions(ctx); err != nil {
+func loadPermissions(ctx context.Context, repo repository.Store) {
+	rolePerms, err := repo.LoadRolePermissions(ctx)
+	if err != nil {
 		slog.Warn("failed to load role permissions from DB, using defaults", "err", err)
-	} else if len(rolePerms) > 0 {
+		return
+	}
+	if len(rolePerms) > 0 {
 		auth.InitPermsFromDB(rolePerms)
 		slog.Info("loaded role permissions from DB", "roles", len(rolePerms))
 	}
+}
 
-	// Initialize job queue based on configuration
-	var q job.Queue
+func initQueue(cfg appconfig.Config, sessions *session.Service) job.Queue {
 	switch cfg.Queue.Mode {
 	case appconfig.QueueModeRedis:
 		redisQueue, err := queue.NewRedisQueue(sessions.Client(), queue.RedisQueueConfig{
@@ -118,34 +140,33 @@ func main() {
 			slog.Error("failed to create Redis queue", "err", err)
 			os.Exit(1)
 		}
-		q = redisQueue
 		slog.Info("using Redis Streams queue", "stream", cfg.Queue.Stream, "group", cfg.Queue.Group)
+		return redisQueue
 	default:
-		q = queue.NewMemoryQueue(cfg.Queue.Buffer, cfg.Queue.MaxDuration)
 		slog.Warn("using in-memory queue (not recommended for production)")
+		return queue.NewMemoryQueue(cfg.Queue.Buffer, cfg.Queue.MaxDuration)
 	}
-	defer q.Close()
+}
 
-	// Notification hub for SSE
-	hub := notify.NewHub()
-
+func startWorkers(ctx context.Context, cfg appconfig.Config, db *database.DB, q job.Queue, storageService storage.Storage, repo repository.Store, hub *notify.Hub) {
+	gptClient := gpt.NewClient(cfg.GPT.APIKey, storageService, gpt.WithModel(cfg.GPT.Model))
 	gptWorker := workers.NewGPTWorker(db, gptClient, repo, hub)
 	ekgWorker := workers.NewEKGWorker(db, q, storageService, repo)
 
+	registry := job.NewRegistry()
+	registry.Register(job.TypeEKGAnalyze, ekgWorker.HandleEKGJob)
+	registry.Register(job.TypeGPTProcess, gptWorker.HandleGPTJob)
+
+	q.StartConsumers(ctx, cfg.Queue.Workers, registry.Dispatch)
+}
+
+func startHTTPServer(cfg appconfig.Config, repo repository.Store, sessions *session.Service, storageService storage.Storage, q job.Queue, hub *notify.Hub) *http.Server {
 	authSvc := service.NewAuthService(repo, sessions, cfg.JWT)
 	submissionSvc := service.NewSubmissionService(repo, q, storageService, cfg.Quota)
 	requestSvc := service.NewRequestService(repo, q)
 
 	handlers := handler.NewHandler(authSvc, submissionSvc, requestSvc, q, repo, sessions, storageService, hub, cfg)
 	r := server.NewRouter(handlers, cfg)
-
-	// Register job handlers
-	registry := job.NewRegistry()
-	registry.Register(job.TypeEKGAnalyze, ekgWorker.HandleEKGJob)
-	registry.Register(job.TypeGPTProcess, gptWorker.HandleGPTJob)
-
-	// Start queue consumers
-	q.StartConsumers(ctx, cfg.Queue.Workers, registry.Dispatch)
 
 	srv := &http.Server{
 		Addr:         cfg.HTTPAddr,
@@ -155,23 +176,22 @@ func main() {
 		IdleTimeout:  90 * time.Second,
 	}
 
-	errCh := make(chan error, 1)
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			errCh <- err
+			slog.Error("server error", "err", err)
+			os.Exit(1)
 		}
 	}()
 
+	return srv
+}
+
+func waitForShutdown(srv *http.Server, cancel context.CancelFunc) {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 
-	select {
-	case sig := <-sigCh:
-		slog.Info("received signal", "signal", sig)
-	case err := <-errCh:
-		slog.Error("server error", "err", err)
-	}
-	slog.Info("shutting down")
+	sig := <-sigCh
+	slog.Info("received signal, shutting down", "signal", sig)
 
 	shCtx, shCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shCancel()

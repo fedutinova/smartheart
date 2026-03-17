@@ -57,8 +57,22 @@ func (h *GPTWorker) HandleGPTJob(ctx context.Context, j *job.Job) error {
 		return fmt.Errorf("GPT processing failed: %w", err)
 	}
 
-	// Save response and update status in a transaction.
-	if txErr := h.txb.WithTx(ctx, func(tx database.Tx) error {
+	if txErr := h.saveGPTResult(ctx, payload, result); txErr != nil {
+		if updateErr := h.repo.UpdateRequestStatus(ctx, payload.RequestID, models.StatusFailed); updateErr != nil {
+			slog.Error("failed to update request status to failed after tx error",
+				"request_id", payload.RequestID, "error", updateErr)
+		}
+		h.notifyUser(payload.UserID, payload.RequestID, models.StatusFailed)
+		return txErr
+	}
+
+	h.notifyUser(payload.UserID, payload.RequestID, models.StatusCompleted)
+	return nil
+}
+
+// saveGPTResult persists the GPT response and marks the request as completed in a single transaction.
+func (h *GPTWorker) saveGPTResult(ctx context.Context, payload gpt.JobPayload, result *gpt.ProcessResult) error {
+	return h.txb.WithTx(ctx, func(tx database.Tx) error {
 		txRepo := repository.NewTxScoped(tx)
 
 		response := &models.Response{
@@ -84,18 +98,7 @@ func (h *GPTWorker) HandleGPTJob(ctx context.Context, j *job.Job) error {
 		)
 
 		return nil
-	}); txErr != nil {
-		// Transaction failed — mark request as failed so it doesn't stay in "processing" forever.
-		if updateErr := h.repo.UpdateRequestStatus(ctx, payload.RequestID, models.StatusFailed); updateErr != nil {
-			slog.Error("failed to update request status to failed after tx error",
-				"request_id", payload.RequestID, "error", updateErr)
-		}
-		h.notifyUser(payload.UserID, payload.RequestID, models.StatusFailed)
-		return txErr
-	}
-
-	h.notifyUser(payload.UserID, payload.RequestID, models.StatusCompleted)
-	return nil
+	})
 }
 
 func (h *GPTWorker) notifyUser(userID, requestID uuid.UUID, status string) {

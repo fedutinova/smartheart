@@ -64,6 +64,24 @@ func NewSubmissionService(repo repository.Store, queue job.Queue, storageService
 
 const maxNotesLen = 2000
 
+// detectContentType returns the file's content type, sniffing it from the first
+// 512 bytes when the UploadedFile does not already carry one.
+func detectContentType(file *UploadedFile) (string, error) {
+	if file.ContentType != "" {
+		return file.ContentType, nil
+	}
+	buf := make([]byte, 512)
+	n, err := io.ReadFull(file.Reader, buf)
+	if n == 0 && err != nil {
+		return "", apperr.WrapInternal("detect content type", err)
+	}
+	ct := http.DetectContentType(buf[:n])
+	if _, err := file.Reader.Seek(0, io.SeekStart); err != nil {
+		return "", apperr.WrapInternal("seek file", err)
+	}
+	return ct, nil
+}
+
 func validateEKGNotes(notes string) error {
 	if len(notes) > maxNotesLen {
 		return fmt.Errorf("notes too long: %w", apperr.ErrValidation)
@@ -145,18 +163,9 @@ func (s *submissionService) SubmitEKGFile(ctx context.Context, userID uuid.UUID,
 		return nil, err
 	}
 
-	// Detect content type if missing
-	contentType := file.ContentType
-	if contentType == "" {
-		buf := make([]byte, 512)
-		n, readErr := io.ReadFull(file.Reader, buf)
-		if n == 0 && readErr != nil {
-			return nil, apperr.WrapInternal("detect content type", readErr)
-		}
-		contentType = http.DetectContentType(buf[:n])
-		if _, err := file.Reader.Seek(0, io.SeekStart); err != nil {
-			return nil, apperr.WrapInternal("seek file", err)
-		}
+	contentType, err := detectContentType(&file)
+	if err != nil {
+		return nil, err
 	}
 
 	// Upload to storage
@@ -285,17 +294,9 @@ func (s *submissionService) SubmitGPT(ctx context.Context, userID uuid.UUID, tex
 }
 
 func (s *submissionService) processFile(ctx context.Context, requestID uuid.UUID, f UploadedFile) (string, error) {
-	contentType := f.ContentType
-	if contentType == "" {
-		buf := make([]byte, 512)
-		n, readErr := io.ReadFull(f.Reader, buf)
-		if n == 0 && readErr != nil {
-			return "", apperr.WrapInternal("detect content type", readErr)
-		}
-		contentType = http.DetectContentType(buf[:n])
-		if _, err := f.Reader.Seek(0, io.SeekStart); err != nil {
-			return "", apperr.WrapInternal("seek file", err)
-		}
+	contentType, err := detectContentType(&f)
+	if err != nil {
+		return "", err
 	}
 
 	uploadResult, err := s.storage.UploadFile(ctx, f.Filename, f.Reader, contentType)

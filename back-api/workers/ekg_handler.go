@@ -378,29 +378,9 @@ func (h *EKGWorker) persistEKGResults(ctx context.Context, jobID, requestID uuid
 			return fmt.Errorf("failed to update request status to completed: %w", err)
 		}
 
-		// Create GPT request and file inside the same transaction.
 		if gptPrep != nil {
-			gptRequest := &models.Request{
-				ID:        gptPrep.requestID,
-				UserID:    gptPrep.userID,
-				TextQuery: &gptPrep.textQuery,
-				Status:    models.StatusPending,
-			}
-			if err := txRepo.CreateRequest(ctx, gptRequest); err != nil {
-				return fmt.Errorf("failed to create GPT request: %w", err)
-			}
-
-			fileModel := &models.File{
-				ID:               uuid.New(),
-				RequestID:        gptPrep.requestID,
-				OriginalFilename: gptPrep.filename,
-				FileType:         "image/jpeg",
-				FileSize:         gptPrep.fileSize,
-				S3Key:            gptPrep.uploadKey,
-				S3URL:            gptPrep.uploadURL,
-			}
-			if err := txRepo.CreateFile(ctx, fileModel); err != nil {
-				return fmt.Errorf("failed to create file record: %w", err)
+			if err := createGPTRecords(ctx, txRepo, gptPrep); err != nil {
+				return err
 			}
 		}
 
@@ -411,6 +391,35 @@ func (h *EKGWorker) persistEKGResults(ctx context.Context, jobID, requestID uuid
 
 		return nil
 	})
+}
+
+// createGPTRecords persists the GPT request and associated file record
+// inside an existing transaction.
+func createGPTRecords(ctx context.Context, txRepo *repository.Repository, prep *gptAnalysisPrep) error {
+	gptRequest := &models.Request{
+		ID:        prep.requestID,
+		UserID:    prep.userID,
+		TextQuery: &prep.textQuery,
+		Status:    models.StatusPending,
+	}
+	if err := txRepo.CreateRequest(ctx, gptRequest); err != nil {
+		return fmt.Errorf("failed to create GPT request: %w", err)
+	}
+
+	fileModel := &models.File{
+		ID:               uuid.New(),
+		RequestID:        prep.requestID,
+		OriginalFilename: prep.filename,
+		FileType:         "image/jpeg",
+		FileSize:         prep.fileSize,
+		S3Key:            prep.uploadKey,
+		S3URL:            prep.uploadURL,
+	}
+	if err := txRepo.CreateFile(ctx, fileModel); err != nil {
+		return fmt.Errorf("failed to create file record: %w", err)
+	}
+
+	return nil
 }
 
 // enqueueGPTJob enqueues a GPT processing job from prepared data.
