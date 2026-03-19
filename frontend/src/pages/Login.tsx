@@ -1,21 +1,32 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authAPI } from '@/services/api';
 import { useAuthStore } from '@/store/auth';
-import { ROUTES } from '@/config';
+import { ROUTES, AUTH_ERROR_KEY } from '@/config';
 import { Layout } from '@/components/Layout';
 
 export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [authNotice, setAuthNotice] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuthStore();
 
+  // Show auth error from redirect (expired session, network error, etc.)
+  useEffect(() => {
+    const reason = sessionStorage.getItem(AUTH_ERROR_KEY);
+    if (reason) {
+      setAuthNotice(reason);
+      sessionStorage.removeItem(AUTH_ERROR_KEY);
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setAuthNotice('');
     setLoading(true);
 
     try {
@@ -45,6 +56,11 @@ export function Login() {
             </p>
           </div>
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+            {authNotice && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded text-sm">
+                {authNotice}
+              </div>
+            )}
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded">
                 {error}

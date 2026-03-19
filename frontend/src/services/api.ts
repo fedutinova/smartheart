@@ -9,7 +9,7 @@ import type {
   Request,
   PaginatedResponse,
 } from '@/types';
-import { API_BASE_URL, API_TIMEOUT, API_TIMEOUT_UPLOAD, API_TIMEOUT_RAG, JWT_STORAGE_KEY, REFRESH_TOKEN_KEY } from '@/config';
+import { API_BASE_URL, API_TIMEOUT, API_TIMEOUT_UPLOAD, API_TIMEOUT_RAG, JWT_STORAGE_KEY, REFRESH_TOKEN_KEY, AUTH_ERROR_KEY } from '@/config';
 import { useAuthStore } from '@/store/auth';
 
 const api = axios.create({
@@ -69,6 +69,7 @@ api.interceptors.response.use(
       const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
 
       if (!refreshToken) {
+        sessionStorage.setItem(AUTH_ERROR_KEY, 'Сессия не найдена. Пожалуйста, войдите снова.');
         useAuthStore.getState().logout();
         window.location.href = '/login';
         return Promise.reject(error);
@@ -105,6 +106,14 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
+
+        // Determine user-friendly error message
+        const isNetwork = refreshError instanceof AxiosError && !refreshError.response;
+        const reason = isNetwork
+          ? 'Не удалось связаться с сервером. Проверьте подключение к интернету.'
+          : 'Сессия истекла. Пожалуйста, войдите снова.';
+        sessionStorage.setItem(AUTH_ERROR_KEY, reason);
+
         useAuthStore.getState().logout();
         window.location.href = '/login';
         return Promise.reject(refreshError);

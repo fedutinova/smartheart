@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
@@ -6,11 +6,13 @@ import { requestAPI } from '@/services/api';
 import { formatDate, formatStatus, getStatusColor } from '@/utils/format';
 import { Layout } from '@/components/Layout';
 import { useEventSource } from '@/hooks/useEventSource';
+import { usePendingJobs } from '@/hooks/usePendingJobs';
 import type { EKGAnalysisResult } from '@/types';
 
 export function Results() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
+  const { removeJob } = usePendingJobs();
 
   // SSE: instantly refetch when the backend notifies about this request.
   const onSSEEvent = useCallback(
@@ -47,6 +49,13 @@ export function Results() {
       return false;
     },
   });
+
+  // Remove from pending jobs when request completes or fails
+  useEffect(() => {
+    if (id && request && (request.status === 'completed' || request.status === 'failed')) {
+      removeJob(id);
+    }
+  }, [id, request?.status, removeJob]);
 
   let ekgResult: EKGAnalysisResult | null = null;
   if (request?.response?.content) {

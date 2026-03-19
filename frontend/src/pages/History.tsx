@@ -1,13 +1,13 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { formatDate, formatStatus, getStatusColor } from '@/utils/format';
 import { Layout } from '@/components/Layout';
 import { useUserRequests } from '@/hooks/useUserRequests';
+import { useSessionState } from '@/hooks/useSessionState';
 
 const PAGE_SIZE = 20;
 
 export function History() {
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useSessionState('history_page', 0);
   const offset = page * PAGE_SIZE;
   const { requests: filteredRequests, isLoading, error, total } = useUserRequests(PAGE_SIZE, offset);
 

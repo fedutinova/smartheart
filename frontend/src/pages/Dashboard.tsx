@@ -3,15 +3,37 @@ import { formatRelative, formatStatus, getStatusColor } from '@/utils/format';
 import { ROUTES } from '@/config';
 import { Layout } from '@/components/Layout';
 import { useUserRequests } from '@/hooks/useUserRequests';
+import { usePendingJobs } from '@/hooks/usePendingJobs';
 
 export function Dashboard() {
   const { requests, isLoading } = useUserRequests();
   const recentRequests = requests.slice(0, 5);
+  const { jobs: pendingJobs } = usePendingJobs();
 
   return (
     <Layout>
       <div className="px-4 sm:px-0">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Панель управления</h1>
+
+        {/* Pending jobs banner — resumable after refresh */}
+        {pendingJobs.length > 0 && (
+          <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <p className="text-sm font-medium text-amber-800 mb-2">
+              {pendingJobs.length === 1 ? 'Есть незавершённый анализ' : `Есть незавершённые анализы (${pendingJobs.length})`}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {pendingJobs.map((job) => (
+                <Link
+                  key={job.requestId}
+                  to={`/results/${job.requestId}`}
+                  className="inline-flex items-center px-3 py-1.5 text-sm bg-amber-100 text-amber-900 rounded-md hover:bg-amber-200 transition-colors"
+                >
+                  {job.requestId.slice(0, 8)}... — Посмотреть
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <Link

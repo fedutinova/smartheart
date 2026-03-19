@@ -1,8 +1,10 @@
 import { Layout } from '@/components/Layout';
-import { useState, useRef, useCallback } from 'react';
+import { useRef, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { ragAPI } from '@/services/api';
 import type { RAGSource, RAGQueryMeta } from '@/services/api';
+import { useSessionState } from '@/hooks/useSessionState';
+import { useDraft } from '@/hooks/useDraft';
 
 interface Message {
   id: number;
@@ -23,14 +25,18 @@ const EXAMPLE_QUESTIONS = [
 ];
 
 export function KnowledgeBase() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [feedbackGiven, setFeedbackGiven] = useState<Record<number, -1 | 1>>({});
+  // Persist chat history across refresh
+  const [messages, setMessages] = useSessionState<Message[]>('kb_messages', []);
+  const [input, setInput, clearDraft] = useDraft('kb_draft');
+  const [isLoading, setIsLoading] = useSessionState<boolean>('kb_loading', false);
+  const [error, setError] = useSessionState<string | null>('kb_error', null);
+  // Optimistic feedback: update UI immediately, revert on failure
+  const [feedbackGiven, setFeedbackGiven] = useSessionState<Record<number, -1 | 1>>('kb_feedback', {});
   const pendingFeedback = useRef(new Set<number>());
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const nextId = useRef(1);
+  const nextId = useRef(
+    messages.length > 0 ? Math.max(...messages.map((m) => m.id)) + 1 : 1,
+  );
 
   const scrollToBottom = () => {
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
@@ -41,7 +47,7 @@ export function KnowledgeBase() {
 
     const userMsg: Message = { id: nextId.current++, role: 'user', content: question.trim() };
     setMessages((prev) => [...prev, userMsg]);
-    setInput('');
+    clearDraft();
     setError(null);
     setIsLoading(true);
     scrollToBottom();
@@ -70,15 +76,23 @@ export function KnowledgeBase() {
   const handleFeedback = useCallback(async (msg: Message, rating: -1 | 1) => {
     if (!msg.question || feedbackGiven[msg.id] !== undefined || pendingFeedback.current.has(msg.id)) return;
     pendingFeedback.current.add(msg.id);
+
+    // Optimistic update — show feedback immediately
+    setFeedbackGiven((prev) => ({ ...prev, [msg.id]: rating }));
+
     try {
       await ragAPI.submitFeedback(msg.question, msg.content, rating);
-      setFeedbackGiven((prev) => ({ ...prev, [msg.id]: rating }));
     } catch {
-      // silently ignore
+      // Revert on failure
+      setFeedbackGiven((prev) => {
+        const next = { ...prev };
+        delete next[msg.id];
+        return next;
+      });
     } finally {
       pendingFeedback.current.delete(msg.id);
     }
-  }, [feedbackGiven]);
+  }, [feedbackGiven, setFeedbackGiven]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {

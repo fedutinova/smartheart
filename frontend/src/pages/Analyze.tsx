@@ -5,6 +5,8 @@ import { ekgAPI } from '@/services/api';
 import { ROUTES } from '@/config';
 import { Layout } from '@/components/Layout';
 import { ImageCropper } from '@/components/ImageCropper';
+import { useDraft } from '@/hooks/useDraft';
+import { usePendingJobs } from '@/hooks/usePendingJobs';
 
 type Mode = 'file' | 'url';
 type Step = 'select' | 'crop' | 'ready';
@@ -12,9 +14,10 @@ type Step = 'select' | 'crop' | 'ready';
 export function Analyze() {
   const [mode, setMode] = useState<Mode>('file');
   const [step, setStep] = useState<Step>('select');
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes, clearNotes] = useDraft('analyze_notes');
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { addJob } = usePendingJobs();
 
   // File mode state
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
@@ -22,8 +25,8 @@ export function Analyze() {
   const [croppedPreview, setCroppedPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // URL mode state
-  const [imageUrl, setImageUrl] = useState('');
+  // URL mode state — persisted as draft
+  const [imageUrl, setImageUrl, clearImageUrl] = useDraft('analyze_url');
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -33,6 +36,9 @@ export function Analyze() {
       return ekgAPI.submitAnalysis({ image_temp_url: imageUrl, notes: notes || undefined });
     },
     onSuccess: (response) => {
+      clearNotes();
+      clearImageUrl();
+      addJob(response.request_id);
       navigate(`/results/${response.request_id}`);
     },
     onError: (err: any) => {
@@ -120,7 +126,7 @@ export function Analyze() {
 
   const switchMode = (newMode: Mode) => {
     handleReset();
-    setImageUrl('');
+    clearImageUrl();
     setMode(newMode);
   };
 

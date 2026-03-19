@@ -18,3 +18,9 @@ export const ROUTES = {
 export const JWT_STORAGE_KEY = 'access_token';
 export const REFRESH_TOKEN_KEY = 'refresh_token';
 
+/**
+ * Key in sessionStorage for storing the auth error reason
+ * so the Login page can display a meaningful message after redirect.
+ */
+export const AUTH_ERROR_KEY = 'auth_error';
+
