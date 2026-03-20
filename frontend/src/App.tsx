@@ -3,6 +3,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { ROUTES } from '@/config';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { ToastContainer } from '@/components/Toast';
+import { useToastNotifications } from '@/hooks/useToastNotifications';
 import { Login } from '@/pages/Login';
 import { Register } from '@/pages/Register';
 
@@ -22,8 +24,13 @@ function PageLoader() {
 }
 
 function App() {
+  // SSE + toasts live here — once for the entire app lifetime,
+  // not inside Layout which remounts on every navigation.
+  const { toasts, dismiss } = useToastNotifications();
+
   return (
     <ErrorBoundary>
+      <ToastContainer toasts={toasts} onDismiss={dismiss} />
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path={ROUTES.LOGIN} element={<Login />} />

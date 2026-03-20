@@ -4,15 +4,12 @@ import { useAuthStore } from '@/store/auth';
 import { ROUTES, REFRESH_TOKEN_KEY } from '@/config';
 import { storage } from '@/utils/storage';
 import { authAPI } from '@/services/api';
-import { ToastContainer } from './Toast';
-import { useToastNotifications } from '@/hooks/useToastNotifications';
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, logout } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { toasts, dismiss } = useToastNotifications();
 
   const handleLogout = async () => {
     const refreshToken = storage.get(REFRESH_TOKEN_KEY);
@@ -43,7 +40,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <ToastContainer toasts={toasts} onDismiss={dismiss} />
       <nav className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
