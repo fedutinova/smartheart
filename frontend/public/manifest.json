@@ -1,0 +1,18 @@
+{
+  "name": "SmartHeart — Анализ ЭКГ",
+  "short_name": "SmartHeart",
+  "description": "AI-помощник для интерпретации ЭКГ",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/heart.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

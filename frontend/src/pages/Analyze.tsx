@@ -8,7 +8,7 @@ import { ImageCropper } from '@/components/ImageCropper';
 import { useDraft } from '@/hooks/useDraft';
 import { usePendingJobs } from '@/hooks/usePendingJobs';
 
-type Mode = 'file' | 'url';
+type Mode = 'file' | 'camera' | 'url';
 type Step = 'select' | 'crop' | 'ready';
 
 export function Analyze() {
@@ -19,18 +19,19 @@ export function Analyze() {
   const navigate = useNavigate();
   const { addJob } = usePendingJobs();
 
-  // File mode state
+  // File/camera mode state
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
   const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null);
   const [croppedPreview, setCroppedPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   // URL mode state — persisted as draft
   const [imageUrl, setImageUrl, clearImageUrl] = useDraft('analyze_url');
 
   const mutation = useMutation({
     mutationFn: () => {
-      if (mode === 'file' && croppedBlob) {
+      if ((mode === 'file' || mode === 'camera') && croppedBlob) {
         return ekgAPI.submitAnalysisFile(croppedBlob, notes || undefined);
       }
       return ekgAPI.submitAnalysis({ image_temp_url: imageUrl, notes: notes || undefined });
@@ -112,8 +113,8 @@ export function Analyze() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (mode === 'file' && !croppedBlob) {
-      setError('Выберите и обрежьте изображение');
+    if ((mode === 'file' || mode === 'camera') && !croppedBlob) {
+      setError(mode === 'camera' ? 'Сделайте фото и обрежьте изображение' : 'Выберите и обрежьте изображение');
       return;
     }
     if (mode === 'url' && !imageUrl.trim()) {
@@ -131,27 +132,29 @@ export function Analyze() {
   };
 
   const canSubmit =
-    mode === 'file' ? step === 'ready' && croppedBlob !== null : imageUrl.trim() !== '';
+    (mode === 'file' || mode === 'camera')
+      ? step === 'ready' && croppedBlob !== null
+      : imageUrl.trim() !== '';
 
   return (
     <Layout>
       <div className="max-w-3xl mx-auto px-4 sm:px-0">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Анализ ЭКГ</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6 sm:mb-8">Анализ ЭКГ</h1>
 
-        <div className="bg-white shadow rounded-lg p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="bg-white shadow rounded-lg p-4 sm:p-6">
+          <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded">
+              <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded text-sm">
                 {error}
               </div>
             )}
 
             {/* Mode toggle */}
-            <div className="flex gap-2 text-sm">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2 text-sm">
               <button
                 type="button"
                 onClick={() => switchMode('file')}
-                className={`px-3 py-1.5 rounded-md ${
+                className={`px-3 py-1.5 rounded-md transition-colors ${
                   mode === 'file'
                     ? 'bg-blue-100 text-blue-700 font-medium'
                     : 'text-gray-500 hover:text-gray-700'
@@ -161,8 +164,19 @@ export function Analyze() {
               </button>
               <button
                 type="button"
+                onClick={() => switchMode('camera')}
+                className={`px-3 py-1.5 rounded-md transition-colors ${
+                  mode === 'camera'
+                    ? 'bg-blue-100 text-blue-700 font-medium'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Камера
+              </button>
+              <button
+                type="button"
                 onClick={() => switchMode('url')}
-                className={`px-3 py-1.5 rounded-md ${
+                className={`px-3 py-1.5 rounded-md transition-colors ${
                   mode === 'url'
                     ? 'bg-blue-100 text-blue-700 font-medium'
                     : 'text-gray-500 hover:text-gray-700'
@@ -172,15 +186,15 @@ export function Analyze() {
               </button>
             </div>
 
+            {/* File upload mode */}
             {mode === 'file' && (
               <>
-                {/* File selection */}
                 {step === 'select' && (
                   <div
                     onDrop={handleDrop}
                     onDragOver={handleDragOver}
                     onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                    className="border-2 border-dashed border-gray-300 rounded-lg p-6 sm:p-8 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors active:bg-blue-100"
                   >
                     <input
                       ref={fileInputRef}
@@ -191,7 +205,7 @@ export function Analyze() {
                     />
                     <div className="text-gray-500">
                       <svg
-                        className="mx-auto h-12 w-12 text-gray-400 mb-3"
+                        className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400 mb-3"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -213,7 +227,6 @@ export function Analyze() {
                   </div>
                 )}
 
-                {/* Cropper */}
                 {step === 'crop' && previewSrc && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -227,34 +240,134 @@ export function Analyze() {
                   </div>
                 )}
 
-                {/* Cropped preview */}
                 {step === 'ready' && croppedPreview && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Результат обрезки
                     </label>
-                    <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
+                    <div className="border border-gray-300 rounded-lg p-3 sm:p-4 bg-gray-50">
                       <img
                         src={croppedPreview}
                         alt="Обрезанное изображение"
                         className="max-w-full h-auto rounded max-h-64 mx-auto"
                       />
                     </div>
-                    <div className="mt-2">
+                    <div className="mt-2 flex flex-wrap gap-x-1 gap-y-1">
                       <button
                         type="button"
                         onClick={handleRecrop}
-                        className="text-sm text-blue-600 hover:text-blue-800"
+                        className="text-sm text-blue-600 hover:text-blue-800 py-1"
                       >
                         Обрезать заново
                       </button>
-                      <span className="mx-2 text-gray-300">|</span>
+                      <span className="mx-1.5 text-gray-300">|</span>
                       <button
                         type="button"
                         onClick={handleReset}
-                        className="text-sm text-gray-500 hover:text-gray-700"
+                        className="text-sm text-gray-500 hover:text-gray-700 py-1"
                       >
                         Выбрать другой файл
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Camera mode */}
+            {mode === 'camera' && (
+              <>
+                {step === 'select' && (
+                  <div className="space-y-3">
+                    <input
+                      ref={cameraInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleInputChange}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => cameraInputRef.current?.click()}
+                      className="w-full border-2 border-dashed border-gray-300 rounded-lg p-6 sm:p-8 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors active:bg-blue-100"
+                    >
+                      <div className="text-gray-500">
+                        <svg
+                          className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400 mb-3"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.5}
+                            d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.5}
+                            d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z"
+                          />
+                        </svg>
+                        <p className="text-sm font-medium">
+                          Сфотографировать ЭКГ
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          Откроется камера устройства
+                        </p>
+                      </div>
+                    </button>
+                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
+                      <p className="text-xs text-blue-700">
+                        Для лучшего результата: расположите ЭКГ на ровной поверхности, обеспечьте хорошее освещение, избегайте бликов и теней
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {step === 'crop' && previewSrc && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Обрежьте фотографию
+                    </label>
+                    <ImageCropper
+                      imageSrc={previewSrc}
+                      onCropComplete={handleCropComplete}
+                      onCancel={handleCropCancel}
+                    />
+                  </div>
+                )}
+
+                {step === 'ready' && croppedPreview && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Результат обрезки
+                    </label>
+                    <div className="border border-gray-300 rounded-lg p-3 sm:p-4 bg-gray-50">
+                      <img
+                        src={croppedPreview}
+                        alt="Обрезанное фото"
+                        className="max-w-full h-auto rounded max-h-64 mx-auto"
+                      />
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-x-1 gap-y-1">
+                      <button
+                        type="button"
+                        onClick={handleRecrop}
+                        className="text-sm text-blue-600 hover:text-blue-800 py-1"
+                      >
+                        Обрезать заново
+                      </button>
+                      <span className="mx-1.5 text-gray-300">|</span>
+                      <button
+                        type="button"
+                        onClick={handleReset}
+                        className="text-sm text-gray-500 hover:text-gray-700 py-1"
+                      >
+                        Сфотографировать заново
                       </button>
                     </div>
                   </div>
@@ -272,12 +385,12 @@ export function Analyze() {
                     id="imageUrl"
                     type="url"
                     required
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
                     placeholder="https://example.com/ekg.jpg"
                     value={imageUrl}
                     onChange={(e) => setImageUrl(e.target.value)}
                   />
-                  <p className="mt-1 text-sm text-gray-500">
+                  <p className="mt-1 text-xs sm:text-sm text-gray-500">
                     Поддерживаемые форматы: JPEG, PNG, GIF, WebP, BMP, TIFF, PDF
                   </p>
                 </div>
@@ -287,7 +400,7 @@ export function Analyze() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Предпросмотр
                     </label>
-                    <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
+                    <div className="border border-gray-300 rounded-lg p-3 sm:p-4 bg-gray-50">
                       <img
                         src={imageUrl}
                         alt="Preview"
@@ -310,9 +423,9 @@ export function Analyze() {
               </label>
               <textarea
                 id="notes"
-                rows={4}
+                rows={3}
                 maxLength={2000}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
                 placeholder="Дополнительная информация о пациенте или ЭКГ..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -323,18 +436,18 @@ export function Analyze() {
             </div>
 
             {/* Actions */}
-            <div className="flex items-center justify-between pt-4">
+            <div className="flex items-center justify-between pt-2 sm:pt-4">
               <button
                 type="button"
                 onClick={() => navigate(ROUTES.DASHBOARD)}
-                className="text-gray-600 hover:text-gray-800"
+                className="text-gray-600 hover:text-gray-800 text-sm sm:text-base"
               >
                 Отмена
               </button>
               <button
                 type="submit"
                 disabled={mutation.isPending || !canSubmit}
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+                className="px-5 sm:px-6 py-2.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 text-sm sm:text-base font-medium"
               >
                 {mutation.isPending ? 'Отправка...' : 'Запустить анализ'}
               </button>
@@ -342,13 +455,14 @@ export function Analyze() {
           </form>
         </div>
 
-        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="text-lg font-medium text-blue-900 mb-2">Информация</h3>
-          <ul className="space-y-2 text-sm text-blue-800">
+        <div className="mt-6 sm:mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-medium text-blue-900 mb-2">Информация</h3>
+          <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-blue-800">
             <li>Максимальный размер файла: 10MB</li>
             <li>Обработка обычно занимает 2-5 секунд</li>
             <li>Результаты будут доступны в истории</li>
-            {mode === 'file' && <li>Вы можете обрезать изображение перед отправкой</li>}
+            {mode === 'camera' && <li>Для лучшего качества держите телефон параллельно бумаге</li>}
+            {(mode === 'file' || mode === 'camera') && <li>Вы можете обрезать изображение перед отправкой</li>}
           </ul>
         </div>
       </div>

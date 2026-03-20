@@ -13,11 +13,11 @@ export function Dashboard() {
   return (
     <Layout>
       <div className="px-4 sm:px-0">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Панель управления</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6 sm:mb-8">Панель управления</h1>
 
         {/* Pending jobs banner — resumable after refresh */}
         {pendingJobs.length > 0 && (
-          <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <div className="mb-4 sm:mb-6 bg-amber-50 border border-amber-200 rounded-lg p-3 sm:p-4">
             <p className="text-sm font-medium text-amber-800 mb-2">
               {pendingJobs.length === 1 ? 'Есть незавершённый анализ' : `Есть незавершённые анализы (${pendingJobs.length})`}
             </p>
@@ -35,110 +35,118 @@ export function Dashboard() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <Link
             to={ROUTES.ANALYZE}
-            className="block bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg shadow-lg p-6 hover:from-blue-600 hover:to-blue-700 transition"
+            className="block bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg shadow-lg p-5 sm:p-6 hover:from-blue-600 hover:to-blue-700 active:from-blue-700 active:to-blue-800 transition"
           >
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <span className="text-4xl">📊</span>
+                <span className="text-3xl sm:text-4xl">📊</span>
               </div>
-              <div className="ml-4">
-                <h2 className="text-2xl font-bold">Новый анализ ЭКГ</h2>
-                <p className="text-blue-100 mt-1">Загрузите изображение для анализа</p>
+              <div className="ml-3 sm:ml-4">
+                <h2 className="text-xl sm:text-2xl font-bold">Новый анализ ЭКГ</h2>
+                <p className="text-blue-100 mt-0.5 sm:mt-1 text-sm">Загрузите изображение для анализа</p>
               </div>
             </div>
           </Link>
           <Link
             to={ROUTES.KNOWLEDGE_BASE}
-            className="block bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg shadow-lg p-6 hover:from-purple-600 hover:to-purple-700 transition"
+            className="block bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg shadow-lg p-5 sm:p-6 hover:from-purple-600 hover:to-purple-700 active:from-purple-700 active:to-purple-800 transition"
           >
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <span className="text-4xl">📚</span>
+                <span className="text-3xl sm:text-4xl">📚</span>
               </div>
-              <div className="ml-4">
-                <h2 className="text-2xl font-bold">База знаний</h2>
-                <p className="text-purple-100 mt-1">Полезная информация о здоровье сердца</p>
+              <div className="ml-3 sm:ml-4">
+                <h2 className="text-xl sm:text-2xl font-bold">База знаний</h2>
+                <p className="text-purple-100 mt-0.5 sm:mt-1 text-sm">Полезная информация о здоровье сердца</p>
               </div>
             </div>
           </Link>
         </div>
 
         <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">Последние анализы</h2>
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+            <h2 className="text-base sm:text-lg font-medium text-gray-900">Последние анализы</h2>
           </div>
-          <div className="overflow-x-auto">
-            {isLoading ? (
-              <div className="px-6 py-8 text-center text-gray-500">Загрузка...</div>
-            ) : recentRequests.length === 0 ? (
-              <div className="px-6 py-8 text-center text-gray-500">
-                <p>У вас пока нет анализов</p>
-                <Link
-                  to={ROUTES.ANALYZE}
-                  className="text-blue-600 hover:text-blue-500 mt-2 inline-block"
-                >
-                  Создать первый анализ →
-                </Link>
-              </div>
-            ) : (
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ID
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Статус
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Создано
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Действия
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {recentRequests.map((request) => (
-                    <tr key={request.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500">
-                        {request.id.slice(0, 8)}...
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
-                            request.status
-                          )}`}
-                        >
-                          {formatStatus(request.status)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatRelative(request.created_at)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <Link
-                          to={`/results/${request.id}`}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          Просмотр
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-          {recentRequests.length > 0 && (
-            <div className="px-6 py-4 border-t border-gray-200 text-center">
+          {isLoading ? (
+            <div className="px-4 sm:px-6 py-8 text-center text-gray-500">Загрузка...</div>
+          ) : recentRequests.length === 0 ? (
+            <div className="px-4 sm:px-6 py-8 text-center text-gray-500">
+              <p>У вас пока нет анализов</p>
               <Link
-                to={ROUTES.HISTORY}
-                className="text-blue-600 hover:text-blue-500 font-medium"
+                to={ROUTES.ANALYZE}
+                className="text-blue-600 hover:text-blue-500 mt-2 inline-block"
               >
+                Создать первый анализ →
+              </Link>
+            </div>
+          ) : (
+            <>
+              {/* Mobile: card list */}
+              <div className="sm:hidden divide-y divide-gray-200">
+                {recentRequests.map((request) => (
+                  <Link
+                    key={request.id}
+                    to={`/results/${request.id}`}
+                    className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 active:bg-gray-100"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-mono text-gray-600 truncate">{request.id.slice(0, 8)}...</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{formatRelative(request.created_at)}</p>
+                    </div>
+                    <span
+                      className={`ml-3 flex-shrink-0 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(request.status)}`}
+                    >
+                      {formatStatus(request.status)}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+
+              {/* Desktop: table */}
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Создано</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {recentRequests.map((request) => (
+                      <tr key={request.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500">
+                          {request.id.slice(0, 8)}...
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(request.status)}`}
+                          >
+                            {formatStatus(request.status)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatRelative(request.created_at)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <Link to={`/results/${request.id}`} className="text-blue-600 hover:text-blue-900">
+                            Просмотр
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+          {recentRequests.length > 0 && (
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 text-center">
+              <Link to={ROUTES.HISTORY} className="text-blue-600 hover:text-blue-500 font-medium text-sm sm:text-base">
                 Показать все →
               </Link>
             </div>
@@ -148,4 +156,3 @@ export function Dashboard() {
     </Layout>
   );
 }
-

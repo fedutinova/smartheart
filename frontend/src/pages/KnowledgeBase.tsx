@@ -103,16 +103,16 @@ export function KnowledgeBase() {
 
   return (
     <Layout>
-      <div className="px-4 sm:px-0 flex flex-col" style={{ height: 'calc(100vh - 10rem)' }}>
-        <div className="mb-4">
-          <h1 className="text-3xl font-bold text-gray-900 mb-1">База знаний</h1>
-          <p className="text-gray-500 text-sm">
+      <div className="px-4 sm:px-0 flex flex-col" style={{ height: 'calc(100vh - 8rem)', minHeight: '400px' }}>
+        <div className="mb-3 sm:mb-4">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">База знаний</h1>
+          <p className="text-gray-500 text-xs sm:text-sm">
             Задайте вопрос по ЭКГ и кардиологии — ответ формируется на основе медицинской литературы
           </p>
         </div>
 
         {/* Messages area */}
-        <div className="flex-1 overflow-y-auto bg-white rounded-lg shadow border border-gray-200 p-4 mb-4 space-y-4">
+        <div className="flex-1 overflow-y-auto bg-white rounded-lg shadow border border-gray-200 p-3 sm:p-4 mb-3 sm:mb-4 space-y-3 sm:space-y-4">
           {messages.length === 0 && !isLoading && (
             <div className="flex flex-col items-center justify-center h-full text-center">
               <p className="text-gray-400 mb-6">Задайте вопрос по ЭКГ или выберите из примеров:</p>

@@ -52,7 +52,7 @@ export function ImageCropper({ imageSrc, onCropComplete, onCancel }: ImageCroppe
 
   return (
     <div className="space-y-4">
-      <div className="max-h-[500px] overflow-auto border border-gray-200 rounded-lg bg-gray-50 p-2">
+      <div className="max-h-[60vh] sm:max-h-[500px] overflow-auto border border-gray-200 rounded-lg bg-gray-50 p-1 sm:p-2 touch-manipulation">
         <ReactCrop
           crop={crop}
           onChange={(c) => setCrop(c)}
@@ -69,7 +69,7 @@ export function ImageCropper({ imageSrc, onCropComplete, onCancel }: ImageCroppe
       </div>
 
       <p className="text-xs text-gray-500">
-        Перетаскивайте углы и края рамки для изменения области обрезки
+        Перетаскивайте углы и края рамки для изменения области обрезки. На телефоне — используйте палец.
       </p>
 
       <div className="flex items-center justify-between">

@@ -107,14 +107,14 @@ export function Results() {
   return (
     <Layout>
       <div className="max-w-4xl mx-auto px-4 sm:px-0">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Результаты анализа</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6 sm:mb-8">Результаты анализа</h1>
 
         {/* Request Info */}
-        <div className="bg-white shadow rounded-lg p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <label className="text-sm font-medium text-gray-500">ID запроса</label>
-              <p className="mt-1 text-sm font-mono text-gray-900">{request.id}</p>
+              <label className="text-xs sm:text-sm font-medium text-gray-500">ID запроса</label>
+              <p className="mt-1 text-xs sm:text-sm font-mono text-gray-900 truncate">{request.id}</p>
             </div>
             <div>
               <label className="text-sm font-medium text-gray-500">Статус</label>
@@ -141,8 +141,8 @@ export function Results() {
 
         {/* Original Image */}
         {request.files && request.files.length > 0 && request.files[0].s3_url && (
-          <div className="bg-white shadow rounded-lg p-6 mb-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Исходное изображение</h2>
+          <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Исходное изображение</h2>
             <div className="flex justify-center">
               <img
                 src={request.files[0].s3_url}
@@ -159,11 +159,11 @@ export function Results() {
 
         {/* GPT Interpretation / Analysis Result */}
         {gptContent && (
-          <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 shadow rounded-lg p-6 mb-6">
-            <div className="flex items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-900">Заключение</h2>
+          <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+            <div className="flex items-center mb-3 sm:mb-4">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Заключение</h2>
             </div>
-            <div className="bg-white rounded-lg p-4 border border-purple-100 mb-4">
+            <div className="bg-white rounded-lg p-3 sm:p-4 border border-purple-100 mb-3 sm:mb-4">
               <ReactMarkdown className="prose prose-sm max-w-none prose-gray">
                 {gptContent}
               </ReactMarkdown>

@@ -18,101 +18,111 @@ export function History() {
   return (
     <Layout>
       <div className="px-4 sm:px-0">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">История анализов</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6 sm:mb-8">История анализов</h1>
 
         <div className="bg-white shadow rounded-lg">
-          <div className="overflow-x-auto">
-            {isLoading ? (
-              <div className="px-6 py-8 text-center text-gray-500">Загрузка...</div>
-            ) : error ? (
-              <div className="px-6 py-8 text-center text-red-500">
-                Ошибка при загрузке данных
+          {isLoading ? (
+            <div className="px-4 sm:px-6 py-8 text-center text-gray-500">Загрузка...</div>
+          ) : error ? (
+            <div className="px-4 sm:px-6 py-8 text-center text-red-500">
+              Ошибка при загрузке данных
+            </div>
+          ) : !filteredRequests || filteredRequests.length === 0 ? (
+            <div className="px-4 sm:px-6 py-8 text-center text-gray-500">
+              <p>История пуста</p>
+            </div>
+          ) : (
+            <>
+              {/* Mobile: card list */}
+              <div className="sm:hidden divide-y divide-gray-200">
+                {filteredRequests.map((request) => (
+                  <Link
+                    key={request.id}
+                    to={`/results/${request.id}`}
+                    className="block px-4 py-3 hover:bg-gray-50 active:bg-gray-100"
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-mono text-gray-600">{request.id.slice(0, 8)}...</span>
+                      <span
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(request.status)}`}
+                      >
+                        {formatStatus(request.status)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-gray-400">
+                      <span>{request.response?.model === 'ekg_direct_v2' ? 'ЭКГ Анализ' : 'GPT Запрос'}</span>
+                      <span>{formatDate(request.created_at)}</span>
+                    </div>
+                  </Link>
+                ))}
               </div>
-            ) : !filteredRequests || filteredRequests.length === 0 ? (
-              <div className="px-6 py-8 text-center text-gray-500">
-                <p>История пуста</p>
-              </div>
-            ) : (
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ID
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Тип
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Статус
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Создано
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Обновлено
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Действия
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredRequests.map((request) => (
-                    <tr key={request.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500">
-                        {request.id.slice(0, 8)}...
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {request.response?.model === 'ekg_direct_v2' ? 'ЭКГ Анализ' : 'GPT Запрос'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
-                            request.status
-                          )}`}
-                        >
-                          {formatStatus(request.status)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(request.created_at)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(request.updated_at)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <Link
-                          to={`/results/${request.id}`}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          Просмотр
-                        </Link>
-                      </td>
+
+              {/* Desktop: table */}
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Тип</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Создано</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Обновлено</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredRequests.map((request) => (
+                      <tr key={request.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500">
+                          {request.id.slice(0, 8)}...
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {request.response?.model === 'ekg_direct_v2' ? 'ЭКГ Анализ' : 'GPT Запрос'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(request.status)}`}
+                          >
+                            {formatStatus(request.status)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatDate(request.created_at)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatDate(request.updated_at)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <Link to={`/results/${request.id}`} className="text-blue-600 hover:text-blue-900">
+                            Просмотр
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
 
           {/* Pagination */}
           {total > PAGE_SIZE && (
-            <div className="px-6 py-3 border-t border-gray-200 flex items-center justify-between">
-              <p className="text-sm text-gray-500">
+            <div className="px-4 sm:px-6 py-3 border-t border-gray-200 flex items-center justify-between">
+              <p className="text-xs sm:text-sm text-gray-500">
                 {offset + 1}&ndash;{Math.min(offset + PAGE_SIZE, total)} из {total}
               </p>
               <div className="flex gap-2">
                 <button
-                  onClick={() => setPage((p) => p - 1)}
+                  onClick={() => setPage((p: number) => p - 1)}
                   disabled={!hasPrev}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-default"
+                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50 active:bg-gray-100 disabled:opacity-40 disabled:cursor-default"
                 >
                   Назад
                 </button>
                 <button
-                  onClick={() => setPage((p) => p + 1)}
+                  onClick={() => setPage((p: number) => p + 1)}
                   disabled={!hasNext}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-default"
+                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50 active:bg-gray-100 disabled:opacity-40 disabled:cursor-default"
                 >
                   Вперёд
                 </button>
