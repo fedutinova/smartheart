@@ -1,0 +1,118 @@
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: smartheart_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN_NAME: ${DOMAIN_NAME}
+    volumes:
+      - /opt/smartheart/infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - /opt/smartheart/frontend/dist:/var/www/frontend:ro
+      - /opt/smartheart/caddy/data:/data
+      - /opt/smartheart/caddy/config:/config
+    depends_on:
+      - app
+
+  postgres:
+    image: postgres:16
+    container_name: smartheart_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: smartheart
+      POSTGRES_USER: smartheart
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - /opt/smartheart/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartheart -d smartheart"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: smartheart_redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  app:
+    image: ghcr.io/${GHCR_REPO}/backend:${BACKEND_TAG:-latest}
+    container_name: smartheart_app
+    restart: unless-stopped
+    environment:
+      HTTP_ADDR: ":8080"
+      DATABASE_URL: postgres://smartheart:${DB_PASSWORD}@postgres:5432/smartheart?sslmode=disable
+      REDIS_URL: redis://redis:6379
+      STORAGE_MODE: local
+      LOCAL_STORAGE_DIR: /app/uploads
+      LOCAL_STORAGE_URL: https://api.${DOMAIN_NAME}/files
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ISSUER: smartheart
+      JWT_TTL_ACCESS: 15m
+      JWT_TTL_REFRESH: 168h
+      QUEUE_MODE: redis
+      QUEUE_WORKERS: "4"
+      QUEUE_BUFFER: "1024"
+      JOB_MAX_DURATION: 30s
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      RAG_URL: http://rag:8000
+      CORS_ORIGINS: https://${DOMAIN_NAME},https://www.${DOMAIN_NAME}
+      QUOTA_DAILY_LIMIT: "50"
+      RATE_LIMIT_RPM: "100"
+      LOG_LEVEL: info
+    volumes:
+      - /opt/smartheart/uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rag:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  rag:
+    image: ghcr.io/${GHCR_REPO}/rag:${RAG_TAG:-latest}
+    container_name: smartheart_rag
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+    environment:
+      LLM_API_KEY: ${OPENAI_API_KEY}
+      LLM_BASE_URL: https://api.openai.com/v1
+      LLM_MODEL: gpt-4o
+      LLM_TEMPERATURE: "0.2"
+      ADMIN_API_KEY: ${RAG_ADMIN_API_KEY:-}
+    volumes:
+      - /opt/smartheart/rag_pipeline/documents:/app/documents:ro
+      - /opt/smartheart/rag_pipeline/chroma_db_4:/app/chroma_db_4
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 3
+
+volumes:
+  postgres_data:
+  redis_data:

@@ -1,0 +1,204 @@
+name: Deploy SmartHeart
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false # never cancel an in-flight deploy
+
+env:
+  REGISTRY: ghcr.io
+  # GHCR image prefix
+  IMAGE_PREFIX: ghcr.io/${{ github.repository }}
+
+jobs:
+  # ── Build backend image ───────────────────────────────────────────────────────
+  build-backend:
+    name: Build backend
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      tag: sha-${{ steps.sha.outputs.short }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Short SHA
+        id: sha
+        run: echo "short=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_OUTPUT
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/backend:sha-${{ steps.sha.outputs.short }}
+            ${{ env.IMAGE_PREFIX }}/backend:latest
+          build-args: |
+            VERSION=${{ github.ref_name }}
+            COMMIT=${{ github.sha }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+  build-rag:
+    name: Build engine
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      tag: sha-${{ steps.sha.outputs.short }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Short SHA
+        id: sha
+        run: echo "short=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_OUTPUT
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./rag_pipeline
+          file: ./rag_pipeline/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/rag:sha-${{ steps.sha.outputs.short }}
+            ${{ env.IMAGE_PREFIX }}/rag:latest
+          cache-from: type=gha,scope=rag
+          cache-to: type=gha,mode=max,scope=rag
+
+  build-frontend:
+    name: Build frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build
+        working-directory: frontend
+        env:
+          VITE_API_URL: https://api.${{ secrets.DOMAIN_NAME }}
+        run: npm run build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          retention-days: 1
+
+  deploy:
+    name: Deploy to server
+    needs: [build-backend, build-rag, build-frontend]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+
+      - name: Install SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.SERVER_IP }}" >> ~/.ssh/known_hosts
+
+      - name: Write .env file
+        env:
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          RAG_ADMIN_API_KEY: ${{ secrets.RAG_ADMIN_API_KEY }}
+          DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
+        run: |
+          printf 'DOMAIN_NAME=%s\n'       "$DOMAIN_NAME"       >  /tmp/smartheart.env
+          printf 'DB_PASSWORD=%s\n'       "$DB_PASSWORD"        >> /tmp/smartheart.env
+          printf 'JWT_SECRET=%s\n'        "$JWT_SECRET"         >> /tmp/smartheart.env
+          printf 'OPENAI_API_KEY=%s\n'    "$OPENAI_API_KEY"     >> /tmp/smartheart.env
+          printf 'RAG_ADMIN_API_KEY=%s\n' "$RAG_ADMIN_API_KEY"  >> /tmp/smartheart.env
+          printf 'GHCR_REPO=%s\n'         "${{ github.repository }}" >> /tmp/smartheart.env
+          printf 'BACKEND_TAG=%s\n'       "${{ needs.build-backend.outputs.tag }}" >> /tmp/smartheart.env
+          printf 'RAG_TAG=%s\n'           "${{ needs.build-rag.outputs.tag }}"     >> /tmp/smartheart.env
+
+      - name: Upload migrations, compose file, Caddyfile, and .env
+        run: |
+          SERVER="root@${{ secrets.SERVER_IP }}"
+
+          # Ensure directories exist
+          ssh "$SERVER" "mkdir -p /opt/smartheart/infra/caddy /opt/smartheart/migrations"
+
+          # Application config files
+          scp /tmp/smartheart.env                          "$SERVER:/opt/smartheart/.env"
+          scp docker-compose.prod.yml                      "$SERVER:/opt/smartheart/docker-compose.prod.yml"
+          scp infra/caddy/Caddyfile                        "$SERVER:/opt/smartheart/infra/caddy/Caddyfile"
+
+          # Migrations (for new servers / schema changes)
+          rsync -avz --delete migrations/ "$SERVER:/opt/smartheart/migrations/"
+
+          # Frontend build — rsync with delete for cache-busted assets
+          rsync -avz --delete frontend/dist/ "$SERVER:/opt/smartheart/frontend/dist/"
+
+      - name: Pull images and restart services
+        run: |
+          ssh "root@${{ secrets.SERVER_IP }}" bash << 'REMOTE'
+            set -euo pipefail
+            cd /opt/smartheart
+
+            # Authenticate to GHCR
+            echo "${{ secrets.GITHUB_TOKEN }}" | \
+              docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+            # Pull new images
+            docker compose -f docker-compose.prod.yml pull
+
+            # Restart services (zero-downtime: Caddy and DB stay running)
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+
+            # Clean up dangling images to save disk space
+            docker image prune -f
+          REMOTE
+
+      - name: Health check
+        run: |
+          echo "Waiting 15s for services to stabilize..."
+          sleep 15
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://api.${{ secrets.DOMAIN_NAME }}/health" || echo "000")
+          if [ "$STATUS" = "200" ]; then
+            echo "Health check passed (HTTP $STATUS)"
+          else
+            echo "Health check failed (HTTP $STATUS) — check server logs"
+            exit 1
+          fi
