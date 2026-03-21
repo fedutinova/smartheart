@@ -1,0 +1,17 @@
+# Copy this file to backend.hcl and fill in your values.
+# Then run: terraform init -backend-config=backend.hcl
+#
+# This uses Hetzner Object Storage (S3-compatible) for Terraform state.
+# Create a bucket at console.hetzner.cloud → Object Storage first.
+# Or use any other S3-compatible backend (AWS S3, etc.)
+
+bucket                      = "smartheart-tfstate"
+key                         = "smartheart/terraform.tfstate"
+region                      = "eu-central-1"            # Hetzner uses this region name
+endpoint                    = "https://fsn1.your-objectstorage.com"  # adjust to your datacenter
+access_key                  = "YOUR_HETZNER_S3_ACCESS_KEY"
+secret_key                  = "YOUR_HETZNER_S3_SECRET_KEY"
+skip_credentials_validation = true
+skip_metadata_api_check     = true
+skip_region_validation      = true
+force_path_style            = true
