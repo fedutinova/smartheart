@@ -80,7 +80,7 @@ services:
       redis:
         condition: service_healthy
       rag:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
       interval: 30s

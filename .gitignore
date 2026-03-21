@@ -39,3 +39,4 @@ uploads/
 rag_pipeline/documents/*.pdf
 rag_pipeline/chroma_data/
 rag_pipeline/processed/
+rag_pipeline/processed_docs/
