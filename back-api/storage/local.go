@@ -62,9 +62,7 @@ func (s *LocalStorage) UploadFile(ctx context.Context, filename string, content 
 }
 
 func (s *LocalStorage) GetPresignedURL(ctx context.Context, key string, expiration time.Duration) (string, error) {
-	// for local storage, just return the direct URL (no expiration)
-	url := fmt.Sprintf("%s/%s", s.baseURL, key)
-	return url, nil
+	return "", fmt.Errorf("presigned URLs not supported for local storage")
 }
 
 // safePath resolves the key to an absolute path inside baseDir, rejecting
