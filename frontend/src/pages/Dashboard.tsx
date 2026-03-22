@@ -12,9 +12,7 @@ export function Dashboard() {
 
   return (
     <Layout>
-      <div className="px-4 sm:px-0">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6 sm:mb-8">Панель управления</h1>
-
+      <div>
         {/* Pending jobs banner — resumable after refresh */}
         {pendingJobs.length > 0 && (
           <div className="mb-4 sm:mb-6 bg-amber-50 border border-amber-200 rounded-lg p-3 sm:p-4">
@@ -38,30 +36,20 @@ export function Dashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <Link
             to={ROUTES.ANALYZE}
-            className="block bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg shadow-lg p-5 sm:p-6 hover:from-blue-600 hover:to-blue-700 active:from-blue-700 active:to-blue-800 transition"
+            className="block bg-gradient-to-r from-rose-400 to-rose-500 text-white rounded-xl shadow-md p-5 sm:p-6 hover:from-rose-500 hover:to-rose-600 active:from-rose-600 active:to-rose-700 transition"
           >
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <span className="text-3xl sm:text-4xl">📊</span>
-              </div>
-              <div className="ml-3 sm:ml-4">
-                <h2 className="text-xl sm:text-2xl font-bold">Новый анализ ЭКГ</h2>
-                <p className="text-blue-100 mt-0.5 sm:mt-1 text-sm">Загрузите изображение для анализа</p>
-              </div>
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold">Новый анализ ЭКГ</h2>
+              <p className="text-rose-100 mt-0.5 sm:mt-1 text-sm">Загрузите изображение для анализа</p>
             </div>
           </Link>
           <Link
             to={ROUTES.KNOWLEDGE_BASE}
-            className="block bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg shadow-lg p-5 sm:p-6 hover:from-purple-600 hover:to-purple-700 active:from-purple-700 active:to-purple-800 transition"
+            className="block bg-gradient-to-r from-purple-400 to-purple-500 text-white rounded-xl shadow-md p-5 sm:p-6 hover:from-purple-500 hover:to-purple-600 active:from-purple-600 active:to-purple-700 transition"
           >
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <span className="text-3xl sm:text-4xl">📚</span>
-              </div>
-              <div className="ml-3 sm:ml-4">
-                <h2 className="text-xl sm:text-2xl font-bold">База знаний</h2>
-                <p className="text-purple-100 mt-0.5 sm:mt-1 text-sm">Полезная информация о здоровье сердца</p>
-              </div>
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold">База знаний</h2>
+              <p className="text-purple-100 mt-0.5 sm:mt-1 text-sm">Задайте вопрос по ЭКГ и кардиологии</p>
             </div>
           </Link>
         </div>
@@ -77,7 +65,7 @@ export function Dashboard() {
               <p>У вас пока нет анализов</p>
               <Link
                 to={ROUTES.ANALYZE}
-                className="text-blue-600 hover:text-blue-500 mt-2 inline-block"
+                className="text-rose-600 hover:text-rose-500 mt-2 inline-block"
               >
                 Создать первый анализ →
               </Link>
@@ -133,7 +121,7 @@ export function Dashboard() {
                           {formatRelative(request.created_at)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <Link to={`/results/${request.id}`} className="text-blue-600 hover:text-blue-900">
+                          <Link to={`/results/${request.id}`} className="text-rose-600 hover:text-rose-900">
                             Просмотр
                           </Link>
                         </td>
@@ -146,7 +134,7 @@ export function Dashboard() {
           )}
           {recentRequests.length > 0 && (
             <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 text-center">
-              <Link to={ROUTES.HISTORY} className="text-blue-600 hover:text-blue-500 font-medium text-sm sm:text-base">
+              <Link to={ROUTES.HISTORY} className="text-rose-600 hover:text-rose-500 font-medium text-sm sm:text-base">
                 Показать все →
               </Link>
             </div>

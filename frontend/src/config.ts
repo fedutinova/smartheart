@@ -13,6 +13,9 @@ export const ROUTES = {
   KNOWLEDGE_BASE: '/knowledge-base',
   CONTACTS: '/contacts',
   RESULTS: '/results/:id',
+  ACCOUNT: '/account',
+  PRIVACY: '/privacy',
+  TERMS: '/terms',
 };
 
 export const JWT_STORAGE_KEY = 'access_token';

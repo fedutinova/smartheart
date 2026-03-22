@@ -1295,6 +1295,114 @@ func (_c *MockStore_WithTx_Call) RunAndReturn(run func(pgx.Tx) repository.Store)
 	return _c
 }
 
+// CancelPayment provides a mock function with given fields: ctx, yookassaID
+func (_m *MockStore) CancelPayment(ctx context.Context, yookassaID string) error {
+	ret := _m.Called(ctx, yookassaID)
+	if len(ret) == 0 {
+		panic("no return value specified for CancelPayment")
+	}
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, yookassaID)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// ConfirmPayment provides a mock function with given fields: ctx, yookassaID
+func (_m *MockStore) ConfirmPayment(ctx context.Context, yookassaID string) error {
+	ret := _m.Called(ctx, yookassaID)
+	if len(ret) == 0 {
+		panic("no return value specified for ConfirmPayment")
+	}
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, yookassaID)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// CreatePayment provides a mock function with given fields: ctx, p
+func (_m *MockStore) CreatePayment(ctx context.Context, p *models.Payment) error {
+	ret := _m.Called(ctx, p)
+	if len(ret) == 0 {
+		panic("no return value specified for CreatePayment")
+	}
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *models.Payment) error); ok {
+		r0 = rf(ctx, p)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// DecrementPaidAnalyses provides a mock function with given fields: ctx, userID
+func (_m *MockStore) DecrementPaidAnalyses(ctx context.Context, userID uuid.UUID) (int, error) {
+	ret := _m.Called(ctx, userID)
+	if len(ret) == 0 {
+		panic("no return value specified for DecrementPaidAnalyses")
+	}
+	var r0 int
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) int); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// GetPaidAnalysesRemaining provides a mock function with given fields: ctx, userID
+func (_m *MockStore) GetPaidAnalysesRemaining(ctx context.Context, userID uuid.UUID) (int, error) {
+	ret := _m.Called(ctx, userID)
+	if len(ret) == 0 {
+		panic("no return value specified for GetPaidAnalysesRemaining")
+	}
+	var r0 int
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) int); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// GetPaymentsByUserID provides a mock function with given fields: ctx, userID
+func (_m *MockStore) GetPaymentsByUserID(ctx context.Context, userID uuid.UUID) ([]models.Payment, error) {
+	ret := _m.Called(ctx, userID)
+	if len(ret) == 0 {
+		panic("no return value specified for GetPaymentsByUserID")
+	}
+	var r0 []models.Payment
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) []models.Payment); ok {
+		r0 = rf(ctx, userID)
+	} else if ret.Get(0) != nil {
+		r0 = ret.Get(0).([]models.Payment)
+	}
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
 // NewMockStore creates a new instance of MockStore. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockStore(t interface {

@@ -79,6 +79,15 @@ type QuotaConfig struct {
 	DailyLimit int // max submissions per user per day (0 = unlimited)
 }
 
+// YooKassaConfig holds YooKassa payment settings.
+type YooKassaConfig struct {
+	ShopID    string // YooKassa shop ID
+	SecretKey string // YooKassa secret key
+	ReturnURL string // URL to redirect after payment
+	// Price in kopecks for a single analysis beyond the free quota.
+	PriceKopecks int
+}
+
 // RAGConfig holds RAG microservice settings.
 type RAGConfig struct {
 	URL string // Base URL of the RAG service (e.g. http://rag:8000)
@@ -97,6 +106,7 @@ type Config struct {
 	RateLimit RateLimitConfig
 	Quota     QuotaConfig
 	RAG       RAGConfig
+	YooKassa  YooKassaConfig
 }
 
 // Storage mode constants for compile-time safety.
@@ -322,6 +332,12 @@ func Load() Config {
 		},
 		RAG: RAGConfig{
 			URL: envString("RAG_URL", "http://localhost:8000"),
+		},
+		YooKassa: YooKassaConfig{
+			ShopID:       envString("YOOKASSA_SHOP_ID", ""),
+			SecretKey:    envString("YOOKASSA_SECRET_KEY", ""),
+			ReturnURL:    envString("YOOKASSA_RETURN_URL", "http://localhost:3000/dashboard"),
+			PriceKopecks: envInt("YOOKASSA_PRICE_KOPECKS", 4900), // 49 rub default
 		},
 	}
 }

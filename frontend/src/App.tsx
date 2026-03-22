@@ -14,6 +14,9 @@ const History = lazy(() => import('@/pages/History').then((m) => ({ default: m.H
 const KnowledgeBase = lazy(() => import('@/pages/KnowledgeBase').then((m) => ({ default: m.KnowledgeBase })));
 const Contacts = lazy(() => import('@/pages/Contacts').then((m) => ({ default: m.Contacts })));
 const Results = lazy(() => import('@/pages/Results').then((m) => ({ default: m.Results })));
+const Account = lazy(() => import('@/pages/Account').then((m) => ({ default: m.Account })));
+const Privacy = lazy(() => import('@/pages/Privacy').then((m) => ({ default: m.Privacy })));
+const Terms = lazy(() => import('@/pages/Terms').then((m) => ({ default: m.Terms })));
 
 function PageLoader() {
   return (
@@ -35,6 +38,8 @@ function App() {
         <Routes>
           <Route path={ROUTES.LOGIN} element={<Login />} />
           <Route path={ROUTES.REGISTER} element={<Register />} />
+          <Route path={ROUTES.PRIVACY} element={<Privacy />} />
+          <Route path={ROUTES.TERMS} element={<Terms />} />
           <Route path={ROUTES.HOME} element={<Navigate to={ROUTES.DASHBOARD} replace />} />
 
           <Route
@@ -66,6 +71,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <KnowledgeBase />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.ACCOUNT}
+            element={
+              <ProtectedRoute>
+                <Account />
               </ProtectedRoute>
             }
           />

@@ -115,6 +115,8 @@ func handleServiceError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, service.ErrTooManyAttempts):
 		writeError(w, http.StatusTooManyRequests, "too many attempts, try again later")
+	case errors.Is(err, apperr.ErrPaymentRequired):
+		writeError(w, http.StatusPaymentRequired, err.Error())
 	case apperr.IsValidation(err):
 		writeError(w, http.StatusBadRequest, err.Error())
 	case errors.Is(err, apperr.ErrInvalidCredentials):

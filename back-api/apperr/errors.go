@@ -28,6 +28,10 @@ var (
 
 	// Validation errors
 	ErrValidation = errors.New("validation error")
+
+	// Payment errors
+	ErrPaymentRequired = errors.New("payment required")
+	ErrQuotaExceeded   = errors.New("quota exceeded")
 )
 
 // WrapNotFound wraps an error as a not found error with context

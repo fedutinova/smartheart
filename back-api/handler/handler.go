@@ -49,6 +49,8 @@ type Handler struct {
 	Healthz *HealthHandler
 	Events  *EventsHandler
 	RAG     *RAGHandler
+	Payment *PaymentHandler
+	Profile *ProfileHandler
 	Config  config.Config
 }
 
@@ -57,6 +59,7 @@ func NewHandler(
 	authSvc service.AuthService,
 	submissionSvc service.SubmissionService,
 	requestSvc service.RequestService,
+	paymentSvc service.PaymentService,
 	queue job.Queue,
 	repo repository.Store,
 	sessions auth.SessionService,
@@ -72,6 +75,8 @@ func NewHandler(
 		Healthz: &HealthHandler{Queue: queue, Repo: repo, Sessions: sessions, Storage: storageService},
 		Events:  &EventsHandler{Hub: hub},
 		RAG:     NewRAGHandler(cfg.RAG.URL, repo),
+		Payment: &PaymentHandler{Service: paymentSvc},
+		Profile: &ProfileHandler{Repo: repo},
 		Config:  cfg,
 	}
 }
@@ -90,6 +95,9 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		r.Post("/v1/auth/login", h.Auth.Login)
 		r.Post("/v1/auth/refresh", h.Auth.Refresh)
 	})
+
+	// YooKassa webhook (public — called by YooKassa servers, no JWT)
+	r.Post("/v1/payments/webhook", h.Payment.Webhook)
 
 	// Protected endpoints
 	r.Group(func(r chi.Router) {
@@ -115,6 +123,13 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		// RAG knowledge base
 		r.Post("/v1/rag/query", h.RAG.Query)
 		r.Post("/v1/rag/feedback", h.RAG.Feedback)
+
+		// Profile
+		r.Get("/v1/me", h.Profile.GetMe)
+
+		// Payments & quota
+		r.Get("/v1/quota", h.Payment.GetQuota)
+		r.Post("/v1/payments", h.Payment.CreatePayment)
 
 		// Admin-only endpoints
 		r.With(auth.RequirePerm(auth.PermAdminAll)).Get("/ready", h.Healthz.Ready)

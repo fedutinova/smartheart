@@ -75,7 +75,7 @@ npm run build
 - Проверьте переменную окружения `VITE_API_URL`
 
 **Проблема: ошибки при сборке**
-- Удалите `node_modules` и установите заново: `rm -rf node_modules && npm install`
+- Удалите `node_modules` и установите еще раз: `rm -rf node_modules && npm install`
 - Проверьте версию Node.js (рекомендуется 18+)
 
 **Проблема: зависимости не устанавливаются**

@@ -89,7 +89,10 @@ func validateEKGNotes(notes string) error {
 	return nil
 }
 
-// checkQuota increments the daily usage counter and returns an error if the limit is exceeded.
+// checkQuota enforces the freemium model:
+//  1. If daily usage < dailyLimit → free, allow.
+//  2. If daily usage >= dailyLimit but user has paid analyses → decrement paid counter, allow.
+//  3. Otherwise → return ErrPaymentRequired.
 func (s *submissionService) checkQuota(ctx context.Context, userID uuid.UUID) error {
 	if s.dailyLimit <= 0 {
 		return nil // unlimited
@@ -99,9 +102,19 @@ func (s *submissionService) checkQuota(ctx context.Context, userID uuid.UUID) er
 		slog.Warn("failed to check quota, allowing request", "user_id", userID, "error", err)
 		return nil // fail-open
 	}
-	if count > s.dailyLimit {
-		return fmt.Errorf("daily submission limit (%d) exceeded: %w", s.dailyLimit, apperr.ErrValidation)
+	if count <= s.dailyLimit {
+		return nil // within free quota
 	}
+
+	// Free quota exceeded — try to use a paid analysis
+	remaining, err := s.repo.DecrementPaidAnalyses(ctx, userID)
+	if err != nil {
+		// No paid analyses left or DB error
+		slog.Info("quota exceeded, no paid analyses", "user_id", userID, "daily_count", count)
+		return fmt.Errorf("daily free limit (%d) exceeded, purchase more analyses: %w", s.dailyLimit, apperr.ErrPaymentRequired)
+	}
+
+	slog.Info("used paid analysis", "user_id", userID, "remaining", remaining)
 	return nil
 }
 

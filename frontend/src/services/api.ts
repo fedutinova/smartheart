@@ -8,6 +8,8 @@ import type {
   Job,
   Request,
   PaginatedResponse,
+  QuotaInfo,
+  PaymentResult,
 } from '@/types';
 import { API_BASE_URL, API_TIMEOUT, API_TIMEOUT_UPLOAD, API_TIMEOUT_RAG, JWT_STORAGE_KEY, REFRESH_TOKEN_KEY, AUTH_ERROR_KEY } from '@/config';
 import { useAuthStore } from '@/store/auth';
@@ -152,6 +154,20 @@ export const authAPI = {
   },
 };
 
+export interface UserProfile {
+  id: string;
+  username: string;
+  email: string;
+  created_at: string;
+}
+
+export const profileAPI = {
+  getMe: async () => {
+    const response = await api.get<UserProfile>('/v1/me');
+    return response.data;
+  },
+};
+
 type EKGSubmitResponse = { job_id: string; request_id: string; status: string; message: string };
 
 export const ekgAPI = {
@@ -225,6 +241,17 @@ export const ragAPI = {
   },
   submitFeedback: async (question: string, answer: string, rating: -1 | 1) => {
     await api.post('/v1/rag/feedback', { question, answer, rating });
+  },
+};
+
+export const paymentAPI = {
+  getQuota: async () => {
+    const response = await api.get<QuotaInfo>('/v1/quota');
+    return response.data;
+  },
+  createPayment: async (analysesCount: number) => {
+    const response = await api.post<PaymentResult>('/v1/payments', { analyses_count: analysesCount });
+    return response.data;
   },
 };
 

@@ -103,9 +103,9 @@ export function KnowledgeBase() {
 
   return (
     <Layout>
-      <div className="px-4 sm:px-0 flex flex-col" style={{ height: 'calc(100vh - 8rem)', minHeight: '400px' }}>
+      <div className="flex flex-col" style={{ height: 'calc(100vh - 8rem)', minHeight: '400px' }}>
         <div className="mb-3 sm:mb-4">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">База знаний</h1>
+          <h1 className="text-2xl font-semibold text-gray-900 mb-1">База знаний</h1>
           <p className="text-gray-500 text-xs sm:text-sm">
             Задайте вопрос по ЭКГ и кардиологии — ответ формируется на основе медицинской литературы
           </p>
@@ -121,7 +121,7 @@ export function KnowledgeBase() {
                   <button
                     key={q}
                     onClick={() => handleSubmit(q)}
-                    className="px-3 py-2 text-sm bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 border border-blue-200 transition-colors text-left"
+                    className="px-3 py-2 text-sm bg-rose-50 text-rose-700 rounded-lg hover:bg-rose-100 border border-rose-200 transition-colors text-left"
                   >
                     {q}
                   </button>
@@ -135,7 +135,7 @@ export function KnowledgeBase() {
               <div
                 className={`max-w-3xl rounded-lg px-4 py-3 ${
                   msg.role === 'user'
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-rose-600 text-white'
                     : 'bg-gray-50 border border-gray-200 text-gray-900'
                 }`}
               >
@@ -232,12 +232,12 @@ export function KnowledgeBase() {
             placeholder="Задайте вопрос по ЭКГ..."
             rows={1}
             disabled={isLoading}
-            className="flex-1 resize-none rounded-lg border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:bg-gray-50"
+            className="flex-1 resize-none rounded-lg border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-rose-500 focus:border-rose-500 disabled:opacity-50 disabled:bg-gray-50"
           />
           <button
             onClick={() => handleSubmit(input)}
             disabled={!input.trim() || isLoading}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-6 py-3 bg-rose-600 text-white rounded-lg font-medium hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isLoading ? '...' : 'Спросить'}
           </button>

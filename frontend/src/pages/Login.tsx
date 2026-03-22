@@ -42,31 +42,31 @@ export function Login() {
 
   return (
     <Layout>
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-rose-50 to-blue-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full bg-white shadow-xl rounded-2xl p-8 space-y-8">
           <div>
-            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-              Вход в Умное сердце
+            <h2 className="text-center text-3xl font-extrabold text-gray-900">
+              Вход в <span style={{ fontFamily: "'Prosto One', cursive" }}>Умное сердце</span>
             </h2>
             <p className="mt-2 text-center text-sm text-gray-600">
               Или{' '}
-              <Link to={ROUTES.REGISTER} className="font-medium text-blue-600 hover:text-blue-500">
+              <Link to={ROUTES.REGISTER} className="font-medium text-rose-600 hover:text-rose-500">
                 зарегистрироваться
               </Link>
             </p>
           </div>
-          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
             {authNotice && (
-              <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded text-sm">
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-xl text-sm">
                 {authNotice}
               </div>
             )}
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded">
+              <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-xl">
                 {error}
               </div>
             )}
-            <div className="rounded-md shadow-sm -space-y-px">
+            <div className="space-y-4">
               <div>
                 <label htmlFor="email" className="sr-only">
                   Email
@@ -76,7 +76,7 @@ export function Login() {
                   name="email"
                   type="email"
                   required
-                  className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                  className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 sm:text-sm"
                   placeholder="Email адрес"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -91,7 +91,7 @@ export function Login() {
                   name="password"
                   type="password"
                   required
-                  className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                  className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 sm:text-sm"
                   placeholder="Пароль"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -103,12 +103,17 @@ export function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 disabled:opacity-50 transition-colors"
               >
                 {loading ? 'Вход...' : 'Войти'}
               </button>
             </div>
           </form>
+          <p className="text-center text-[11px] text-gray-300 mt-4">
+            <Link to={ROUTES.TERMS} className="hover:text-gray-500">Оферта</Link>
+            {' · '}
+            <Link to={ROUTES.PRIVACY} className="hover:text-gray-500">Конфиденциальность</Link>
+          </p>
         </div>
       </div>
     </Layout>

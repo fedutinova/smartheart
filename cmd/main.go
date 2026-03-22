@@ -164,8 +164,9 @@ func startHTTPServer(cfg appconfig.Config, repo repository.Store, sessions *sess
 	authSvc := service.NewAuthService(repo, sessions, cfg.JWT)
 	submissionSvc := service.NewSubmissionService(repo, q, storageService, cfg.Quota)
 	requestSvc := service.NewRequestService(repo, q)
+	paymentSvc := service.NewPaymentService(repo, cfg.YooKassa, cfg.Quota.DailyLimit)
 
-	handlers := handler.NewHandler(authSvc, submissionSvc, requestSvc, q, repo, sessions, storageService, hub, cfg)
+	handlers := handler.NewHandler(authSvc, submissionSvc, requestSvc, paymentSvc, q, repo, sessions, storageService, hub, cfg)
 	r := server.NewRouter(handlers, cfg)
 
 	srv := &http.Server{

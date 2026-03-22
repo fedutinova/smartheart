@@ -17,8 +17,8 @@ export function History() {
 
   return (
     <Layout>
-      <div className="px-4 sm:px-0">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6 sm:mb-8">История анализов</h1>
+      <div>
+        <h1 className="text-2xl font-semibold text-gray-900 mb-6">История анализов</h1>
 
         <div className="bg-white shadow rounded-lg">
           {isLoading ? (
@@ -93,7 +93,7 @@ export function History() {
                           {formatDate(request.updated_at)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <Link to={`/results/${request.id}`} className="text-blue-600 hover:text-blue-900">
+                          <Link to={`/results/${request.id}`} className="text-rose-600 hover:text-rose-900">
                             Просмотр
                           </Link>
                         </td>

@@ -86,6 +86,21 @@ export interface PaginatedResponse<T> {
   offset: number;
 }
 
+export interface QuotaInfo {
+  daily_limit: number;
+  used_today: number;
+  free_remaining: number;
+  paid_analyses_remaining: number;
+  needs_payment: boolean;
+  price_per_analysis_kopecks: number;
+}
+
+export interface PaymentResult {
+  payment_id: string;
+  confirmation_url: string;
+  amount_rub: string;
+}
+
 export interface EKGAnalysisResult {
   analysis_type: string;
   notes?: string;

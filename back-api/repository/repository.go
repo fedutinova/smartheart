@@ -55,6 +55,16 @@ type RAGFeedbackRepo interface {
 	CreateRAGFeedback(ctx context.Context, feedback *models.RAGFeedback) error
 }
 
+// PaymentRepo provides payment data access.
+type PaymentRepo interface {
+	CreatePayment(ctx context.Context, p *models.Payment) error
+	ConfirmPayment(ctx context.Context, yookassaID string) error
+	CancelPayment(ctx context.Context, yookassaID string) error
+	GetPaidAnalysesRemaining(ctx context.Context, userID uuid.UUID) (int, error)
+	DecrementPaidAnalyses(ctx context.Context, userID uuid.UUID) (int, error)
+	GetPaymentsByUserID(ctx context.Context, userID uuid.UUID) ([]models.Payment, error)
+}
+
 // Store is the composite interface that embeds all focused interfaces.
 type Store interface {
 	UserRepo
@@ -63,6 +73,7 @@ type Store interface {
 	RoleRepo
 	QuotaRepo
 	RAGFeedbackRepo
+	PaymentRepo
 
 	// Transaction support
 	RunTx(ctx context.Context, fn func(tx pgx.Tx) error) error

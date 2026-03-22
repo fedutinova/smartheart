@@ -38,7 +38,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number)
       <div className="flex-1 min-w-0">
         <p className={`text-sm font-medium ${text}`}>{toast.message}</p>
         {toast.link && (
-          <Link to={toast.link} className="text-xs text-blue-600 hover:text-blue-800 underline mt-1 block">
+          <Link to={toast.link} className="text-xs text-rose-600 hover:text-rose-800 underline mt-1 block">
             {toast.linkText || 'Открыть'}
           </Link>
         )}

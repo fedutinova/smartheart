@@ -4,7 +4,7 @@ interface TeamMember {
   name: string;
   role: string;
   responsibilities: string[];
-  icon: string;
+  initials: string;
 }
 
 const teamMembers: TeamMember[] = [
@@ -12,87 +12,68 @@ const teamMembers: TeamMember[] = [
     name: 'Алимова Елена',
     role: 'Врач ФД',
     responsibilities: ['Работа с ЭКГ', 'Дата-аналитик', 'NLP-специалист'],
-    icon: '👩‍⚕️',
+    initials: 'АЕ',
   },
   {
     name: 'Федутинова Анна',
     role: 'Фулстек разработчик',
     responsibilities: ['Разработка фронтенда', 'Разработка бэкенда'],
-    icon: '👩‍💻',
+    initials: 'ФА',
   },
 ];
 
 export function Contacts() {
   return (
     <Layout>
-      <div className="px-4 sm:px-0">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Контакты</h1>
-          <p className="text-gray-600">
-            Наша команда разработки проекта Умное сердце
-          </p>
-        </div>
+      <div className="max-w-4xl mx-auto py-8 sm:py-12">
+        <p className="text-sm text-gray-400 mb-8 sm:mb-12">Команда проекта</p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="space-y-6">
           {teamMembers.map((member, index) => (
             <div
               key={index}
-              className="bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow p-6 border border-gray-200"
+              className="flex items-start gap-4 sm:gap-5"
             >
-              <div className="text-center mb-4">
-                <div className="text-6xl mb-4">{member.icon}</div>
-                <h3 className="text-xl font-bold text-gray-900 mb-1">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-rose-400 to-purple-400 flex items-center justify-center text-white text-sm font-semibold">
+                {member.initials}
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-base font-semibold text-gray-900">
                   {member.name}
                 </h3>
-                <p className="text-sm font-medium text-blue-600 mb-4">
+                <p className="text-sm text-rose-500 mb-2">
                   {member.role}
                 </p>
-              </div>
-              <div className="border-t border-gray-200 pt-4">
-                <h4 className="text-sm font-semibold text-gray-700 mb-3">
-                  Направления работы:
-                </h4>
-                <ul className="space-y-2">
-                  {member.responsibilities.map((responsibility, idx) => (
-                    <li
+                <div className="flex flex-wrap gap-2">
+                  {member.responsibilities.map((r, idx) => (
+                    <span
                       key={idx}
-                      className="flex items-center text-sm text-gray-600"
+                      className="inline-block px-2.5 py-0.5 text-xs text-gray-500 bg-gray-100 rounded-full"
                     >
-                      <span className="text-blue-500 mr-2">•</span>
-                      {responsibility}
-                    </li>
+                      {r}
+                    </span>
                   ))}
-                </ul>
+                </div>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Additional Info Section */}
-        <div className="mt-8 bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-6">
-          <div className="flex items-start">
-            <div className="flex-shrink-0">
-              <span className="text-2xl">💡</span>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                О проекте Умное сердце
-              </h3>
-              <p className="text-sm text-gray-700">
-                Умное сердце — это инновационная платформа для анализа
-                электрокардиограмм с использованием технологий машинного обучения
-                и обработки естественного языка. Наша команда объединяет экспертизу
-                в области медицины, разработки программного обеспечения и анализа
-                данных для создания инструментов, помогающих в диагностике
-                сердечно-сосудистых заболеваний.
-              </p>
-            </div>
-          </div>
+        <div className="mt-12 pt-8 border-t border-gray-100 space-y-4">
+          <p className="text-sm text-gray-500 leading-relaxed">
+            <span style={{ fontFamily: "'Prosto One', cursive" }} className="text-gray-700">Умное сердце</span> — платформа
+            для анализа электрокардиограмм с помощью машинного обучения и NLP.
+            Объединяем медицинскую экспертизу и разработку ПО для помощи в диагностике
+            сердечно-сосудистых заболеваний.
+          </p>
+          <p className="text-sm text-gray-500">
+            Связаться с нами:{' '}
+            <a href="mailto:support@smartheart.cloud" className="text-rose-600 hover:text-rose-700 transition-colors">
+              support@smartheart.cloud
+            </a>
+          </p>
         </div>
       </div>
     </Layout>
   );
 }
-
-
-

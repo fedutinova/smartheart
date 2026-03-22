@@ -34,7 +34,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 this.setState({ hasError: false });
                 window.location.href = '/';
               }}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              className="px-4 py-2 bg-rose-600 text-white rounded-md hover:bg-rose-700"
             >
               На главную
             </button>

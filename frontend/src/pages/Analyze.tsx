@@ -1,12 +1,14 @@
 import { useState, useCallback, useRef } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { ekgAPI } from '@/services/api';
 import { ROUTES } from '@/config';
 import { Layout } from '@/components/Layout';
 import { ImageCropper } from '@/components/ImageCropper';
+import { PaymentModal } from '@/components/PaymentModal';
 import { useDraft } from '@/hooks/useDraft';
 import { usePendingJobs } from '@/hooks/usePendingJobs';
+import { useQuota } from '@/hooks/useQuota';
 
 type Mode = 'file' | 'camera' | 'url';
 type Step = 'select' | 'crop' | 'ready';
@@ -16,8 +18,11 @@ export function Analyze() {
   const [step, setStep] = useState<Step>('select');
   const [notes, setNotes, clearNotes] = useDraft('analyze_notes');
   const [error, setError] = useState('');
+  const [showPayment, setShowPayment] = useState(false);
   const navigate = useNavigate();
   const { addJob } = usePendingJobs();
+  const { quota, refetch: refetchQuota } = useQuota();
+  const queryClient = useQueryClient();
 
   // File/camera mode state
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
@@ -40,9 +45,14 @@ export function Analyze() {
       clearNotes();
       clearImageUrl();
       addJob(response.request_id);
+      queryClient.invalidateQueries({ queryKey: ['quota'] });
       navigate(`/results/${response.request_id}`);
     },
     onError: (err: any) => {
+      if (err.response?.status === 402) {
+        setShowPayment(true);
+        return;
+      }
       setError(err.response?.data?.error || 'Ошибка при отправке анализа');
     },
   });
@@ -138,8 +148,41 @@ export function Analyze() {
 
   return (
     <Layout>
-      <div className="max-w-3xl mx-auto px-4 sm:px-0">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6 sm:mb-8">Анализ ЭКГ</h1>
+      {showPayment && quota && (
+        <PaymentModal
+          quota={quota}
+          onClose={() => setShowPayment(false)}
+          onSuccess={() => { refetchQuota(); setShowPayment(false); }}
+        />
+      )}
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-2xl font-semibold text-gray-900 mb-6">Анализ ЭКГ</h1>
+
+        {/* Quota */}
+        {quota && (
+          <div className="mb-4 flex items-center justify-between text-sm">
+            <div className="flex items-center gap-3 text-gray-400">
+              <span className="flex items-center gap-1.5">
+                <span className={`inline-block w-1.5 h-1.5 rounded-full ${quota.needs_payment ? 'bg-amber-400' : 'bg-green-400'}`} />
+                {quota.needs_payment
+                  ? 'Лимит исчерпан'
+                  : `${quota.free_remaining} из ${quota.daily_limit} бесплатных`}
+              </span>
+              {quota.paid_analyses_remaining > 0 && (
+                <span className="text-rose-500">+{quota.paid_analyses_remaining} оплач.</span>
+              )}
+            </div>
+            {quota.needs_payment && (
+              <button
+                type="button"
+                onClick={() => setShowPayment(true)}
+                className="text-xs text-rose-600 hover:text-rose-700 font-medium"
+              >
+                Купить
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="bg-white shadow rounded-lg p-4 sm:p-6">
           <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
@@ -156,7 +199,7 @@ export function Analyze() {
                 onClick={() => switchMode('file')}
                 className={`px-3 py-1.5 rounded-md transition-colors ${
                   mode === 'file'
-                    ? 'bg-blue-100 text-blue-700 font-medium'
+                    ? 'bg-rose-100 text-rose-700 font-medium'
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -167,7 +210,7 @@ export function Analyze() {
                 onClick={() => switchMode('camera')}
                 className={`px-3 py-1.5 rounded-md transition-colors ${
                   mode === 'camera'
-                    ? 'bg-blue-100 text-blue-700 font-medium'
+                    ? 'bg-rose-100 text-rose-700 font-medium'
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -178,7 +221,7 @@ export function Analyze() {
                 onClick={() => switchMode('url')}
                 className={`px-3 py-1.5 rounded-md transition-colors ${
                   mode === 'url'
-                    ? 'bg-blue-100 text-blue-700 font-medium'
+                    ? 'bg-rose-100 text-rose-700 font-medium'
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -194,7 +237,7 @@ export function Analyze() {
                     onDrop={handleDrop}
                     onDragOver={handleDragOver}
                     onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-gray-300 rounded-lg p-6 sm:p-8 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors active:bg-blue-100"
+                    className="border-2 border-dashed border-gray-300 rounded-lg p-6 sm:p-8 text-center cursor-pointer hover:border-rose-400 hover:bg-rose-50 transition-colors active:bg-rose-100"
                   >
                     <input
                       ref={fileInputRef}
@@ -256,9 +299,9 @@ export function Analyze() {
                       <button
                         type="button"
                         onClick={handleRecrop}
-                        className="text-sm text-blue-600 hover:text-blue-800 py-1"
+                        className="text-sm text-rose-600 hover:text-rose-800 py-1"
                       >
-                        Обрезать заново
+                        Обрезать еще раз
                       </button>
                       <span className="mx-1.5 text-gray-300">|</span>
                       <button
@@ -290,7 +333,7 @@ export function Analyze() {
                     <button
                       type="button"
                       onClick={() => cameraInputRef.current?.click()}
-                      className="w-full border-2 border-dashed border-gray-300 rounded-lg p-6 sm:p-8 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors active:bg-blue-100"
+                      className="w-full border-2 border-dashed border-gray-300 rounded-lg p-6 sm:p-8 text-center cursor-pointer hover:border-rose-400 hover:bg-rose-50 transition-colors active:bg-rose-100"
                     >
                       <div className="text-gray-500">
                         <svg
@@ -357,9 +400,9 @@ export function Analyze() {
                       <button
                         type="button"
                         onClick={handleRecrop}
-                        className="text-sm text-blue-600 hover:text-blue-800 py-1"
+                        className="text-sm text-rose-600 hover:text-rose-800 py-1"
                       >
-                        Обрезать заново
+                        Обрезать еще раз
                       </button>
                       <span className="mx-1.5 text-gray-300">|</span>
                       <button
@@ -367,7 +410,7 @@ export function Analyze() {
                         onClick={handleReset}
                         className="text-sm text-gray-500 hover:text-gray-700 py-1"
                       >
-                        Сфотографировать заново
+                        Сфотографировать еще раз
                       </button>
                     </div>
                   </div>
@@ -385,7 +428,7 @@ export function Analyze() {
                     id="imageUrl"
                     type="url"
                     required
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-rose-500 focus:ring-rose-500 text-sm"
                     placeholder="https://example.com/ekg.jpg"
                     value={imageUrl}
                     onChange={(e) => setImageUrl(e.target.value)}
@@ -425,7 +468,7 @@ export function Analyze() {
                 id="notes"
                 rows={3}
                 maxLength={2000}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-rose-500 focus:ring-rose-500 text-sm"
                 placeholder="Дополнительная информация о пациенте или ЭКГ..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -447,7 +490,7 @@ export function Analyze() {
               <button
                 type="submit"
                 disabled={mutation.isPending || !canSubmit}
-                className="px-5 sm:px-6 py-2.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 text-sm sm:text-base font-medium"
+                className="px-5 sm:px-6 py-2.5 bg-rose-600 text-white rounded-xl hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 disabled:opacity-50 text-sm sm:text-base font-medium transition-colors"
               >
                 {mutation.isPending ? 'Отправка...' : 'Запустить анализ'}
               </button>
@@ -455,15 +498,9 @@ export function Analyze() {
           </form>
         </div>
 
-        <div className="mt-6 sm:mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6">
-          <h3 className="text-base sm:text-lg font-medium text-blue-900 mb-2">Информация</h3>
-          <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-blue-800">
-            <li>Максимальный размер файла: 10MB</li>
-            <li>Обработка обычно занимает 2-5 секунд</li>
-            <li>Результаты будут доступны в истории</li>
-            {mode === 'camera' && <li>Для лучшего качества держите телефон параллельно бумаге</li>}
-            {(mode === 'file' || mode === 'camera') && <li>Вы можете обрезать изображение перед отправкой</li>}
-          </ul>
+        <div className="mt-6 sm:mt-8 flex flex-wrap gap-x-6 gap-y-2 text-xs text-gray-400">
+          <span>JPEG, PNG, PDF до 10 MB</span>
+          {mode === 'camera' && <span>Держите телефон параллельно бумаге</span>}
         </div>
       </div>
     </Layout>

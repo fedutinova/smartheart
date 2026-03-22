@@ -85,7 +85,7 @@ export function Results() {
   if (isLoading) {
     return (
       <Layout>
-        <div className="px-4 sm:px-0">
+        <div>
           <div className="text-center py-8 text-gray-500">Загрузка...</div>
         </div>
       </Layout>
@@ -95,7 +95,7 @@ export function Results() {
   if (error || !request) {
     return (
       <Layout>
-        <div className="px-4 sm:px-0">
+        <div>
           <div className="text-center py-8 text-red-500">
             Ошибка при загрузке результата
           </div>
@@ -106,8 +106,8 @@ export function Results() {
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto px-4 sm:px-0">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6 sm:mb-8">Результаты анализа</h1>
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-2xl font-semibold text-gray-900 mb-6">Результаты анализа</h1>
 
         {/* Request Info */}
         <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
@@ -236,6 +236,10 @@ export function Results() {
           </div>
         )}
 
+        <p className="mt-6 text-[11px] text-gray-300 text-center leading-relaxed">
+          Результаты анализа носят исключительно информационный характер, не являются медицинским заключением
+          и не заменяют консультацию квалифицированного врача.
+        </p>
       </div>
     </Layout>
   );

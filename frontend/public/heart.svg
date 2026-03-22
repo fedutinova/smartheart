@@ -1,4 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <path d="M50,85 C50,85 20,55 20,38 C20,25 31,17 44,17 C47,17 51,18 53,20 C50,15 45,10 40,10 C27,10 20,20 20,35 C20,50 50,85 50,85 Z" fill="#ef4444"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fb7185"/>
+      <stop offset="100%" stop-color="#e11d48"/>
+    </linearGradient>
+  </defs>
+  <!-- Heart shape from two arcs meeting at bottom -->
+  <path d="M32 56 C32 56 8 38 8 22 C8 12 16 6 26 6 C30 6 32 8 32 8 C32 8 34 6 38 6 C48 6 56 12 56 22 C56 38 32 56 32 56Z" fill="url(#g)"/>
+  <!-- Letter У carved out in white -->
+  <text x="32" y="42" text-anchor="middle" font-family="'Arial', sans-serif" font-weight="900" font-size="32" fill="white" stroke="white" stroke-width="1.5">У</text>
 </svg>
-
