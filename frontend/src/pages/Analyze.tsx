@@ -549,9 +549,9 @@ export function Analyze() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-[11px] uppercase tracking-wide text-gray-600 font-medium mb-1.5">Скорость</label>
+                  <label className="block text-[11px] uppercase tracking-wide text-gray-600 font-medium mb-1.5">Скорость мм/с</label>
                   <div className="flex rounded-lg bg-white ring-1 ring-gray-200 p-0.5">
                     {[25, 50].map((v) => (
                       <button
@@ -568,10 +568,9 @@ export function Analyze() {
                       </button>
                     ))}
                   </div>
-                  <p className="text-[10px] text-gray-400 mt-1 text-center">мм/с</p>
                 </div>
                 <div>
-                  <label className="block text-[11px] uppercase tracking-wide text-gray-600 font-medium mb-1.5">Калибр. конечн.</label>
+                  <label className="block text-[11px] uppercase tracking-wide text-gray-600 font-medium mb-1.5">мм/мВ конечн.</label>
                   <div className="flex rounded-lg bg-white ring-1 ring-gray-200 p-0.5">
                     {[5, 10, 20].map((v) => (
                       <button
@@ -588,10 +587,9 @@ export function Analyze() {
                       </button>
                     ))}
                   </div>
-                  <p className="text-[10px] text-gray-400 mt-1 text-center">мм/мВ</p>
                 </div>
                 <div>
-                  <label className="block text-[11px] uppercase tracking-wide text-gray-600 font-medium mb-1.5">Калибр. грудные</label>
+                  <label className="block text-[11px] uppercase tracking-wide text-gray-600 font-medium mb-1.5">мм/мВ грудные</label>
                   <div className="flex rounded-lg bg-white ring-1 ring-gray-200 p-0.5">
                     {[5, 10, 20].map((v) => (
                       <button
@@ -608,7 +606,6 @@ export function Analyze() {
                       </button>
                     ))}
                   </div>
-                  <p className="text-[10px] text-gray-400 mt-1 text-center">мм/мВ</p>
                 </div>
               </div>
             </div>

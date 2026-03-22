@@ -48,7 +48,7 @@ export function Dashboard() {
             className="block bg-gradient-to-r from-purple-400 to-purple-500 text-white rounded-xl shadow-md p-5 sm:p-6 hover:from-purple-500 hover:to-purple-600 active:from-purple-600 active:to-purple-700 transition"
           >
             <div>
-              <h2 className="text-xl sm:text-2xl font-bold">База знаний</h2>
+              <h2 className="text-xl sm:text-2xl font-bold">Чат-бот</h2>
               <p className="text-purple-100 mt-0.5 sm:mt-1 text-sm">Задайте вопрос по ЭКГ и кардиологии</p>
             </div>
           </Link>

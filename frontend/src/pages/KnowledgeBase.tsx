@@ -105,7 +105,7 @@ export function KnowledgeBase() {
     <Layout>
       <div className="flex flex-col" style={{ height: 'calc(100vh - 8rem)', minHeight: '400px' }}>
         <div className="mb-3 sm:mb-4">
-          <h1 className="text-2xl font-semibold text-gray-900 mb-1">База знаний</h1>
+          <h1 className="text-2xl font-semibold text-gray-900 mb-1">Чат-бот</h1>
           <p className="text-gray-500 text-xs sm:text-sm">
             Задайте вопрос по ЭКГ и кардиологии — ответ формируется на основе медицинской литературы
           </p>
@@ -174,24 +174,10 @@ export function KnowledgeBase() {
                         </>
                       )}
                     </div>
-                    {msg.sources && msg.sources.length > 0 && (
-                      <details className="mt-3 pt-3 border-t border-gray-200">
-                        <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700">
-                          Источники ({msg.sources.length})
-                          {msg.elapsedMs && <span className="ml-2">| {(msg.elapsedMs / 1000).toFixed(1)}s</span>}
-                          {msg.meta && <span className="ml-2">| {msg.meta.model}, t={msg.meta.temperature}</span>}
-                        </summary>
-                        <ul className="mt-2 space-y-1">
-                          {msg.sources.map((src, i) => (
-                            <li key={i} className="text-xs text-gray-500">
-                              <span className="font-medium text-gray-700">{src.doc_name}</span>
-                              <span className="text-gray-400"> #{src.chunk_index}</span>
-                              <span className="text-gray-400 ml-1">(score: {src.score.toFixed(3)})</span>
-                              <p className="text-gray-400 truncate">{src.preview}</p>
-                            </li>
-                          ))}
-                        </ul>
-                      </details>
+                    {msg.elapsedMs && (
+                      <p className="mt-2 pt-2 border-t border-gray-200 text-[11px] text-gray-400">
+                        {(msg.elapsedMs / 1000).toFixed(1)}s
+                      </p>
                     )}
                   </>
                 )}
