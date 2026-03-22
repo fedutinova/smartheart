@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
@@ -7,14 +7,20 @@ import { formatDate, formatStatus, getStatusColor } from '@/utils/format';
 import { Layout } from '@/components/Layout';
 import { useEventSource } from '@/hooks/useEventSource';
 import { usePendingJobs } from '@/hooks/usePendingJobs';
-import type { EKGAnalysisResult } from '@/types';
+import type { EKGAnalysisResult, ECGStructuredResult, LVHIndices } from '@/types';
+
+const LEADS_ORDER = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6'];
+
+function fmt(v: number | null | undefined, decimals = 1): string {
+  if (v == null) return '—';
+  return v.toFixed(decimals);
+}
 
 export function Results() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
   const { removeJob } = usePendingJobs();
 
-  // SSE: instantly refetch when the backend notifies about this request.
   const onSSEEvent = useCallback(
     (evt: { request_id: string }) => {
       if (evt.request_id === id) {
@@ -32,9 +38,7 @@ export function Results() {
     refetchInterval: (query) => {
       const data = query.state.data;
       if (!data) return false;
-      // Poll while request is pending/processing
       if (data.status === 'pending' || data.status === 'processing') return 2000;
-      // For completed EKG requests, also poll while GPT interpretation is still pending
       if (data.response?.content) {
         try {
           const parsed = JSON.parse(data.response.content);
@@ -50,7 +54,6 @@ export function Results() {
     },
   });
 
-  // Remove from pending jobs when request completes or fails
   useEffect(() => {
     if (id && request && (request.status === 'completed' || request.status === 'failed')) {
       removeJob(id);
@@ -58,36 +61,29 @@ export function Results() {
   }, [id, request?.status, removeJob]);
 
   let ekgResult: EKGAnalysisResult | null = null;
+  let isStructured = false;
   if (request?.response?.content) {
     try {
       const parsed = JSON.parse(request.response.content);
-      if (parsed?.analysis_type === 'ekg_direct_v2') {
+      if (parsed?.analysis_type === 'ekg_direct_v2' || parsed?.analysis_type === 'ekg_structured_v1') {
         ekgResult = parsed as EKGAnalysisResult;
+        isStructured = parsed.analysis_type === 'ekg_structured_v1';
       }
     } catch {
-      // Not JSON — this is a direct GPT text response
+      // Not JSON — direct GPT text response
     }
   }
 
-  // Determine the GPT interpretation content to display.
-  // For EKG requests: use the enriched gpt_full_response from the backend.
-  // For direct GPT requests: use response.content directly.
   const gptContent = ekgResult
     ? ekgResult.gpt_full_response || null
     : (request?.response && request.response.model !== 'ekg_direct_v2')
       ? request.response.content
       : null;
 
-  const gptMeta = ekgResult
-    ? null // GPT metadata is on the linked request, not available here
-    : request?.response;
-
   if (isLoading) {
     return (
       <Layout>
-        <div>
-          <div className="text-center py-8 text-gray-500">Загрузка...</div>
-        </div>
+        <div className="text-center py-8 text-gray-500">Загрузка...</div>
       </Layout>
     );
   }
@@ -95,10 +91,8 @@ export function Results() {
   if (error || !request) {
     return (
       <Layout>
-        <div>
-          <div className="text-center py-8 text-red-500">
-            Ошибка при загрузке результата
-          </div>
+        <div className="text-center py-8 text-red-500">
+          Ошибка при загрузке результата
         </div>
       </Layout>
     );
@@ -140,25 +134,17 @@ export function Results() {
         </div>
 
         {/* Original Image */}
-        {request.files && request.files.length > 0 && request.files[0].s3_url && (
-          <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Исходное изображение</h2>
-            <div className="flex justify-center">
-              <img
-                src={request.files[0].s3_url}
-                alt="Исходное ЭКГ изображение"
-                className="max-w-full h-auto rounded-lg shadow-md"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                }}
-              />
-            </div>
-          </div>
+        {request.files && request.files.length > 0 && (
+          <RequestImage requestId={request.id} fileId={request.files[0].id} />
         )}
 
-        {/* GPT Interpretation / Analysis Result */}
-        {gptContent && (
+        {/* Structured ECG Results */}
+        {isStructured && ekgResult?.structured_result && (
+          <StructuredResultView result={ekgResult.structured_result} />
+        )}
+
+        {/* GPT Interpretation / Analysis Result (old format) */}
+        {!isStructured && gptContent && (
           <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
             <div className="flex items-center mb-3 sm:mb-4">
               <h2 className="text-lg sm:text-xl font-bold text-gray-900">Заключение</h2>
@@ -168,37 +154,11 @@ export function Results() {
                 {gptContent}
               </ReactMarkdown>
             </div>
-            {/* Processing metadata (only for direct GPT requests where we have it) */}
-            {gptMeta && (
-              <div className="bg-white rounded-lg p-4 border border-purple-100">
-                <h3 className="text-sm font-medium text-gray-700 mb-4">Информация об обработке</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {gptMeta.model && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Модель</label>
-                      <p className="mt-1 text-sm text-gray-900">{gptMeta.model}</p>
-                    </div>
-                  )}
-                  {gptMeta.tokens_used !== undefined && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Токены</label>
-                      <p className="mt-1 text-sm text-gray-900">{gptMeta.tokens_used}</p>
-                    </div>
-                  )}
-                  {gptMeta.processing_time_ms !== undefined && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Время обработки</label>
-                      <p className="mt-1 text-sm text-gray-900">{gptMeta.processing_time_ms}ms</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         )}
 
-        {/* GPT interpretation pending/failed message for EKG requests */}
-        {ekgResult && !gptContent && ekgResult.gpt_request_id && (
+        {/* GPT interpretation pending/failed message for old EKG requests */}
+        {!isStructured && ekgResult && !gptContent && ekgResult.gpt_request_id && (
           <div className="bg-yellow-50 border border-yellow-200 shadow rounded-lg p-6 mb-6">
             <h2 className="text-xl font-bold text-gray-900 mb-2">Заключение</h2>
             <p className="text-sm text-yellow-800">
@@ -209,38 +169,174 @@ export function Results() {
           </div>
         )}
 
-        {/* EKG Result Info */}
-        {ekgResult && (
-          <div className="bg-white shadow rounded-lg p-6 mb-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Информация об анализе ЭКГ</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-500">Время анализа</label>
-                <p className="mt-1 text-sm text-gray-900">{formatDate(ekgResult.timestamp)}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Статус GPT-интерпретации</label>
-                <p className="mt-1 text-sm text-gray-900">
-                  {ekgResult.gpt_interpretation_status
-                    ? formatStatus(ekgResult.gpt_interpretation_status)
-                    : 'N/A'}
-                </p>
-              </div>
-            </div>
-            {ekgResult.notes && (
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <label className="text-sm font-medium text-gray-500">Примечания</label>
-                <p className="mt-1 text-sm text-gray-600">{ekgResult.notes}</p>
-              </div>
-            )}
+        {/* Notes */}
+        {ekgResult?.notes && (
+          <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+            <h2 className="text-sm font-medium text-gray-400 mb-2">Примечания</h2>
+            <p className="text-sm text-gray-600">{ekgResult.notes}</p>
           </div>
         )}
 
-        <p className="mt-6 text-[11px] text-gray-300 text-center leading-relaxed">
+        <p className="mt-6 text-xs text-gray-500 text-center leading-relaxed">
           Результаты анализа носят исключительно информационный характер, не являются медицинским заключением
           и не заменяют консультацию квалифицированного врача.
         </p>
       </div>
     </Layout>
+  );
+}
+
+// --- Structured Result Components ---
+
+function StructuredResultView({ result }: { result: ECGStructuredResult }) {
+  return (
+    <>
+      {/* Measurements Table */}
+      <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 overflow-x-auto">
+        <h2 className="text-lg font-bold text-gray-900 mb-4">Измерения по отведениям</h2>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-200">
+              <th className="text-left py-2 pr-3 text-gray-500 font-medium">Отведение</th>
+              <th className="text-right py-2 px-3 text-gray-500 font-medium">R, мм</th>
+              <th className="text-right py-2 pl-3 text-gray-500 font-medium">S, мм</th>
+            </tr>
+          </thead>
+          <tbody>
+            {LEADS_ORDER.map((lead) => {
+              const rKey = `R_${lead}_mm`;
+              const sKey = `S_${lead}_mm`;
+              const rVal = result.measurements[rKey];
+              const sVal = result.measurements[sKey];
+              return (
+                <tr key={lead} className="border-b border-gray-100">
+                  <td className="py-2 pr-3 font-medium text-gray-800">{lead}</td>
+                  <td className="py-2 px-3 text-right font-mono text-gray-700">{fmt(rVal)}</td>
+                  <td className="py-2 pl-3 text-right font-mono text-gray-700">{fmt(sVal)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Rhythm & Intervals */}
+      {result.rhythm && (
+        <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+          <h2 className="text-lg font-bold text-gray-900 mb-3">Интервалы и ритм</h2>
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <MetricCard label="QRS" value={fmt(result.rhythm.QRS_ms, 0)} unit="мс" />
+            <MetricCard label="RR" value={fmt(result.rhythm.RR_ms, 0)} unit="мс" />
+            <MetricCard label="ЧСС" value={fmt(result.rhythm.HR_bpm, 0)} unit="уд/мин" />
+          </div>
+        </div>
+      )}
+
+      {/* LVH Indices */}
+      {result.indices && <LVHIndicesView indices={result.indices} sex={result.patient?.sex} />}
+
+      {/* QRS Axis */}
+      {result.axis_qrs && (
+        <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+          <h2 className="text-lg font-bold text-gray-900 mb-3">Электрическая ось сердца</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-center">
+            <MetricCard label="Ось" value={fmt(result.axis_qrs.axis_deg, 0)} unit="°" />
+            <MetricCard label="Классификация" value={result.axis_qrs.classification || '—'} />
+            {result.transition_zone_lead && (
+              <MetricCard label="Переходная зона" value={result.transition_zone_lead} />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* RVH */}
+      {result.rvh && (
+        <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+          <h2 className="text-lg font-bold text-gray-900 mb-3">Маркеры ГПЖ</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+            <MetricCard label="R V1" value={fmt(result.rvh.RV1_mV)} unit="мВ" />
+            <MetricCard label="R/S V1" value={fmt(result.rvh.R_over_S_V1)} />
+            <MetricCard label="RV1+SV5" value={fmt(result.rvh.RV1_plus_SV5_mV)} unit="мВ" />
+            <MetricCard label="RV1+SV6" value={fmt(result.rvh.RV1_plus_SV6_mV)} unit="мВ" />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+const LVH_THRESHOLDS: Record<string, { label: string; key: keyof LVHIndices; threshold: number; thresholdF?: number }> = {
+  sokolow: { label: 'Соколов-Лайон', key: 'sokolow_lyon_mV', threshold: 3.5 },
+  cornell: { label: 'Корнелл', key: 'cornell_voltage_mV', threshold: 2.8, thresholdF: 2.0 },
+  peguero: { label: 'Пегуэро', key: 'peguero_lo_presti_mV', threshold: 2.3, thresholdF: 2.3 },
+  gubner: { label: 'Губнер', key: 'gubner_mV', threshold: 2.5 },
+  lewis: { label: 'Льюис', key: 'lewis_mV', threshold: 1.7 },
+};
+
+function LVHIndicesView({ indices, sex }: { indices: LVHIndices; sex?: string }) {
+  const entries = Object.values(LVH_THRESHOLDS);
+  return (
+    <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+      <h2 className="text-lg font-bold text-gray-900 mb-3">Индексы ГЛЖ</h2>
+      <div className="space-y-2">
+        {entries.map(({ label, key, threshold, thresholdF }) => {
+          const val = indices[key];
+          if (val == null) return null;
+          const thr = (sex === 'female' && thresholdF != null) ? thresholdF : threshold;
+          const exceeded = val >= thr;
+          return (
+            <div key={key} className="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0">
+              <span className="text-sm text-gray-700">{label}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-mono font-medium text-gray-900">{fmt(val, 2)} мВ</span>
+                <span className={`text-xs px-1.5 py-0.5 rounded ${exceeded ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                  {exceeded ? `≥ ${thr}` : `< ${thr}`}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function MetricCard({ label, value, unit }: { label: string; value: string; unit?: string }) {
+  return (
+    <div className="bg-gray-50 rounded-lg p-3">
+      <p className="text-xs text-gray-500 mb-1">{label}</p>
+      <p className="text-lg font-semibold text-gray-900">
+        {value}
+        {unit && <span className="text-sm font-normal text-gray-500 ml-1">{unit}</span>}
+      </p>
+    </div>
+  );
+}
+
+function RequestImage({ requestId, fileId }: { requestId: string; fileId: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    let revoke: string | null = null;
+    requestAPI.getFileURL(requestId, fileId).then((url) => {
+      revoke = url;
+      setSrc(url);
+    }).catch(() => {});
+    return () => { if (revoke) URL.revokeObjectURL(revoke); };
+  }, [requestId, fileId]);
+
+  if (!src) return null;
+
+  return (
+    <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+      <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Исходное изображение</h2>
+      <div className="flex justify-center">
+        <img
+          src={src}
+          alt="Исходное ЭКГ изображение"
+          className="max-w-full h-auto rounded-lg shadow-md"
+        />
+      </div>
+    </div>
   );
 }

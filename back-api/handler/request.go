@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -67,6 +68,13 @@ func (h *RequestHandler) GetRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Fill in missing S3URL from storage config
+	for i := range request.Files {
+		if request.Files[i].S3URL == "" && request.Files[i].S3Key != "" {
+			request.Files[i].S3URL = h.Config.Storage.LocalURL + "/" + request.Files[i].S3Key
+		}
+	}
+
 	writeJSON(w, http.StatusOK, request)
 }
 
@@ -92,6 +100,61 @@ func (h *RequestHandler) GetJob(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, j)
+}
+
+// GetRequestFile serves a file belonging to a request.
+// The caller must own the request. The file is streamed from storage.
+func (h *RequestHandler) GetRequestFile(w http.ResponseWriter, r *http.Request) {
+	requestIDRaw := chi.URLParam(r, "id")
+	requestID, err := parseUUID(requestIDRaw)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request ID")
+		return
+	}
+
+	fileIDRaw := chi.URLParam(r, "fileId")
+	fileID, err := parseUUID(fileIDRaw)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid file ID")
+		return
+	}
+
+	_, claims, ok := extractUserID(r)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "no auth context")
+		return
+	}
+
+	// Verify ownership via the request
+	request, err := h.Service.GetRequest(r.Context(), requestID, claims)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	// Find the file in the request
+	var s3Key string
+	for _, f := range request.Files {
+		if f.ID == fileID {
+			s3Key = f.S3Key
+			break
+		}
+	}
+	if s3Key == "" {
+		writeError(w, http.StatusNotFound, "file not found")
+		return
+	}
+
+	rc, contentType, err := h.Storage.GetFile(r.Context(), s3Key)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "file not found")
+		return
+	}
+	defer rc.Close()
+
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Cache-Control", "private, max-age=3600")
+	io.Copy(w, rc)
 }
 
 // ServeFiles serves static files from local storage

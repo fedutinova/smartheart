@@ -9,6 +9,7 @@ import { PaymentModal } from '@/components/PaymentModal';
 import { useDraft } from '@/hooks/useDraft';
 import { usePendingJobs } from '@/hooks/usePendingJobs';
 import { useQuota } from '@/hooks/useQuota';
+import type { ECGCalibrationParams } from '@/types';
 
 type Mode = 'file' | 'camera' | 'url';
 type Step = 'select' | 'crop' | 'ready';
@@ -16,13 +17,20 @@ type Step = 'select' | 'crop' | 'ready';
 export function Analyze() {
   const [mode, setMode] = useState<Mode>('file');
   const [step, setStep] = useState<Step>('select');
-  const [notes, setNotes, clearNotes] = useDraft('analyze_notes');
+  const [, , clearNotes] = useDraft('analyze_notes');
   const [error, setError] = useState('');
   const [showPayment, setShowPayment] = useState(false);
   const navigate = useNavigate();
   const { addJob } = usePendingJobs();
   const { quota, refetch: refetchQuota } = useQuota();
   const queryClient = useQueryClient();
+
+  // Calibration params
+  const [age, setAge] = useState<string>('');
+  const [sex, setSex] = useState<string>('');
+  const [paperSpeed, setPaperSpeed] = useState<number>(25);
+  const [mmPerMvLimb, setMmPerMvLimb] = useState<number>(10);
+  const [mmPerMvChest, setMmPerMvChest] = useState<number>(10);
 
   // File/camera mode state
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
@@ -34,12 +42,24 @@ export function Analyze() {
   // URL mode state — persisted as draft
   const [imageUrl, setImageUrl, clearImageUrl] = useDraft('analyze_url');
 
+  const getCalibrationParams = (): ECGCalibrationParams => ({
+    age: age ? parseInt(age, 10) : undefined,
+    sex: sex || undefined,
+    paper_speed_mms: paperSpeed,
+    mm_per_mv_limb: mmPerMvLimb,
+    mm_per_mv_chest: mmPerMvChest,
+  });
+
   const mutation = useMutation({
     mutationFn: () => {
+      const params = getCalibrationParams();
       if ((mode === 'file' || mode === 'camera') && croppedBlob) {
-        return ekgAPI.submitAnalysisFile(croppedBlob, notes || undefined);
+        return ekgAPI.submitAnalysisFile(croppedBlob, undefined, params);
       }
-      return ekgAPI.submitAnalysis({ image_temp_url: imageUrl, notes: notes || undefined });
+      return ekgAPI.submitAnalysis({
+        image_temp_url: imageUrl,
+        ...params,
+      });
     },
     onSuccess: (response) => {
       clearNotes();
@@ -57,12 +77,46 @@ export function Analyze() {
     },
   });
 
-  const handleFileSelect = useCallback((file: File) => {
+  const compressImage = useCallback((file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX_PIXELS = 4096;
+        let { width, height } = img;
+        if (width > MAX_PIXELS || height > MAX_PIXELS) {
+          const scale = MAX_PIXELS / Math.max(width, height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = () => reject(new Error('Не удалось загрузить изображение'));
+      img.src = URL.createObjectURL(file);
+    });
+  }, []);
+
+  const handleFileSelect = useCallback(async (file: File) => {
     if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
       setError('Поддерживаются только изображения и PDF');
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
+      if (mode === 'camera' && file.type.startsWith('image/')) {
+        try {
+          const compressedUrl = await compressImage(file);
+          setError('');
+          setPreviewSrc(compressedUrl);
+          setStep('crop');
+        } catch {
+          setError('Не удалось сжать изображение');
+        }
+        return;
+      }
       setError('Файл слишком большой (макс. 10MB)');
       return;
     }
@@ -70,7 +124,7 @@ export function Analyze() {
     const url = URL.createObjectURL(file);
     setPreviewSrc(url);
     setStep('crop');
-  }, []);
+  }, [mode, compressImage]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -200,7 +254,7 @@ export function Analyze() {
                 className={`px-3 py-1.5 rounded-md transition-colors ${
                   mode === 'file'
                     ? 'bg-rose-100 text-rose-700 font-medium'
-                    : 'text-gray-500 hover:text-gray-700'
+                    : 'text-gray-800 hover:text-gray-900'
                 }`}
               >
                 Загрузить файл
@@ -211,7 +265,7 @@ export function Analyze() {
                 className={`px-3 py-1.5 rounded-md transition-colors ${
                   mode === 'camera'
                     ? 'bg-rose-100 text-rose-700 font-medium'
-                    : 'text-gray-500 hover:text-gray-700'
+                    : 'text-gray-800 hover:text-gray-900'
                 }`}
               >
                 Камера
@@ -222,7 +276,7 @@ export function Analyze() {
                 className={`px-3 py-1.5 rounded-md transition-colors ${
                   mode === 'url'
                     ? 'bg-rose-100 text-rose-700 font-medium'
-                    : 'text-gray-500 hover:text-gray-700'
+                    : 'text-gray-800 hover:text-gray-900'
                 }`}
               >
                 Указать URL
@@ -363,11 +417,9 @@ export function Analyze() {
                         </p>
                       </div>
                     </button>
-                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
-                      <p className="text-xs text-blue-700">
-                        Для лучшего результата: расположите ЭКГ на ровной поверхности, обеспечьте хорошее освещение, избегайте бликов и теней
-                      </p>
-                    </div>
+                    <p className="text-xs text-gray-400">
+                      Ровная поверхность · хорошее освещение · без бликов и теней
+                    </p>
                   </div>
                 )}
 
@@ -422,7 +474,7 @@ export function Analyze() {
               <>
                 <div>
                   <label htmlFor="imageUrl" className="block text-sm font-medium text-gray-700 mb-2">
-                    URL изображения ЭКГ *
+                    URL
                   </label>
                   <input
                     id="imageUrl"
@@ -433,9 +485,6 @@ export function Analyze() {
                     value={imageUrl}
                     onChange={(e) => setImageUrl(e.target.value)}
                   />
-                  <p className="mt-1 text-xs sm:text-sm text-gray-500">
-                    Поддерживаемые форматы: JPEG, PNG, GIF, WebP, BMP, TIFF, PDF
-                  </p>
                 </div>
 
                 {imageUrl && (
@@ -459,23 +508,109 @@ export function Analyze() {
               </>
             )}
 
-            {/* Notes */}
-            <div>
-              <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
-                Примечания (опционально)
-              </label>
-              <textarea
-                id="notes"
-                rows={3}
-                maxLength={2000}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-rose-500 focus:ring-rose-500 text-sm"
-                placeholder="Дополнительная информация о пациенте или ЭКГ..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
-              {notes.length > 1800 && (
-                <p className="mt-1 text-sm text-yellow-600">{notes.length}/2000 символов</p>
-              )}
+            {/* Calibration params */}
+            <div className="rounded-xl bg-gray-50 p-4 space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="flex-1 min-w-0">
+                  <label htmlFor="age" className="block text-[11px] uppercase tracking-wide text-gray-600 font-medium mb-1.5">Возраст</label>
+                  <input
+                    id="age"
+                    type="number"
+                    min={1}
+                    max={150}
+                    placeholder="—"
+                    className="w-full bg-white rounded-lg border-0 ring-1 ring-gray-200 focus:ring-2 focus:ring-rose-500 text-sm py-2 px-3"
+                    value={age}
+                    onChange={(e) => setAge(e.target.value)}
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <label className="block text-[11px] uppercase tracking-wide text-gray-600 font-medium mb-1.5">Пол</label>
+                  <div className="flex rounded-lg bg-white ring-1 ring-gray-200 p-0.5">
+                    {[
+                      { value: '', label: '—' },
+                      { value: 'male', label: 'М' },
+                      { value: 'female', label: 'Ж' },
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setSex(opt.value)}
+                        className={`flex-1 text-sm py-1.5 rounded-md transition-all ${
+                          sex === opt.value
+                            ? 'bg-rose-500 text-white shadow-sm font-medium'
+                            : 'text-gray-800 hover:text-gray-900'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] uppercase tracking-wide text-gray-600 font-medium mb-1.5">Скорость</label>
+                  <div className="flex rounded-lg bg-white ring-1 ring-gray-200 p-0.5">
+                    {[25, 50].map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setPaperSpeed(v)}
+                        className={`flex-1 text-sm py-1.5 rounded-md transition-all ${
+                          paperSpeed === v
+                            ? 'bg-rose-500 text-white shadow-sm font-medium'
+                            : 'text-gray-800 hover:text-gray-900'
+                        }`}
+                      >
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-1 text-center">мм/с</p>
+                </div>
+                <div>
+                  <label className="block text-[11px] uppercase tracking-wide text-gray-600 font-medium mb-1.5">Калибр. конечн.</label>
+                  <div className="flex rounded-lg bg-white ring-1 ring-gray-200 p-0.5">
+                    {[5, 10, 20].map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setMmPerMvLimb(v)}
+                        className={`flex-1 text-sm py-1.5 rounded-md transition-all ${
+                          mmPerMvLimb === v
+                            ? 'bg-rose-500 text-white shadow-sm font-medium'
+                            : 'text-gray-800 hover:text-gray-900'
+                        }`}
+                      >
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-1 text-center">мм/мВ</p>
+                </div>
+                <div>
+                  <label className="block text-[11px] uppercase tracking-wide text-gray-600 font-medium mb-1.5">Калибр. грудные</label>
+                  <div className="flex rounded-lg bg-white ring-1 ring-gray-200 p-0.5">
+                    {[5, 10, 20].map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setMmPerMvChest(v)}
+                        className={`flex-1 text-sm py-1.5 rounded-md transition-all ${
+                          mmPerMvChest === v
+                            ? 'bg-rose-500 text-white shadow-sm font-medium'
+                            : 'text-gray-800 hover:text-gray-900'
+                        }`}
+                      >
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-1 text-center">мм/мВ</p>
+                </div>
+              </div>
             </div>
 
             {/* Actions */}

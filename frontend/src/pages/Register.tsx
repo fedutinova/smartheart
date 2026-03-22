@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Navigate, Link } from 'react-router-dom';
 import { authAPI } from '@/services/api';
+import { useAuthStore } from '@/store/auth';
 import { ROUTES } from '@/config';
 import { Layout } from '@/components/Layout';
 
@@ -12,6 +13,11 @@ export function Register() {
   const [loading, setLoading] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuthStore();
+
+  if (isAuthenticated) {
+    return <Navigate to={ROUTES.DASHBOARD} replace />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

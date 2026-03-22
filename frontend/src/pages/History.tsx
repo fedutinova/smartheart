@@ -49,9 +49,8 @@ export function History() {
                         {formatStatus(request.status)}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between text-xs text-gray-400">
-                      <span>{request.response?.model === 'ekg_direct_v2' ? 'ЭКГ Анализ' : 'GPT Запрос'}</span>
-                      <span>{formatDate(request.created_at)}</span>
+                    <div className="text-xs text-gray-400">
+                      {formatDate(request.created_at)}
                     </div>
                   </Link>
                 ))}
@@ -63,7 +62,6 @@ export function History() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Тип</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Создано</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Обновлено</th>
@@ -75,9 +73,6 @@ export function History() {
                       <tr key={request.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500">
                           {request.id.slice(0, 8)}...
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {request.response?.model === 'ekg_direct_v2' ? 'ЭКГ Анализ' : 'GPT Запрос'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span

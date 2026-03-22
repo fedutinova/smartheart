@@ -151,7 +151,7 @@ func initQueue(cfg appconfig.Config, sessions *session.Service) job.Queue {
 func startWorkers(ctx context.Context, cfg appconfig.Config, db *database.DB, q job.Queue, storageService storage.Storage, repo repository.Store, hub *notify.Hub) {
 	gptClient := gpt.NewClient(cfg.GPT.APIKey, storageService, gpt.WithModel(cfg.GPT.Model))
 	gptWorker := workers.NewGPTWorker(db, gptClient, repo, hub)
-	ekgWorker := workers.NewEKGWorker(db, q, storageService, repo)
+	ekgWorker := workers.NewEKGWorker(db, q, storageService, repo, gptClient, hub)
 
 	registry := job.NewRegistry()
 	registry.Register(job.TypeEKGAnalyze, ekgWorker.HandleEKGJob)

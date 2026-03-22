@@ -30,6 +30,7 @@ type GPTHandler struct {
 type RequestHandler struct {
 	Service service.RequestService
 	Config  config.Config
+	Storage storage.Storage
 }
 
 // HealthHandler handles health and readiness endpoints.
@@ -71,7 +72,7 @@ func NewHandler(
 		Auth:    &AuthHandler{Service: authSvc},
 		EKG:     &EKGHandler{Service: submissionSvc},
 		GPT:     &GPTHandler{Service: submissionSvc},
-		Request: &RequestHandler{Service: requestSvc, Config: cfg},
+		Request: &RequestHandler{Service: requestSvc, Config: cfg, Storage: storageService},
 		Healthz: &HealthHandler{Queue: queue, Repo: repo, Sessions: sessions, Storage: storageService},
 		Events:  &EventsHandler{Hub: hub},
 		RAG:     NewRAGHandler(cfg.RAG.URL, repo),
@@ -115,6 +116,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 
 		r.With(auth.RequirePerm(auth.PermJobReadOwn)).Get("/v1/jobs/{id}", h.Request.GetJob)
 		r.With(auth.RequirePerm(auth.PermJobReadOwn)).Get("/v1/requests/{id}", h.Request.GetRequest)
+		r.With(auth.RequirePerm(auth.PermJobReadOwn)).Get("/v1/requests/{id}/files/{fileId}", h.Request.GetRequestFile)
 		r.With(auth.RequirePerm(auth.PermJobReadOwn)).Get("/v1/requests", h.Request.GetUserRequests)
 
 		// SSE event stream

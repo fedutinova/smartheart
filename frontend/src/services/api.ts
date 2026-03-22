@@ -5,6 +5,7 @@ import type {
   RegisterRequest,
   TokenPair,
   EKGAnalysisRequest,
+  ECGCalibrationParams,
   Job,
   Request,
   PaginatedResponse,
@@ -171,16 +172,23 @@ export const profileAPI = {
 type EKGSubmitResponse = { job_id: string; request_id: string; status: string; message: string };
 
 export const ekgAPI = {
-  submitAnalysis: async (data: EKGAnalysisRequest) => {
+  submitAnalysis: async (data: EKGAnalysisRequest & Partial<ECGCalibrationParams>) => {
     const response = await api.post<EKGSubmitResponse>('/v1/ekg/analyze', data);
     return response.data;
   },
 
-  submitAnalysisFile: async (imageBlob: Blob, notes?: string) => {
+  submitAnalysisFile: async (imageBlob: Blob, notes?: string, params?: ECGCalibrationParams) => {
     const formData = new FormData();
     formData.append('image', imageBlob, 'ekg-image.jpg');
     if (notes) {
       formData.append('notes', notes);
+    }
+    if (params) {
+      if (params.age != null) formData.append('age', String(params.age));
+      if (params.sex) formData.append('sex', params.sex);
+      formData.append('paper_speed_mms', String(params.paper_speed_mms));
+      formData.append('mm_per_mv_limb', String(params.mm_per_mv_limb));
+      formData.append('mm_per_mv_chest', String(params.mm_per_mv_chest));
     }
     const response = await api.post<EKGSubmitResponse>('/v1/ekg/analyze', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -208,6 +216,13 @@ export const requestAPI = {
       params: { limit, offset },
     });
     return response.data;
+  },
+
+  getFileURL: async (requestId: string, fileId: string): Promise<string> => {
+    const response = await api.get(`/v1/requests/${requestId}/files/${fileId}`, {
+      responseType: 'blob',
+    });
+    return URL.createObjectURL(response.data);
   },
 };
 

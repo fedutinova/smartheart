@@ -1,11 +1,12 @@
 import { format, formatDistanceToNow } from 'date-fns';
+import { ru } from 'date-fns/locale';
 
 export const formatDate = (date: string | Date): string => {
   return format(new Date(date), 'dd.MM.yyyy HH:mm');
 };
 
 export const formatRelative = (date: string | Date): string => {
-  return formatDistanceToNow(new Date(date), { addSuffix: true });
+  return formatDistanceToNow(new Date(date), { addSuffix: true, locale: ru });
 };
 
 export const formatStatus = (status: string): string => {

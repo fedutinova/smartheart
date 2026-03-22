@@ -46,7 +46,7 @@ func TestSubmitEKG_Success(t *testing.T) {
 		Enqueue(mock.Anything, mock.Anything).
 		Return(jobID, nil)
 
-	result, err := svc.SubmitEKG(ctx, userID, "https://example.com/ekg.jpg", "patient notes")
+	result, err := svc.SubmitEKG(ctx, userID, "https://example.com/ekg.jpg", ECGParams{})
 	require.NoError(t, err)
 	assert.Equal(t, jobID, result.JobID)
 	assert.NotEqual(t, uuid.Nil, result.RequestID)
@@ -56,43 +56,9 @@ func TestSubmitEKG_EmptyImageURL(t *testing.T) {
 	svc, _, _, _ := newSubmissionService(t)
 	ctx := context.Background()
 
-	_, err := svc.SubmitEKG(ctx, uuid.New(), "", "notes")
+	_, err := svc.SubmitEKG(ctx, uuid.New(), "", ECGParams{})
 	require.Error(t, err)
 	assert.ErrorIs(t, err, apperr.ErrValidation)
-}
-
-func TestSubmitEKG_NotesTooLong(t *testing.T) {
-	svc, _, _, _ := newSubmissionService(t)
-	ctx := context.Background()
-
-	longNotes := make([]byte, maxNotesLen+1)
-	for i := range longNotes {
-		longNotes[i] = 'a'
-	}
-
-	_, err := svc.SubmitEKG(ctx, uuid.New(), "https://example.com/ekg.jpg", string(longNotes))
-	require.Error(t, err)
-	assert.ErrorIs(t, err, apperr.ErrValidation)
-}
-
-func TestSubmitEKG_EmptyNotes(t *testing.T) {
-	svc, repo, queue, _ := newSubmissionService(t)
-	ctx := context.Background()
-	userID := uuid.New()
-
-	repo.EXPECT().
-		CreateRequest(mock.Anything, mock.Anything).
-		Run(func(ctx context.Context, req *models.Request) {
-			assert.Nil(t, req.TextQuery, "TextQuery should be nil when notes are empty")
-		}).
-		Return(nil)
-
-	queue.EXPECT().
-		Enqueue(mock.Anything, mock.Anything).
-		Return(uuid.New(), nil)
-
-	_, err := svc.SubmitEKG(ctx, userID, "https://example.com/ekg.jpg", "")
-	require.NoError(t, err)
 }
 
 func TestSubmitEKG_CreateRequestFails(t *testing.T) {
@@ -103,7 +69,7 @@ func TestSubmitEKG_CreateRequestFails(t *testing.T) {
 		CreateRequest(mock.Anything, mock.Anything).
 		Return(errors.New("db error"))
 
-	_, err := svc.SubmitEKG(ctx, uuid.New(), "https://example.com/ekg.jpg", "")
+	_, err := svc.SubmitEKG(ctx, uuid.New(), "https://example.com/ekg.jpg", ECGParams{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "create request")
 }
@@ -120,7 +86,7 @@ func TestSubmitEKG_EnqueueFails(t *testing.T) {
 		Enqueue(mock.Anything, mock.Anything).
 		Return(uuid.Nil, errors.New("queue full"))
 
-	_, err := svc.SubmitEKG(ctx, uuid.New(), "https://example.com/ekg.jpg", "")
+	_, err := svc.SubmitEKG(ctx, uuid.New(), "https://example.com/ekg.jpg", ECGParams{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "enqueue EKG job")
 }
@@ -160,7 +126,7 @@ func TestSubmitEKGFile_Success(t *testing.T) {
 		Size:        10,
 	}
 
-	result, err := svc.SubmitEKGFile(ctx, userID, file, "patient notes")
+	result, err := svc.SubmitEKGFile(ctx, userID, file, ECGParams{})
 	require.NoError(t, err)
 	assert.Equal(t, jobID, result.JobID)
 	assert.NotEqual(t, uuid.Nil, result.RequestID)
@@ -181,30 +147,9 @@ func TestSubmitEKGFile_UploadFails(t *testing.T) {
 		Size:        4,
 	}
 
-	_, err := svc.SubmitEKGFile(ctx, uuid.New(), file, "")
+	_, err := svc.SubmitEKGFile(ctx, uuid.New(), file, ECGParams{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "upload EKG image")
-}
-
-func TestSubmitEKGFile_NotesTooLong(t *testing.T) {
-	svc, _, _, _ := newSubmissionService(t)
-	ctx := context.Background()
-
-	longNotes := make([]byte, maxNotesLen+1)
-	for i := range longNotes {
-		longNotes[i] = 'a'
-	}
-
-	file := UploadedFile{
-		Reader:      bytes.NewReader([]byte("data")),
-		Filename:    "ekg.jpg",
-		ContentType: "image/jpeg",
-		Size:        4,
-	}
-
-	_, err := svc.SubmitEKGFile(ctx, uuid.New(), file, string(longNotes))
-	require.Error(t, err)
-	assert.ErrorIs(t, err, apperr.ErrValidation)
 }
 
 func TestSubmitEKGFile_CreateRequestFails(t *testing.T) {
@@ -226,7 +171,7 @@ func TestSubmitEKGFile_CreateRequestFails(t *testing.T) {
 		Size:        4,
 	}
 
-	_, err := svc.SubmitEKGFile(ctx, uuid.New(), file, "")
+	_, err := svc.SubmitEKGFile(ctx, uuid.New(), file, ECGParams{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "create request")
 }

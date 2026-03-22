@@ -40,10 +40,19 @@ type UploadedFile struct {
 	Size        int64
 }
 
+// ECGParams holds patient and calibration parameters for EKG analysis.
+type ECGParams struct {
+	Age           *int
+	Sex           string
+	PaperSpeedMMS float64
+	MmPerMvLimb   float64
+	MmPerMvChest  float64
+}
+
 // SubmissionService handles EKG and GPT job submission business logic.
 type SubmissionService interface {
-	SubmitEKG(ctx context.Context, userID uuid.UUID, imageURL, notes string) (*SubmittedJob, error)
-	SubmitEKGFile(ctx context.Context, userID uuid.UUID, file UploadedFile, notes string) (*SubmittedJob, error)
+	SubmitEKG(ctx context.Context, userID uuid.UUID, imageURL string, params ECGParams) (*SubmittedJob, error)
+	SubmitEKGFile(ctx context.Context, userID uuid.UUID, file UploadedFile, params ECGParams) (*SubmittedJob, error)
 	SubmitGPT(ctx context.Context, userID uuid.UUID, textQuery string, files []UploadedFile) (*GPTSubmitResult, error)
 }
 
@@ -62,8 +71,6 @@ func NewSubmissionService(repo repository.Store, queue job.Queue, storageService
 	return s
 }
 
-const maxNotesLen = 2000
-
 // detectContentType returns the file's content type, sniffing it from the first
 // 512 bytes when the UploadedFile does not already carry one.
 func detectContentType(file *UploadedFile) (string, error) {
@@ -80,13 +87,6 @@ func detectContentType(file *UploadedFile) (string, error) {
 		return "", apperr.WrapInternal("seek file", err)
 	}
 	return ct, nil
-}
-
-func validateEKGNotes(notes string) error {
-	if len(notes) > maxNotesLen {
-		return fmt.Errorf("notes too long: %w", apperr.ErrValidation)
-	}
-	return nil
 }
 
 // checkQuota enforces the freemium model:
@@ -118,25 +118,18 @@ func (s *submissionService) checkQuota(ctx context.Context, userID uuid.UUID) er
 	return nil
 }
 
-func (s *submissionService) SubmitEKG(ctx context.Context, userID uuid.UUID, imageURL, notes string) (*SubmittedJob, error) {
+func (s *submissionService) SubmitEKG(ctx context.Context, userID uuid.UUID, imageURL string, params ECGParams) (*SubmittedJob, error) {
 	if imageURL == "" {
 		return nil, fmt.Errorf("image_temp_url is required: %w", apperr.ErrValidation)
 	}
 	if err := s.checkQuota(ctx, userID); err != nil {
 		return nil, err
 	}
-	if err := validateEKGNotes(notes); err != nil {
-		return nil, err
-	}
-
 	requestID := uuid.New()
 	request := &models.Request{
 		ID:     requestID,
 		UserID: userID,
 		Status: models.StatusPending,
-	}
-	if notes != "" {
-		request.TextQuery = &notes
 	}
 
 	if err := s.repo.CreateRequest(ctx, request); err != nil {
@@ -144,10 +137,14 @@ func (s *submissionService) SubmitEKG(ctx context.Context, userID uuid.UUID, ima
 	}
 
 	payload, err := json.Marshal(job.EKGJobPayload{
-		ImageTempURL: imageURL,
-		Notes:        notes,
-		UserID:       userID,
-		RequestID:    requestID,
+		ImageTempURL:  imageURL,
+		UserID:        userID,
+		RequestID:     requestID,
+		Age:           params.Age,
+		Sex:           params.Sex,
+		PaperSpeedMMS: params.PaperSpeedMMS,
+		MmPerMvLimb:   params.MmPerMvLimb,
+		MmPerMvChest:  params.MmPerMvChest,
 	})
 	if err != nil {
 		return nil, apperr.WrapInternal("marshal EKG payload", err)
@@ -168,14 +165,10 @@ func (s *submissionService) SubmitEKG(ctx context.Context, userID uuid.UUID, ima
 	}, nil
 }
 
-func (s *submissionService) SubmitEKGFile(ctx context.Context, userID uuid.UUID, file UploadedFile, notes string) (*SubmittedJob, error) {
+func (s *submissionService) SubmitEKGFile(ctx context.Context, userID uuid.UUID, file UploadedFile, params ECGParams) (*SubmittedJob, error) {
 	if err := s.checkQuota(ctx, userID); err != nil {
 		return nil, err
 	}
-	if err := validateEKGNotes(notes); err != nil {
-		return nil, err
-	}
-
 	contentType, err := detectContentType(&file)
 	if err != nil {
 		return nil, err
@@ -192,9 +185,6 @@ func (s *submissionService) SubmitEKGFile(ctx context.Context, userID uuid.UUID,
 		ID:     requestID,
 		UserID: userID,
 		Status: models.StatusPending,
-	}
-	if notes != "" {
-		request.TextQuery = &notes
 	}
 
 	if err := s.repo.CreateRequest(ctx, request); err != nil {
@@ -215,10 +205,14 @@ func (s *submissionService) SubmitEKGFile(ctx context.Context, userID uuid.UUID,
 	}
 
 	payload, err := json.Marshal(job.EKGJobPayload{
-		ImageFileKey: uploadResult.Key,
-		Notes:        notes,
-		UserID:       userID,
-		RequestID:    requestID,
+		ImageFileKey:  uploadResult.Key,
+		UserID:        userID,
+		RequestID:     requestID,
+		Age:           params.Age,
+		Sex:           params.Sex,
+		PaperSpeedMMS: params.PaperSpeedMMS,
+		MmPerMvLimb:   params.MmPerMvLimb,
+		MmPerMvChest:  params.MmPerMvChest,
 	})
 	if err != nil {
 		return nil, apperr.WrapInternal("marshal EKG payload", err)

@@ -106,14 +106,13 @@ func TestSubmitEKGAnalyze_Success(t *testing.T) {
 	userID := uuid.New()
 
 	d.submissionSvc.EXPECT().
-		SubmitEKG(mock.Anything, mock.Anything, "http://example.com/ekg.jpg", "test notes").
+		SubmitEKG(mock.Anything, mock.Anything, "http://example.com/ekg.jpg", mock.Anything).
 		Return(&service.SubmittedJob{JobID: uuid.New(), RequestID: uuid.New(), Status: "queued"}, nil)
 
 	h := d.handler()
 
 	body, _ := json.Marshal(map[string]string{
 		"image_temp_url": "http://example.com/ekg.jpg",
-		"notes":          "test notes",
 	})
 	req := httptest.NewRequest("POST", "/v1/ekg/analyze", bytes.NewReader(body))
 	req = withAuthContext(req, userID, []string{"user"})
@@ -178,7 +177,7 @@ func TestSubmitEKGAnalyze_MissingImageURL(t *testing.T) {
 	userID := uuid.New()
 
 	// Missing image_temp_url is caught by struct tag validation (required)
-	body, _ := json.Marshal(map[string]string{"notes": "test"})
+	body, _ := json.Marshal(map[string]string{})
 	req := httptest.NewRequest("POST", "/v1/ekg/analyze", bytes.NewReader(body))
 	req = withAuthContext(req, userID, []string{"user"})
 	w := httptest.NewRecorder()

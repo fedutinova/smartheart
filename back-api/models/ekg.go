@@ -6,18 +6,20 @@ import (
 )
 
 const EKGModelDirect = "ekg_direct_v2"
+const EKGModelStructured = "ekg_structured_v1"
 
 // EKGResponseContent is the typed structure stored in Response.Content
 // for EKG analysis results.
 type EKGResponseContent struct {
-	AnalysisType            string  `json:"analysis_type"`
-	Notes                   string  `json:"notes,omitempty"`
-	Timestamp               string  `json:"timestamp"`
-	JobID                   string  `json:"job_id"`
-	GPTRequestID            string  `json:"gpt_request_id,omitempty"`
-	GPTInterpretationStatus string  `json:"gpt_interpretation_status,omitempty"`
-	GPTInterpretation       *string `json:"gpt_interpretation,omitempty"`
-	GPTFullResponse         *string `json:"gpt_full_response,omitempty"`
+	AnalysisType            string               `json:"analysis_type"`
+	Notes                   string               `json:"notes,omitempty"`
+	Timestamp               string               `json:"timestamp"`
+	JobID                   string               `json:"job_id"`
+	GPTRequestID            string               `json:"gpt_request_id,omitempty"`
+	GPTInterpretationStatus string               `json:"gpt_interpretation_status,omitempty"`
+	GPTInterpretation       *string              `json:"gpt_interpretation,omitempty"`
+	GPTFullResponse         *string              `json:"gpt_full_response,omitempty"`
+	StructuredResult        *ECGStructuredResult `json:"structured_result,omitempty"`
 }
 
 // Marshal serializes to JSON string suitable for Response.Content.
@@ -33,7 +35,7 @@ func ParseEKGContent(content string) (*EKGResponseContent, error) {
 	if err := json.Unmarshal([]byte(content), &ekg); err != nil {
 		return nil, err
 	}
-	if ekg.AnalysisType != EKGModelDirect {
+	if ekg.AnalysisType != EKGModelDirect && ekg.AnalysisType != EKGModelStructured {
 		return nil, nil
 	}
 	return &ekg, nil

@@ -312,7 +312,7 @@ func Load() Config {
 		Storage: StorageConfig{
 			Mode:     envString("STORAGE_MODE", "local"),
 			LocalDir: envString("LOCAL_STORAGE_DIR", "./uploads"),
-			LocalURL: envString("LOCAL_STORAGE_URL", "http://localhost:8081/files"),
+			LocalURL: envString("LOCAL_STORAGE_URL", "http://localhost:8080/files"),
 		},
 		GPT: GPTConfig{
 			APIKey: envString("OPENAI_API_KEY", ""),

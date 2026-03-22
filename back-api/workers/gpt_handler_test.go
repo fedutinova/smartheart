@@ -82,39 +82,6 @@ func TestHandleGPTJob_UpdateStatusFails(t *testing.T) {
 	}
 }
 
-// --- buildEKGPrompt tests ---
-
-func TestBuildEKGPrompt_WithNotes(t *testing.T) {
-	result := buildEKGPrompt("user notes")
-
-	if result == "" {
-		t.Fatal("expected non-empty prompt")
-	}
-	if !strings.Contains(result, "user notes") {
-		t.Error("expected prompt to contain user notes")
-	}
-	if !strings.Contains(result, "Additional context from user") {
-		t.Error("expected prompt to contain context header")
-	}
-	if !strings.Contains(result, "educational and technical analysis") {
-		t.Error("expected prompt to contain disclaimer")
-	}
-}
-
-func TestBuildEKGPrompt_WithoutNotes(t *testing.T) {
-	result := buildEKGPrompt("")
-
-	if result == "" {
-		t.Fatal("expected non-empty prompt")
-	}
-	if strings.Contains(result, "Additional context from user") {
-		t.Error("should not contain context header when no notes")
-	}
-	if !strings.Contains(result, "educational and technical analysis") {
-		t.Error("expected prompt to contain disclaimer")
-	}
-}
-
 // --- formatEKGFallback tests ---
 
 func TestFormatEKGFallback_WithNotesAndQuery(t *testing.T) {

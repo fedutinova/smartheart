@@ -12,10 +12,13 @@ interface AuthState {
   initialize: () => void;
 }
 
+const initialAccessToken = storage.get(JWT_STORAGE_KEY);
+const initialRefreshToken = storage.get(REFRESH_TOKEN_KEY);
+
 export const useAuthStore = create<AuthState>((set) => ({
-  accessToken: null,
-  refreshToken: null,
-  isAuthenticated: false,
+  accessToken: initialAccessToken,
+  refreshToken: initialRefreshToken,
+  isAuthenticated: !!(initialAccessToken && initialRefreshToken),
 
   login: (tokens: TokenPair) => {
     storage.set(JWT_STORAGE_KEY, tokens.access_token);

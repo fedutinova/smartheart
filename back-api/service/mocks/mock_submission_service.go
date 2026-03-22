@@ -23,9 +23,9 @@ func (_m *MockSubmissionService) EXPECT() *MockSubmissionService_Expecter {
 	return &MockSubmissionService_Expecter{mock: &_m.Mock}
 }
 
-// SubmitEKG provides a mock function with given fields: ctx, userID, imageURL, notes
-func (_m *MockSubmissionService) SubmitEKG(ctx context.Context, userID uuid.UUID, imageURL string, notes string) (*service.SubmittedJob, error) {
-	ret := _m.Called(ctx, userID, imageURL, notes)
+// SubmitEKG provides a mock function with given fields: ctx, userID, imageURL, params
+func (_m *MockSubmissionService) SubmitEKG(ctx context.Context, userID uuid.UUID, imageURL string, params service.ECGParams) (*service.SubmittedJob, error) {
+	ret := _m.Called(ctx, userID, imageURL, params)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SubmitEKG")
@@ -33,19 +33,19 @@ func (_m *MockSubmissionService) SubmitEKG(ctx context.Context, userID uuid.UUID
 
 	var r0 *service.SubmittedJob
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string, string) (*service.SubmittedJob, error)); ok {
-		return rf(ctx, userID, imageURL, notes)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string, service.ECGParams) (*service.SubmittedJob, error)); ok {
+		return rf(ctx, userID, imageURL, params)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string, string) *service.SubmittedJob); ok {
-		r0 = rf(ctx, userID, imageURL, notes)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string, service.ECGParams) *service.SubmittedJob); ok {
+		r0 = rf(ctx, userID, imageURL, params)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*service.SubmittedJob)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, string, string) error); ok {
-		r1 = rf(ctx, userID, imageURL, notes)
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, string, service.ECGParams) error); ok {
+		r1 = rf(ctx, userID, imageURL, params)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -62,14 +62,14 @@ type MockSubmissionService_SubmitEKG_Call struct {
 //   - ctx context.Context
 //   - userID uuid.UUID
 //   - imageURL string
-//   - notes string
-func (_e *MockSubmissionService_Expecter) SubmitEKG(ctx interface{}, userID interface{}, imageURL interface{}, notes interface{}) *MockSubmissionService_SubmitEKG_Call {
-	return &MockSubmissionService_SubmitEKG_Call{Call: _e.mock.On("SubmitEKG", ctx, userID, imageURL, notes)}
+//   - params service.ECGParams
+func (_e *MockSubmissionService_Expecter) SubmitEKG(ctx interface{}, userID interface{}, imageURL interface{}, params interface{}) *MockSubmissionService_SubmitEKG_Call {
+	return &MockSubmissionService_SubmitEKG_Call{Call: _e.mock.On("SubmitEKG", ctx, userID, imageURL, params)}
 }
 
-func (_c *MockSubmissionService_SubmitEKG_Call) Run(run func(ctx context.Context, userID uuid.UUID, imageURL string, notes string)) *MockSubmissionService_SubmitEKG_Call {
+func (_c *MockSubmissionService_SubmitEKG_Call) Run(run func(ctx context.Context, userID uuid.UUID, imageURL string, params service.ECGParams)) *MockSubmissionService_SubmitEKG_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(uuid.UUID), args[2].(string), args[3].(string))
+		run(args[0].(context.Context), args[1].(uuid.UUID), args[2].(string), args[3].(service.ECGParams))
 	})
 	return _c
 }
@@ -79,14 +79,14 @@ func (_c *MockSubmissionService_SubmitEKG_Call) Return(_a0 *service.SubmittedJob
 	return _c
 }
 
-func (_c *MockSubmissionService_SubmitEKG_Call) RunAndReturn(run func(context.Context, uuid.UUID, string, string) (*service.SubmittedJob, error)) *MockSubmissionService_SubmitEKG_Call {
+func (_c *MockSubmissionService_SubmitEKG_Call) RunAndReturn(run func(context.Context, uuid.UUID, string, service.ECGParams) (*service.SubmittedJob, error)) *MockSubmissionService_SubmitEKG_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// SubmitEKGFile provides a mock function with given fields: ctx, userID, file, notes
-func (_m *MockSubmissionService) SubmitEKGFile(ctx context.Context, userID uuid.UUID, file service.UploadedFile, notes string) (*service.SubmittedJob, error) {
-	ret := _m.Called(ctx, userID, file, notes)
+// SubmitEKGFile provides a mock function with given fields: ctx, userID, file, params
+func (_m *MockSubmissionService) SubmitEKGFile(ctx context.Context, userID uuid.UUID, file service.UploadedFile, params service.ECGParams) (*service.SubmittedJob, error) {
+	ret := _m.Called(ctx, userID, file, params)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SubmitEKGFile")
@@ -94,19 +94,19 @@ func (_m *MockSubmissionService) SubmitEKGFile(ctx context.Context, userID uuid.
 
 	var r0 *service.SubmittedJob
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, service.UploadedFile, string) (*service.SubmittedJob, error)); ok {
-		return rf(ctx, userID, file, notes)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, service.UploadedFile, service.ECGParams) (*service.SubmittedJob, error)); ok {
+		return rf(ctx, userID, file, params)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, service.UploadedFile, string) *service.SubmittedJob); ok {
-		r0 = rf(ctx, userID, file, notes)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, service.UploadedFile, service.ECGParams) *service.SubmittedJob); ok {
+		r0 = rf(ctx, userID, file, params)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*service.SubmittedJob)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, service.UploadedFile, string) error); ok {
-		r1 = rf(ctx, userID, file, notes)
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, service.UploadedFile, service.ECGParams) error); ok {
+		r1 = rf(ctx, userID, file, params)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -123,14 +123,14 @@ type MockSubmissionService_SubmitEKGFile_Call struct {
 //   - ctx context.Context
 //   - userID uuid.UUID
 //   - file service.UploadedFile
-//   - notes string
-func (_e *MockSubmissionService_Expecter) SubmitEKGFile(ctx interface{}, userID interface{}, file interface{}, notes interface{}) *MockSubmissionService_SubmitEKGFile_Call {
-	return &MockSubmissionService_SubmitEKGFile_Call{Call: _e.mock.On("SubmitEKGFile", ctx, userID, file, notes)}
+//   - params service.ECGParams
+func (_e *MockSubmissionService_Expecter) SubmitEKGFile(ctx interface{}, userID interface{}, file interface{}, params interface{}) *MockSubmissionService_SubmitEKGFile_Call {
+	return &MockSubmissionService_SubmitEKGFile_Call{Call: _e.mock.On("SubmitEKGFile", ctx, userID, file, params)}
 }
 
-func (_c *MockSubmissionService_SubmitEKGFile_Call) Run(run func(ctx context.Context, userID uuid.UUID, file service.UploadedFile, notes string)) *MockSubmissionService_SubmitEKGFile_Call {
+func (_c *MockSubmissionService_SubmitEKGFile_Call) Run(run func(ctx context.Context, userID uuid.UUID, file service.UploadedFile, params service.ECGParams)) *MockSubmissionService_SubmitEKGFile_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(uuid.UUID), args[2].(service.UploadedFile), args[3].(string))
+		run(args[0].(context.Context), args[1].(uuid.UUID), args[2].(service.UploadedFile), args[3].(service.ECGParams))
 	})
 	return _c
 }
@@ -140,7 +140,7 @@ func (_c *MockSubmissionService_SubmitEKGFile_Call) Return(_a0 *service.Submitte
 	return _c
 }
 
-func (_c *MockSubmissionService_SubmitEKGFile_Call) RunAndReturn(run func(context.Context, uuid.UUID, service.UploadedFile, string) (*service.SubmittedJob, error)) *MockSubmissionService_SubmitEKGFile_Call {
+func (_c *MockSubmissionService_SubmitEKGFile_Call) RunAndReturn(run func(context.Context, uuid.UUID, service.UploadedFile, service.ECGParams) (*service.SubmittedJob, error)) *MockSubmissionService_SubmitEKGFile_Call {
 	_c.Call.Return(run)
 	return _c
 }

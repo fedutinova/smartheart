@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Navigate, Link } from 'react-router-dom';
 import { authAPI } from '@/services/api';
 import { useAuthStore } from '@/store/auth';
 import { ROUTES, AUTH_ERROR_KEY } from '@/config';
@@ -12,7 +12,11 @@ export function Login() {
   const [authNotice, setAuthNotice] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuthStore();
+  const { login, isAuthenticated } = useAuthStore();
+
+  if (isAuthenticated) {
+    return <Navigate to={ROUTES.DASHBOARD} replace />;
+  }
 
   // Show auth error from redirect (expired session, network error, etc.)
   useEffect(() => {

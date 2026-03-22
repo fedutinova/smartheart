@@ -32,6 +32,19 @@ export interface TokenPair {
 export interface EKGAnalysisRequest {
   image_temp_url: string;
   notes?: string;
+  age?: number;
+  sex?: string;
+  paper_speed_mms?: number;
+  mm_per_mv_limb?: number;
+  mm_per_mv_chest?: number;
+}
+
+export interface ECGCalibrationParams {
+  age?: number;
+  sex?: string;
+  paper_speed_mms: number;
+  mm_per_mv_limb: number;
+  mm_per_mv_chest: number;
 }
 
 export interface Job {
@@ -110,5 +123,51 @@ export interface EKGAnalysisResult {
   gpt_interpretation_status?: string;
   gpt_interpretation?: string;
   gpt_full_response?: string;
+  structured_result?: ECGStructuredResult;
+}
+
+export interface ECGStructuredResult {
+  measurements: Record<string, number | null>;
+  indices?: LVHIndices;
+  rvh?: RVHData;
+  axis_qrs?: QRSAxis;
+  rhythm?: RhythmTiming;
+  transition_zone_lead?: string;
+  patient: PatientInfo;
+  timestamp: string;
+  job_id: string;
+}
+
+export interface LVHIndices {
+  sokolow_lyon_mV?: number;
+  cornell_voltage_mV?: number;
+  peguero_lo_presti_mV?: number;
+  gubner_mV?: number;
+  lewis_mV?: number;
+}
+
+export interface RVHData {
+  RV1_mV?: number;
+  R_over_S_V1?: number;
+  RV1_plus_SV5_mV?: number;
+  RV1_plus_SV6_mV?: number;
+}
+
+export interface QRSAxis {
+  net_I_mV?: number;
+  net_aVF_mV?: number;
+  axis_deg?: number;
+  classification?: string;
+}
+
+export interface RhythmTiming {
+  QRS_ms?: number;
+  RR_ms?: number;
+  HR_bpm?: number;
+}
+
+export interface PatientInfo {
+  sex?: string;
+  age?: number;
 }
 

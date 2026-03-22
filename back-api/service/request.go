@@ -80,7 +80,7 @@ func (s *requestService) GetRequest(ctx context.Context, requestID uuid.UUID, cl
 		return nil, apperr.ErrForbidden
 	}
 
-	// Enrich EKG responses with GPT interpretation
+	// Enrich old EKG responses with GPT interpretation (not needed for structured)
 	if request.Response != nil && request.Response.Model == models.EKGModelDirect {
 		enrichEKGResponse(ctx, s.repo, request, claims)
 	}

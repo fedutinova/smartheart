@@ -239,7 +239,7 @@ func formatBasicFallback(textQuery string) string {
 }
 
 // isEKGRequest checks whether the text query originated from the EKG analysis
-// pipeline (built by buildEKGPrompt) rather than from a direct user GPT request.
+// pipeline rather than from a direct user GPT request.
 func isEKGRequest(textQuery string) bool {
 	return strings.Contains(textQuery, "Analyze this ECG/EKG image")
 }

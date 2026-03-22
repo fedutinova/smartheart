@@ -18,6 +18,7 @@ import (
 // Processor is the interface for GPT processing, enabling testability.
 type Processor interface {
 	ProcessRequest(ctx context.Context, textQuery string, fileKeys []string) (*ProcessResult, error)
+	ProcessStructuredECG(ctx context.Context, fileKeys []string, systemPrompt, userPrompt string) (*ProcessResult, error)
 }
 
 type Client struct {
@@ -255,6 +256,76 @@ func (c *Client) buildImagePart(ctx context.Context, key string, data []byte, co
 			URL:    imageURL,
 			Detail: c.imageDetail,
 		},
+	}, nil
+}
+
+// ProcessStructuredECG calls GPT with temperature=0 and custom prompts for structured ECG measurement.
+func (c *Client) ProcessStructuredECG(ctx context.Context, fileKeys []string, systemPrompt, userPrompt string) (*ProcessResult, error) {
+	start := time.Now()
+
+	reqCtx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+
+	messages := []openai.ChatCompletionMessage{
+		{Role: openai.ChatMessageRoleSystem, Content: systemPrompt},
+	}
+
+	var content []openai.ChatMessagePart
+	for _, key := range fileKeys {
+		filePart, err := c.createMessagePartFromFile(reqCtx, key)
+		if err != nil {
+			slog.Error("failed to process file for structured ECG", "key", key, "error", err)
+			continue
+		}
+		if filePart != nil {
+			content = append(content, *filePart)
+		}
+	}
+
+	content = append(content, openai.ChatMessagePart{
+		Type: openai.ChatMessagePartTypeText,
+		Text: userPrompt,
+	})
+
+	messages = append(messages, openai.ChatCompletionMessage{
+		Role:         openai.ChatMessageRoleUser,
+		MultiContent: content,
+	})
+
+	slog.Info("sending structured ECG request to OpenAI",
+		"model", c.model, "files", len(fileKeys))
+
+	temp := float32(0.0)
+	resp, err := c.openAI.CreateChatCompletion(reqCtx, openai.ChatCompletionRequest{
+		Model:       c.model,
+		Messages:    messages,
+		MaxTokens:   4000,
+		Temperature: temp,
+		ResponseFormat: &openai.ChatCompletionResponseFormat{
+			Type: openai.ChatCompletionResponseFormatTypeJSONObject,
+		},
+	})
+	if err != nil {
+		return nil, classifyOpenAIError(err, reqCtx, c.timeout)
+	}
+
+	if len(resp.Choices) == 0 {
+		return nil, fmt.Errorf("no response from OpenAI")
+	}
+
+	responseContent := resp.Choices[0].Message.Content
+	if IsRefusal(responseContent) {
+		slog.Warn("openai returned refusal for structured ECG", "tokens", resp.Usage.TotalTokens)
+	}
+
+	slog.Info("structured ECG response received",
+		"model", resp.Model, "tokens", resp.Usage.TotalTokens, "response_len", len(responseContent))
+
+	return &ProcessResult{
+		Content:          responseContent,
+		Model:            resp.Model,
+		TokensUsed:       resp.Usage.TotalTokens,
+		ProcessingTimeMs: int(time.Since(start).Milliseconds()),
 	}, nil
 }
 
