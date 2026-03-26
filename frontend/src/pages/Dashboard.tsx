@@ -56,7 +56,7 @@ export function Dashboard() {
 
         <div className="bg-white shadow rounded-lg">
           <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
-            <h2 className="text-base sm:text-lg font-medium text-gray-900">Последние анализы</h2>
+            <h2 className="text-base sm:text-lg font-medium text-gray-900">История</h2>
           </div>
           {isLoading ? (
             <div className="px-4 sm:px-6 py-8 text-center text-gray-500">Загрузка...</div>

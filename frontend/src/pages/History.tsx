@@ -28,8 +28,14 @@ export function History() {
               Ошибка при загрузке данных
             </div>
           ) : !filteredRequests || filteredRequests.length === 0 ? (
-            <div className="px-4 sm:px-6 py-8 text-center text-gray-500">
-              <p>История пуста</p>
+            <div className="px-4 sm:px-6 py-12 text-center">
+              <p className="text-gray-400 mb-4">У вас пока нет анализов</p>
+              <Link
+                to="/analyze"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-rose-600 text-white text-sm font-medium rounded-lg hover:bg-rose-700 transition-colors"
+              >
+                Новый анализ ЭКГ
+              </Link>
             </div>
           ) : (
             <>
