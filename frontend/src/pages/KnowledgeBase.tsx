@@ -1,5 +1,5 @@
 import { Layout } from '@/components/Layout';
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { ragAPI } from '@/services/api';
 import type { RAGSource, RAGQueryMeta } from '@/services/api';
@@ -15,6 +15,13 @@ interface Message {
   elapsedMs?: number;
   meta?: RAGQueryMeta;
 }
+
+const LOADING_PHRASES = [
+  'Анализирую источники...',
+  'Сопоставляю данные...',
+  'Формирую ответ...',
+  'Проверяю формулировки...',
+];
 
 const EXAMPLE_QUESTIONS = [
   'Признаки фибрилляции предсердий на ЭКГ',
@@ -37,6 +44,19 @@ export function KnowledgeBase() {
   const nextId = useRef(
     messages.length > 0 ? Math.max(...messages.map((m) => m.id)) + 1 : 1,
   );
+
+  const [phraseIndex, setPhraseIndex] = useState(0);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setPhraseIndex(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setPhraseIndex((i) => (i + 1) % LOADING_PHRASES.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [isLoading]);
 
   const scrollToBottom = () => {
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
@@ -194,7 +214,7 @@ export function KnowledgeBase() {
                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                   </div>
-                  <span className="text-sm">Поиск по базе знаний...</span>
+                  <span className="text-sm transition-opacity duration-300">{LOADING_PHRASES[phraseIndex]}</span>
                 </div>
               </div>
             </div>

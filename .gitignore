@@ -30,6 +30,7 @@ bin/
 
 # Local file uploads
 uploads/
+docs/
 
 # Editor/IDE
 .idea/

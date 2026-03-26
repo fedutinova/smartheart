@@ -18,19 +18,18 @@ export function ImageCropper({ imageSrc, onCropComplete, onCancel }: ImageCroppe
     const { width, height } = e.currentTarget;
     const initialCrop: Crop = {
       unit: '%',
-      x: 10,
-      y: 10,
-      width: 80,
-      height: 80,
+      x: 5,
+      y: 5,
+      width: 90,
+      height: 90,
     };
     setCrop(initialCrop);
-    // Set initial completed crop in pixels
     setCompletedCrop({
       unit: 'px',
-      x: Math.round(width * 0.1),
-      y: Math.round(height * 0.1),
-      width: Math.round(width * 0.8),
-      height: Math.round(height * 0.8),
+      x: Math.round(width * 0.05),
+      y: Math.round(height * 0.05),
+      width: Math.round(width * 0.9),
+      height: Math.round(height * 0.9),
     });
   }, []);
 
@@ -41,7 +40,6 @@ export function ImageCropper({ imageSrc, onCropComplete, onCancel }: ImageCroppe
       const blob = await getCroppedBlob(imgRef.current, completedCrop);
       onCropComplete(blob);
     } catch {
-      // fallback: send the original image
       const response = await fetch(imageSrc);
       const blob = await response.blob();
       onCropComplete(blob);
@@ -51,43 +49,41 @@ export function ImageCropper({ imageSrc, onCropComplete, onCancel }: ImageCroppe
   };
 
   return (
-    <div className="space-y-4">
-      <div className="max-h-[60vh] sm:max-h-[500px] overflow-auto border border-gray-200 rounded-lg bg-gray-50 p-1 sm:p-2 touch-manipulation">
-        <ReactCrop
-          crop={crop}
-          onChange={(c) => setCrop(c)}
-          onComplete={(c) => setCompletedCrop(c)}
-        >
-          <img
-            ref={imgRef}
-            src={imageSrc}
-            alt="Изображение для обрезки"
-            onLoad={onImageLoad}
-            className="max-w-full h-auto"
-          />
-        </ReactCrop>
-      </div>
-
-      <p className="text-xs text-gray-500">
-        Перетаскивайте углы и края рамки для изменения области обрезки. На телефоне — используйте палец.
-      </p>
-
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="text-gray-600 hover:text-gray-800"
-        >
-          Отмена
-        </button>
-        <button
-          type="button"
-          onClick={handleConfirm}
-          disabled={processing || !completedCrop}
-          className="px-4 py-2 bg-rose-600 text-white rounded-md hover:bg-rose-700 disabled:opacity-50"
-        >
-          {processing ? 'Обработка...' : 'Подтвердить обрезку'}
-        </button>
+    <div className="space-y-3">
+      <div className="rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
+        <div className="max-h-[60vh] sm:max-h-[500px] overflow-auto touch-manipulation flex items-center justify-center p-2">
+          <ReactCrop
+            crop={crop}
+            onChange={(c) => setCrop(c)}
+            onComplete={(c) => setCompletedCrop(c)}
+          >
+            <img
+              ref={imgRef}
+              src={imageSrc}
+              alt="Обрезка"
+              onLoad={onImageLoad}
+              className="max-w-full h-auto block"
+            />
+          </ReactCrop>
+        </div>
+        <div className="flex border-t border-gray-200">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 py-3 text-sm font-medium text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-colors"
+          >
+            Отмена
+          </button>
+          <div className="w-px bg-gray-200" />
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={processing || !completedCrop}
+            className="flex-1 py-3 text-sm font-medium text-rose-600 hover:bg-rose-50 active:bg-rose-100 disabled:opacity-50 transition-colors"
+          >
+            {processing ? 'Обработка...' : 'Применить'}
+          </button>
+        </div>
       </div>
     </div>
   );

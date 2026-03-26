@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
 import { requestAPI } from '@/services/api';
-import { formatDate, formatStatus, getStatusColor } from '@/utils/format';
+import { formatDate, formatStatus, getStatusColor, formatECGParams } from '@/utils/format';
 import { Layout } from '@/components/Layout';
 import { useEventSource } from '@/hooks/useEventSource';
 import { usePendingJobs } from '@/hooks/usePendingJobs';
@@ -105,32 +105,43 @@ export function Results() {
 
         {/* Request Info */}
         <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            <div>
-              <label className="text-xs sm:text-sm font-medium text-gray-500">ID запроса</label>
-              <p className="mt-1 text-xs sm:text-sm font-mono text-gray-900 truncate">{request.id}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-500">Статус</label>
-              <p className="mt-1">
-                <span
-                  className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
-                    request.status
-                  )}`}
-                >
-                  {formatStatus(request.status)}
-                </span>
-              </p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-500">Создано</label>
-              <p className="mt-1 text-sm text-gray-900">{formatDate(request.created_at)}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-500">Обновлено</label>
-              <p className="mt-1 text-sm text-gray-900">{formatDate(request.updated_at)}</p>
-            </div>
+          <div className="flex items-center justify-between mb-3">
+            <span
+              className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(request.status)}`}
+            >
+              {formatStatus(request.status)}
+            </span>
+            <span className="text-xs text-gray-400">{formatDate(request.created_at)}</span>
           </div>
+          {formatECGParams(request) && (
+            <div className="flex flex-wrap gap-2">
+              {request.ecg_sex && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-700">
+                  {request.ecg_sex === 'male' ? 'Мужской' : 'Женский'}
+                </span>
+              )}
+              {request.ecg_age && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-700">
+                  {request.ecg_age} лет
+                </span>
+              )}
+              {request.ecg_paper_speed_mms && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-700">
+                  {request.ecg_paper_speed_mms} мм/с
+                </span>
+              )}
+              {request.ecg_mm_per_mv_limb && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-700">
+                  конечн. {request.ecg_mm_per_mv_limb} мм/мВ
+                </span>
+              )}
+              {request.ecg_mm_per_mv_chest && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-700">
+                  грудные {request.ecg_mm_per_mv_chest} мм/мВ
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Original Image */}

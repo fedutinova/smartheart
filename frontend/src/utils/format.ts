@@ -1,5 +1,6 @@
 import { format, formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import type { Request } from '@/types';
 
 export const formatDate = (date: string | Date): string => {
   return format(new Date(date), 'dd.MM.yyyy HH:mm');
@@ -33,5 +34,21 @@ export const getStatusColor = (status: string): string => {
     pending: 'bg-gray-100 text-gray-800',
   };
   return colorMap[status] || 'bg-gray-100 text-gray-800';
+};
+
+export const formatECGParams = (r: Request): string => {
+  const parts: string[] = [];
+  if (r.ecg_sex === 'male') parts.push('М');
+  else if (r.ecg_sex === 'female') parts.push('Ж');
+  if (r.ecg_age) parts.push(`${r.ecg_age} лет`);
+  if (r.ecg_paper_speed_mms) parts.push(`${r.ecg_paper_speed_mms} мм/с`);
+  if (r.ecg_mm_per_mv_limb && r.ecg_mm_per_mv_chest) {
+    if (r.ecg_mm_per_mv_limb === r.ecg_mm_per_mv_chest) {
+      parts.push(`${r.ecg_mm_per_mv_limb} мм/мВ`);
+    } else {
+      parts.push(`${r.ecg_mm_per_mv_limb}/${r.ecg_mm_per_mv_chest} мм/мВ`);
+    }
+  }
+  return parts.join(' · ');
 };
 

@@ -19,11 +19,12 @@ func (r *Repository) CreateRequest(ctx context.Context, req *models.Request) err
 	}
 
 	query := `
-		INSERT INTO requests (id, user_id, text_query, status, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, NOW(), NOW())
+		INSERT INTO requests (id, user_id, text_query, status, ecg_age, ecg_sex, ecg_paper_speed_mms, ecg_mm_per_mv_limb, ecg_mm_per_mv_chest, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
 	`
 
-	_, err := r.querier.Exec(ctx, query, req.ID, req.UserID, req.TextQuery, req.Status)
+	_, err := r.querier.Exec(ctx, query, req.ID, req.UserID, req.TextQuery, req.Status,
+		req.ECGAge, req.ECGSex, req.ECGPaperSpeedMMS, req.ECGMmPerMvLimb, req.ECGMmPerMvChest)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -35,6 +36,7 @@ func (r *Repository) CreateRequest(ctx context.Context, req *models.Request) err
 func (r *Repository) GetRequestByID(ctx context.Context, id uuid.UUID) (*models.Request, error) {
 	query := `
 		SELECT r.id, r.user_id, r.text_query, r.status, r.created_at, r.updated_at,
+		       r.ecg_age, r.ecg_sex, r.ecg_paper_speed_mms, r.ecg_mm_per_mv_limb, r.ecg_mm_per_mv_chest,
 		       resp.id, resp.request_id, resp.content, resp.model,
 		       resp.tokens_used, resp.processing_time_ms, resp.created_at
 		FROM requests r
@@ -54,6 +56,7 @@ func (r *Repository) GetRequestByID(ctx context.Context, id uuid.UUID) (*models.
 
 	err := r.querier.QueryRow(ctx, query, id).Scan(
 		&req.ID, &req.UserID, &req.TextQuery, &req.Status, &req.CreatedAt, &req.UpdatedAt,
+		&req.ECGAge, &req.ECGSex, &req.ECGPaperSpeedMMS, &req.ECGMmPerMvLimb, &req.ECGMmPerMvChest,
 		&respID, &respReqID, &respContent, &respModel,
 		&respTokens, &respTimeMs, &respCreatedAt,
 	)
@@ -93,7 +96,8 @@ func (r *Repository) GetRequestByID(ctx context.Context, id uuid.UUID) (*models.
 // GetRequestsByUserID retrieves requests for a user with pagination.
 func (r *Repository) GetRequestsByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]models.Request, error) {
 	query := `
-		SELECT id, user_id, text_query, status, created_at, updated_at
+		SELECT id, user_id, text_query, status, created_at, updated_at,
+		       ecg_age, ecg_sex, ecg_paper_speed_mms, ecg_mm_per_mv_limb, ecg_mm_per_mv_chest
 		FROM requests
 		WHERE user_id = $1
 		ORDER BY created_at DESC
@@ -116,6 +120,11 @@ func (r *Repository) GetRequestsByUserID(ctx context.Context, userID uuid.UUID, 
 			&req.Status,
 			&req.CreatedAt,
 			&req.UpdatedAt,
+			&req.ECGAge,
+			&req.ECGSex,
+			&req.ECGPaperSpeedMMS,
+			&req.ECGMmPerMvLimb,
+			&req.ECGMmPerMvChest,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan request: %w", err)
@@ -135,6 +144,7 @@ func (r *Repository) GetRequestsByUserID(ctx context.Context, userID uuid.UUID, 
 func (r *Repository) GetRecentRequestsWithResponses(ctx context.Context, userID uuid.UUID, limit int) ([]models.Request, error) {
 	query := `
 		SELECT r.id, r.user_id, r.text_query, r.status, r.created_at, r.updated_at,
+		       r.ecg_age, r.ecg_sex, r.ecg_paper_speed_mms, r.ecg_mm_per_mv_limb, r.ecg_mm_per_mv_chest,
 		       resp.id, resp.request_id, resp.content, resp.model,
 		       resp.tokens_used, resp.processing_time_ms, resp.created_at
 		FROM requests r
@@ -162,6 +172,7 @@ func (r *Repository) GetRecentRequestsWithResponses(ctx context.Context, userID 
 
 		err := rows.Scan(
 			&req.ID, &req.UserID, &req.TextQuery, &req.Status, &req.CreatedAt, &req.UpdatedAt,
+			&req.ECGAge, &req.ECGSex, &req.ECGPaperSpeedMMS, &req.ECGMmPerMvLimb, &req.ECGMmPerMvChest,
 			&respID, &respReqID, &respContent, &respModel,
 			&respTokens, &respTimeMs, &respCreatedAt,
 		)

@@ -67,6 +67,11 @@ export interface Request {
   updated_at: string;
   files?: File[];
   response?: Response;
+  ecg_age?: number;
+  ecg_sex?: string;
+  ecg_paper_speed_mms?: number;
+  ecg_mm_per_mv_limb?: number;
+  ecg_mm_per_mv_chest?: number;
 }
 
 export type RequestStatus = 'pending' | 'processing' | 'completed' | 'failed';

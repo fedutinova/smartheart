@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { formatRelative, formatStatus, getStatusColor } from '@/utils/format';
+import { formatRelative, formatStatus, getStatusColor, formatECGParams } from '@/utils/format';
 import { ROUTES } from '@/config';
 import { Layout } from '@/components/Layout';
 import { useUserRequests } from '@/hooks/useUserRequests';
@@ -81,7 +81,7 @@ export function Dashboard() {
                     className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 active:bg-gray-100"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-mono text-gray-600 truncate">{request.id.slice(0, 8)}...</p>
+                      <p className="text-sm text-gray-700">{formatECGParams(request) || request.id.slice(0, 8) + '...'}</p>
                       <p className="text-xs text-gray-400 mt-0.5">{formatRelative(request.created_at)}</p>
                     </div>
                     <span
@@ -98,7 +98,7 @@ export function Dashboard() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Параметры</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Создано</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
@@ -107,8 +107,8 @@ export function Dashboard() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {recentRequests.map((request) => (
                       <tr key={request.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500">
-                          {request.id.slice(0, 8)}...
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                          {formatECGParams(request) || <span className="font-mono text-gray-400">{request.id.slice(0, 8)}...</span>}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span

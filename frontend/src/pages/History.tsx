@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { formatDate, formatStatus, getStatusColor } from '@/utils/format';
+import { formatDate, formatStatus, getStatusColor, formatECGParams } from '@/utils/format';
 import { Layout } from '@/components/Layout';
 import { useUserRequests } from '@/hooks/useUserRequests';
 import { useSessionState } from '@/hooks/useSessionState';
@@ -42,9 +42,9 @@ export function History() {
                     className="block px-4 py-3 hover:bg-gray-50 active:bg-gray-100"
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-mono text-gray-600">{request.id.slice(0, 8)}...</span>
+                      <span className="text-sm text-gray-700">{formatECGParams(request) || <span className="font-mono text-gray-500">{request.id.slice(0, 8)}...</span>}</span>
                       <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(request.status)}`}
+                        className={`ml-2 flex-shrink-0 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(request.status)}`}
                       >
                         {formatStatus(request.status)}
                       </span>
@@ -61,7 +61,7 @@ export function History() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Параметры</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Создано</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Обновлено</th>
@@ -71,8 +71,8 @@ export function History() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredRequests.map((request) => (
                       <tr key={request.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500">
-                          {request.id.slice(0, 8)}...
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                          {formatECGParams(request) || <span className="font-mono text-gray-400">{request.id.slice(0, 8)}...</span>}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span

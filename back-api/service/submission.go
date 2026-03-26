@@ -89,6 +89,29 @@ func detectContentType(file *UploadedFile) (string, error) {
 	return ct, nil
 }
 
+// ecgRequest builds a Request model populated with ECG analysis parameters.
+func ecgRequest(requestID, userID uuid.UUID, p ECGParams) *models.Request {
+	req := &models.Request{
+		ID:     requestID,
+		UserID: userID,
+		Status: models.StatusPending,
+		ECGAge: p.Age,
+	}
+	if p.Sex != "" {
+		req.ECGSex = &p.Sex
+	}
+	if p.PaperSpeedMMS != 0 {
+		req.ECGPaperSpeedMMS = &p.PaperSpeedMMS
+	}
+	if p.MmPerMvLimb != 0 {
+		req.ECGMmPerMvLimb = &p.MmPerMvLimb
+	}
+	if p.MmPerMvChest != 0 {
+		req.ECGMmPerMvChest = &p.MmPerMvChest
+	}
+	return req
+}
+
 // checkQuota enforces the freemium model:
 //  1. If daily usage < dailyLimit → free, allow.
 //  2. If daily usage >= dailyLimit but user has paid analyses → decrement paid counter, allow.
@@ -126,11 +149,7 @@ func (s *submissionService) SubmitEKG(ctx context.Context, userID uuid.UUID, ima
 		return nil, err
 	}
 	requestID := uuid.New()
-	request := &models.Request{
-		ID:     requestID,
-		UserID: userID,
-		Status: models.StatusPending,
-	}
+	request := ecgRequest(requestID, userID, params)
 
 	if err := s.repo.CreateRequest(ctx, request); err != nil {
 		return nil, apperr.WrapInternal("create request", err)
@@ -181,11 +200,7 @@ func (s *submissionService) SubmitEKGFile(ctx context.Context, userID uuid.UUID,
 	}
 
 	requestID := uuid.New()
-	request := &models.Request{
-		ID:     requestID,
-		UserID: userID,
-		Status: models.StatusPending,
-	}
+	request := ecgRequest(requestID, userID, params)
 
 	if err := s.repo.CreateRequest(ctx, request); err != nil {
 		return nil, apperr.WrapInternal("create request", err)
