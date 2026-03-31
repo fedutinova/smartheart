@@ -7,5 +7,5 @@ CREATE TABLE IF NOT EXISTS rag_feedback (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_rag_feedback_user ON rag_feedback(user_id);
-CREATE INDEX idx_rag_feedback_created ON rag_feedback(created_at);
+CREATE INDEX IF NOT EXISTS idx_rag_feedback_user ON rag_feedback(user_id);
+CREATE INDEX IF NOT EXISTS idx_rag_feedback_created ON rag_feedback(created_at);

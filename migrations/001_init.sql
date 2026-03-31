@@ -44,5 +44,6 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-CREATE TRIGGER update_requests_updated_at BEFORE UPDATE ON requests 
+DROP TRIGGER IF EXISTS update_requests_updated_at ON requests;
+CREATE TRIGGER update_requests_updated_at BEFORE UPDATE ON requests
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

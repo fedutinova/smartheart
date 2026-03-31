@@ -8,4 +8,4 @@ CREATE TABLE IF NOT EXISTS user_daily_usage (
     PRIMARY KEY (user_id, usage_date)
 );
 
-CREATE INDEX idx_user_daily_usage_date ON user_daily_usage (usage_date);
+CREATE INDEX IF NOT EXISTS idx_user_daily_usage_date ON user_daily_usage (usage_date);

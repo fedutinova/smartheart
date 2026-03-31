@@ -11,7 +11,6 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./migrations:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U user -d smartheart"]
       interval: 10s
@@ -86,6 +85,9 @@ services:
       YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY:-}
       YOOKASSA_RETURN_URL: ${YOOKASSA_RETURN_URL:-http://localhost:3000/dashboard}
       YOOKASSA_PRICE_KOPECKS: ${YOOKASSA_PRICE_KOPECKS:-4900}
+      MIGRATIONS_DIR: /app/migrations
+    volumes:
+      - ./migrations:/app/migrations:ro
     depends_on:
       postgres:
         condition: service_healthy

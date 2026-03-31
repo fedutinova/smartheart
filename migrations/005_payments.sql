@@ -13,9 +13,9 @@ CREATE TABLE IF NOT EXISTS payments (
     confirmed_at    TIMESTAMPTZ
 );
 
-CREATE INDEX idx_payments_user    ON payments(user_id);
-CREATE INDEX idx_payments_status  ON payments(status);
-CREATE INDEX idx_payments_yookassa ON payments(yookassa_id);
+CREATE INDEX IF NOT EXISTS idx_payments_user    ON payments(user_id);
+CREATE INDEX IF NOT EXISTS idx_payments_status  ON payments(status);
+CREATE INDEX IF NOT EXISTS idx_payments_yookassa ON payments(yookassa_id);
 
 -- Tracks purchased (paid) analyses remaining per user.
 -- Decremented when user submits beyond free quota.

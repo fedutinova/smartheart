@@ -59,7 +59,8 @@ CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id)
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token_hash ON refresh_tokens(token_hash);
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires_at ON refresh_tokens(expires_at);
 
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users 
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 INSERT INTO roles (name, description) VALUES
@@ -85,6 +86,21 @@ SELECT r.id, p.id FROM roles r, permissions p
 WHERE r.name = 'admin' AND p.name IN ('ekg:submit', 'job:read_all', 'admin:all')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
-ALTER TABLE requests 
-ALTER COLUMN user_id TYPE UUID USING user_id::UUID,
-ADD CONSTRAINT fk_requests_user_id FOREIGN KEY (user_id) REFERENCES users(id);
+DO $$
+BEGIN
+    -- Change user_id to UUID if it's still varchar
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'requests' AND column_name = 'user_id' AND data_type = 'character varying'
+    ) THEN
+        ALTER TABLE requests ALTER COLUMN user_id TYPE UUID USING user_id::UUID;
+    END IF;
+
+    -- Add FK if not exists
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'fk_requests_user_id' AND table_name = 'requests'
+    ) THEN
+        ALTER TABLE requests ADD CONSTRAINT fk_requests_user_id FOREIGN KEY (user_id) REFERENCES users(id);
+    END IF;
+END $$;

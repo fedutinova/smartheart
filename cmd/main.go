@@ -45,6 +45,8 @@ func main() {
 	defer db.Close()
 	defer sessions.Close()
 
+	runMigrations(ctx, db)
+
 	repo := repository.New(db, repository.WithQueryTimeout(cfg.DB.QueryTimeout))
 	loadPermissions(ctx, repo)
 
@@ -78,6 +80,22 @@ func initLogger() {
 		Level:     logLevel,
 		AddSource: logLevel == slog.LevelDebug,
 	})))
+}
+
+func runMigrations(ctx context.Context, db *database.DB) {
+	migrationsDir := envMigrationsDir()
+	if err := db.Migrate(ctx, migrationsDir); err != nil {
+		slog.Error("failed to run migrations", "dir", migrationsDir, "err", err)
+		os.Exit(1)
+	}
+}
+
+func envMigrationsDir() string {
+	if v := os.Getenv("MIGRATIONS_DIR"); v != "" {
+		return v
+	}
+
+	return "./migrations"
 }
 
 func validateConfig(cfg appconfig.Config) {

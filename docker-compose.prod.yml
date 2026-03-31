@@ -28,7 +28,6 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - /opt/smartheart/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U smartheart -d smartheart"]
       interval: 10s
@@ -72,8 +71,10 @@ services:
       QUOTA_DAILY_LIMIT: "50"
       RATE_LIMIT_RPM: "100"
       LOG_LEVEL: info
+      MIGRATIONS_DIR: /app/migrations
     volumes:
       - /opt/smartheart/uploads:/app/uploads
+      - /opt/smartheart/migrations:/app/migrations:ro
     depends_on:
       postgres:
         condition: service_healthy
