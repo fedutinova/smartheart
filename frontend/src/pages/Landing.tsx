@@ -2,6 +2,113 @@ import { Link, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth';
 import { ROUTES } from '@/config';
 
+// Static demo: ECG analysis result
+function DemoPreview() {
+  const leads = [
+    { name: 'I', r: '4.2', s: '1.0' },
+    { name: 'II', r: '8.5', s: '0.5' },
+    { name: 'V1', r: '2.0', s: '12.3' },
+    { name: 'V5', r: '18.1', s: '1.5' },
+  ];
+
+  return (
+    <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+      <div className="bg-gray-50 border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">Результат анализа ЭКГ</span>
+        <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-700">Завершён</span>
+      </div>
+      <div className="p-4 sm:p-6 space-y-4">
+        <div className="flex flex-wrap gap-2">
+          <span className="px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-600">Мужской</span>
+          <span className="px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-600">52 года</span>
+          <span className="px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-600">25 мм/с</span>
+        </div>
+        <div>
+          <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Измерения</p>
+          <div className="grid grid-cols-4 gap-px bg-gray-200 rounded-lg overflow-hidden text-sm">
+            <div className="bg-gray-50 px-3 py-1.5 font-medium text-gray-500">Отв.</div>
+            <div className="bg-gray-50 px-3 py-1.5 text-right font-medium text-gray-500">R, мм</div>
+            <div className="bg-gray-50 px-3 py-1.5 font-medium text-gray-500">Отв.</div>
+            <div className="bg-gray-50 px-3 py-1.5 text-right font-medium text-gray-500">R, мм</div>
+            {leads.map((l) => (
+              <div key={l.name} className="contents">
+                <div className="bg-white px-3 py-1.5 font-medium text-gray-800">{l.name}</div>
+                <div className="bg-white px-3 py-1.5 text-right font-mono text-gray-700">{l.r}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-gray-50 rounded-lg p-2.5 text-center">
+            <p className="text-[10px] text-gray-400 mb-0.5">QRS</p>
+            <p className="text-base font-semibold text-gray-900">94 <span className="text-xs font-normal text-gray-400">мс</span></p>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-2.5 text-center">
+            <p className="text-[10px] text-gray-400 mb-0.5">ЧСС</p>
+            <p className="text-base font-semibold text-gray-900">72 <span className="text-xs font-normal text-gray-400">уд/мин</span></p>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-2.5 text-center">
+            <p className="text-[10px] text-gray-400 mb-0.5">Ось</p>
+            <p className="text-base font-semibold text-gray-900">+48<span className="text-xs font-normal text-gray-400">°</span></p>
+          </div>
+        </div>
+        <div>
+          <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Индексы ГЛЖ</p>
+          <div className="space-y-1.5">
+            {[
+              { name: 'Соколов-Лайон', val: '2.81 мВ', ok: true, thr: '< 3.5' },
+              { name: 'Корнелл', val: '1.92 мВ', ok: true, thr: '< 2.8' },
+              { name: 'Пегуэро', val: '2.45 мВ', ok: false, thr: '≥ 2.3' },
+            ].map((idx) => (
+              <div key={idx.name} className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">{idx.name}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-gray-900">{idx.val}</span>
+                  <span className={`text-xs px-1.5 py-0.5 rounded ${idx.ok ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    {idx.thr}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Static demo: chat bot dialog
+function ChatDemo() {
+  return (
+    <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+      <div className="bg-gray-50 border-b border-gray-200 px-4 sm:px-6 py-3">
+        <span className="text-sm font-medium text-gray-700">Чат-бот по кардиологии</span>
+      </div>
+      <div className="p-4 sm:p-6 space-y-3">
+        <div className="flex justify-end">
+          <div className="bg-rose-600 text-white rounded-lg px-4 py-2 text-sm max-w-[85%]">
+            Как отличить АВ-блокаду II степени Мобитц I от Мобитц II?
+          </div>
+        </div>
+        <div className="flex justify-start">
+          <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm text-gray-700 max-w-[85%] space-y-2">
+            <p>
+              <strong>Мобитц I</strong> (периодика Венкебаха): постепенное удлинение PQ
+              от комплекса к комплексу, затем выпадение QRS. Интервалы R-R укорачиваются
+              перед паузой. Обычно на уровне АВ-узла, чаще доброкачественная.
+            </p>
+            <p>
+              <strong>Мобитц II</strong>: PQ стабильный, QRS выпадает внезапно
+              без предшествующего удлинения. Блок ниже АВ-узла (пучок Гиса).
+              QRS чаще расширен. Риск прогрессии в полную АВ-блокаду.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const FEATURES = [
   {
     title: 'AI-анализ ЭКГ',
@@ -128,91 +235,81 @@ export function Landing() {
         </div>
       </section>
 
-      {/* How it works */}
+      {/* Product demos */}
+      <section className="pb-16 sm:pb-20 px-4 sm:px-6">
+        <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div>
+            <p className="text-sm text-gray-400 mb-3">Пример результата анализа</p>
+            <DemoPreview />
+          </div>
+          <div>
+            <p className="text-sm text-gray-400 mb-3">Пример работы чат-бота</p>
+            <ChatDemo />
+          </div>
+        </div>
+      </section>
+
+      {/* How it works — numbered timeline */}
       <section id="how-it-works" className="py-16 sm:py-20 bg-gray-50 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center mb-12">
             Как это работает
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 stagger-children">
-            {STEPS.map((step) => (
-              <div key={step.num} className="text-center">
-                <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 text-lg font-bold flex items-center justify-center mx-auto mb-4">
-                  {step.num}
+          {/* Desktop: horizontal */}
+          <div className="hidden sm:flex items-start">
+            {STEPS.map((step, i) => (
+              <div key={step.num} className="flex items-start flex-1">
+                <div className="flex flex-col items-center flex-1">
+                  <div className="w-10 h-10 rounded-full bg-rose-600 text-white text-sm font-bold flex items-center justify-center">
+                    {step.num}
+                  </div>
+                  <h3 className="text-sm font-semibold text-gray-900 mt-3 mb-1">{step.title}</h3>
+                  <p className="text-xs text-gray-500 text-center px-2">{step.description}</p>
                 </div>
-                <h3 className="text-base font-semibold text-gray-900 mb-1">{step.title}</h3>
-                <p className="text-sm text-gray-500">{step.description}</p>
+                {i < STEPS.length - 1 && (
+                  <div className="flex-shrink-0 w-12 flex items-center justify-center mt-5">
+                    <div className="w-full h-px bg-gray-300" />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          {/* Mobile: vertical */}
+          <div className="sm:hidden space-y-0">
+            {STEPS.map((step, i) => (
+              <div key={step.num} className="flex gap-4">
+                <div className="flex flex-col items-center">
+                  <div className="w-9 h-9 rounded-full bg-rose-600 text-white text-sm font-bold flex items-center justify-center shrink-0">
+                    {step.num}
+                  </div>
+                  {i < STEPS.length - 1 && <div className="w-px h-8 bg-gray-300" />}
+                </div>
+                <div className="pb-8">
+                  <h3 className="text-sm font-semibold text-gray-900">{step.title}</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">{step.description}</p>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Features */}
+      {/* Features — compact list */}
       <section className="py-16 sm:py-20 px-4 sm:px-6">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center mb-12">
             Возможности
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 stagger-children">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-6">
             {FEATURES.map((feature) => (
-              <div
-                key={feature.title}
-                className="p-6 rounded-2xl border border-gray-100 hover:border-rose-100 hover:bg-rose-50/30 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200"
-              >
-                <div className="w-10 h-10 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center mb-4">
+              <div key={feature.title} className="flex gap-4 items-start">
+                <div className="w-9 h-9 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 mt-0.5">
                   {feature.icon}
                 </div>
-                <h3 className="text-base font-semibold text-gray-900 mb-2">{feature.title}</h3>
-                <p className="text-sm text-gray-500 leading-relaxed">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Who is it for */}
-      <section className="py-16 sm:py-20 bg-gray-50 px-4 sm:px-6">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center mb-12">
-            Для кого
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 stagger-children">
-            {[
-              {
-                title: 'Студенты-медики',
-                description: 'Учитесь расшифровывать ЭКГ с помощью AI-помощника и базы знаний по кардиологии',
-                icon: (
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75v-1.5" />
-                  </svg>
-                ),
-              },
-              {
-                title: 'Врачи',
-                description: 'Быстрая проверка измерений и второе мнение — когда нет доступа к цифровому аппарату',
-                icon: (
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                  </svg>
-                ),
-              },
-              {
-                title: 'Пациенты',
-                description: 'Понятная расшифровка ЭКГ для обсуждения с лечащим врачом',
-                icon: (
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
-                  </svg>
-                ),
-              },
-            ].map((item) => (
-              <div key={item.title} className="bg-white rounded-2xl p-6 border border-gray-100 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
-                <div className="w-10 h-10 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center mb-4">
-                  {item.icon}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900">{feature.title}</h3>
+                  <p className="text-sm text-gray-500 mt-0.5 leading-relaxed">{feature.description}</p>
                 </div>
-                <h3 className="text-base font-semibold text-gray-900 mb-2">{item.title}</h3>
-                <p className="text-sm text-gray-500 leading-relaxed">{item.description}</p>
               </div>
             ))}
           </div>
@@ -220,13 +317,13 @@ export function Landing() {
       </section>
 
       {/* CTA */}
-      <section className="py-16 sm:py-20 px-4 sm:px-6">
+      <section className="py-16 sm:py-20 px-4 sm:px-6 bg-gray-50">
         <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
-            Начните анализировать ЭКГ прямо сейчас
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">
+            Начните прямо сейчас
           </h2>
           <p className="text-gray-500 mb-8">
-            Регистрация занимает 30 секунд. Первые 2 анализа каждый день — бесплатно.
+            2 бесплатных анализа каждый день. Регистрация за 30 секунд.
           </p>
           <Link
             to={ROUTES.REGISTER}

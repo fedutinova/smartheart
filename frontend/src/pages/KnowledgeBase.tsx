@@ -40,7 +40,7 @@ export function KnowledgeBase() {
   // Optimistic feedback: update UI immediately, revert on failure
   const [feedbackGiven, setFeedbackGiven] = useSessionState<Record<number, -1 | 1>>('kb_feedback', {});
   const pendingFeedback = useRef(new Set<number>());
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(
     messages.length > 0 ? Math.max(...messages.map((m) => m.id)) + 1 : 1,
   );
@@ -58,14 +58,20 @@ export function KnowledgeBase() {
     return () => clearInterval(interval);
   }, [isLoading]);
 
-  const scrollToBottom = () => {
-    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+  const scrollToBottom = (instant = false) => {
+    const el = chatContainerRef.current;
+    if (!el) return;
+    if (instant) {
+      el.scrollTop = el.scrollHeight;
+    } else {
+      setTimeout(() => { el.scrollTop = el.scrollHeight; }, 100);
+    }
   };
 
   // Scroll to bottom on mount if there are messages (navigating back to chat)
   useEffect(() => {
     if (messages.length > 0) {
-      messagesEndRef.current?.scrollIntoView();
+      scrollToBottom(true);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -138,7 +144,7 @@ export function KnowledgeBase() {
         </div>
 
         {/* Messages area */}
-        <div className="flex-1 overflow-y-auto bg-white rounded-lg shadow border border-gray-200 p-3 sm:p-4 mb-3 sm:mb-4 space-y-3 sm:space-y-4">
+        <div ref={chatContainerRef} className="flex-1 overflow-y-auto bg-white rounded-lg shadow border border-gray-200 p-3 sm:p-4 mb-3 sm:mb-4 space-y-3 sm:space-y-4">
           {messages.length === 0 && !isLoading && (
             <div className="flex flex-col items-left justify-center h-full text-center">
               <div className="flex flex-wrap gap-2 justify-left max-w-2xl stagger-children">
@@ -233,7 +239,6 @@ export function KnowledgeBase() {
             </div>
           )}
 
-          <div ref={messagesEndRef} />
         </div>
 
         {/* Input */}

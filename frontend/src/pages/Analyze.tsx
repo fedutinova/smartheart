@@ -265,15 +265,6 @@ export function Analyze() {
                   <span className="text-rose-500">+{quota.paid_analyses_remaining} оплач.</span>
                 )}
               </div>
-              {quota.needs_payment && (
-                <button
-                  type="button"
-                  onClick={() => setShowPayment(true)}
-                  className="text-xs text-rose-600 hover:text-rose-700 font-medium"
-                >
-                  Подписка
-                </button>
-              )}
             </div>
           );
         })()}
@@ -286,15 +277,22 @@ export function Analyze() {
               </div>
             )}
             {quota?.needs_payment && !error && (
-              <div className="flex items-center justify-between bg-amber-50 border border-amber-200 px-4 py-3 rounded text-sm">
-                <span className="text-amber-800">Бесплатный лимит исчерпан. Оформите подписку для продолжения.</span>
-                <button
-                  type="button"
-                  onClick={() => setShowPayment(true)}
-                  className="ml-3 flex-shrink-0 px-3 py-1 bg-rose-600 text-white text-xs font-medium rounded-lg hover:bg-rose-700 transition-colors"
-                >
-                  Подписка
-                </button>
+              <div className="rounded-xl bg-gradient-to-r from-rose-50 to-purple-50 border border-rose-200 p-5">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-base font-semibold text-gray-900">Бесплатные анализы на сегодня закончились</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Оформите подписку — безлимитные анализы ЭКГ и доступ ко всем функциям
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowPayment(true)}
+                    className="shrink-0 px-5 py-2.5 bg-rose-600 text-white text-sm font-medium rounded-xl hover:bg-rose-700 active:scale-95 transition-all duration-150 shadow-md shadow-rose-200"
+                  >
+                    Оформить подписку
+                  </button>
+                </div>
               </div>
             )}
 
