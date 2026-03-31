@@ -5,11 +5,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fedutinova/smartheart/back-api/config"
-	"github.com/fedutinova/smartheart/back-api/handler"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"
+
+	"github.com/fedutinova/smartheart/back-api/config"
+	"github.com/fedutinova/smartheart/back-api/handler"
 )
 
 func NewRouter(h *handler.Handler, cfg config.Config) http.Handler {
@@ -36,14 +37,14 @@ func NewRouter(h *handler.Handler, cfg config.Config) http.Handler {
 
 	// Catch-all OPTIONS handler for CORS preflight.
 	// Must be after r.Use() (chi requirement) but before other routes.
-	r.Options("/*", func(w http.ResponseWriter, r *http.Request) {
+	r.Options("/*", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
 	// Set middleware on handler before route registration.
 	h.WebhookIPMiddleware = WebhookIPWhitelist(cfg.YooKassa.ShopID)
-	h.AnalyzeRateLimit = EndpointRateLimit(10)       // 10 RPM per IP for analysis
-	h.SubscriptionRateLimit = EndpointRateLimit(5)    // 5 RPM per IP for subscriptions
+	h.AnalyzeRateLimit = EndpointRateLimit(10)     // 10 RPM per IP for analysis
+	h.SubscriptionRateLimit = EndpointRateLimit(5) // 5 RPM per IP for subscriptions
 
 	h.RegisterRoutes(r)
 	return r

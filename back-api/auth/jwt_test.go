@@ -43,7 +43,7 @@ func TestNewToken_ContainsClaims(t *testing.T) {
 
 	parser := jwt.NewParser(jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 	claims := &Claims{}
-	_, err = parser.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (any, error) {
+	_, err = parser.ParseWithClaims(tokenStr, claims, func(_ *jwt.Token) (any, error) {
 		return []byte(secret), nil
 	})
 	if err != nil {
@@ -70,7 +70,7 @@ func TestNewToken_ContainsClaims(t *testing.T) {
 	if claims.ExpiresAt == nil || claims.IssuedAt == nil {
 		t.Fatalf("expected iat/exp to be set")
 	}
-	if claims.ExpiresAt.Time.Before(claims.IssuedAt.Time) {
+	if claims.ExpiresAt.Before(claims.IssuedAt.Time) {
 		t.Fatalf("expected exp after iat")
 	}
 }

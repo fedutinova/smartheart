@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/fedutinova/smartheart/back-api/apperr"
-	"github.com/fedutinova/smartheart/back-api/models"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+
+	"github.com/fedutinova/smartheart/back-api/apperr"
+	"github.com/fedutinova/smartheart/back-api/models"
 )
 
 // CreateRequest creates a new request

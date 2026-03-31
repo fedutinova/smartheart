@@ -10,11 +10,11 @@ import (
 )
 
 type ekgAnalyzeRequest struct {
-	ImageTempURL  string   `json:"image_temp_url" validate:"required,url"`
-	Age           *int     `json:"age,omitempty" validate:"omitempty,min=1,max=150"`
-	Sex           string   `json:"sex,omitempty" validate:"omitempty,oneof=male female"`
+	ImageTempURL  string   `json:"image_temp_url"            validate:"required,url"`
+	Age           *int     `json:"age,omitempty"             validate:"omitempty,min=1,max=150"`
+	Sex           string   `json:"sex,omitempty"             validate:"omitempty,oneof=male female"`
 	PaperSpeedMMS *float64 `json:"paper_speed_mms,omitempty" validate:"omitempty,min=10,max=100"`
-	MmPerMvLimb   *float64 `json:"mm_per_mv_limb,omitempty" validate:"omitempty,min=1,max=40"`
+	MmPerMvLimb   *float64 `json:"mm_per_mv_limb,omitempty"  validate:"omitempty,min=1,max=40"`
 	MmPerMvChest  *float64 `json:"mm_per_mv_chest,omitempty" validate:"omitempty,min=1,max=40"`
 }
 
@@ -98,7 +98,7 @@ func (h *EKGHandler) submitEKGFile(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "image file is required")
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	params := service.ECGParams{
 		Sex:           r.FormValue("sex"),

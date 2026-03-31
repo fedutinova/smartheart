@@ -5,9 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/fedutinova/smartheart/back-api/models"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+
+	"github.com/fedutinova/smartheart/back-api/models"
 )
 
 // CreateResponse creates a new response record
@@ -57,7 +58,7 @@ func (r *Repository) GetResponseByRequestID(ctx context.Context, requestID uuid.
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil // No response yet is not an error
+			return nil, nil //nolint:nilnil // no response yet is a valid state, not an error
 		}
 		return nil, fmt.Errorf("failed to get response: %w", err)
 	}

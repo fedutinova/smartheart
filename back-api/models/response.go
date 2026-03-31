@@ -31,8 +31,8 @@ func (r *Response) ParseContent() (*ResponseParsed, error) {
 		return nil, err
 	}
 	return &ResponseParsed{
-		Response:       *r,
-		ContentParsed:  parsed,
+		Response:      *r,
+		ContentParsed: parsed,
 	}, nil
 }
 

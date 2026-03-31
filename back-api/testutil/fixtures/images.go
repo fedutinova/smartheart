@@ -121,35 +121,31 @@ func CreateCorruptedImage() []byte {
 
 // SaveTestImagesToFile saves test images to files for manual testing
 func SaveTestImagesToFile(dir string) error {
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
 
 	// Save EKG test image
 	ekgData := CreateTestEKGImage()
-	if err := os.WriteFile(filepath.Join(dir, "test_ekg.jpg"), ekgData, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "test_ekg.jpg"), ekgData, 0o644); err != nil {
 		return err
 	}
 
 	// Save PNG test image
 	pngData := CreateTestPNGImage()
-	if err := os.WriteFile(filepath.Join(dir, "test_image.png"), pngData, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "test_image.png"), pngData, 0o644); err != nil {
 		return err
 	}
 
 	// Save large test image
 	largeData := CreateLargeImage()
-	if err := os.WriteFile(filepath.Join(dir, "large_image.jpg"), largeData, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "large_image.jpg"), largeData, 0o644); err != nil {
 		return err
 	}
 
 	// Save corrupted test image
 	corruptedData := CreateCorruptedImage()
-	if err := os.WriteFile(filepath.Join(dir, "corrupted_image.jpg"), corruptedData, 0644); err != nil {
-		return err
-	}
-
-	return nil
+	return os.WriteFile(filepath.Join(dir, "corrupted_image.jpg"), corruptedData, 0o644)
 }
 
 // GetTestImageData returns test image data by type
@@ -169,24 +165,24 @@ func GetTestImageData(imageType string) []byte {
 }
 
 // GetTestImageInfo returns information about test images
-func GetTestImageInfo() map[string]interface{} {
-	return map[string]interface{}{
-		"ekg": map[string]interface{}{
+func GetTestImageInfo() map[string]any {
+	return map[string]any{
+		"ekg": map[string]any{
 			"size":    len(CreateTestEKGImage()),
 			"format":  "JPEG",
 			"purpose": "EKG signal analysis testing",
 		},
-		"png": map[string]interface{}{
+		"png": map[string]any{
 			"size":    len(CreateTestPNGImage()),
 			"format":  "PNG",
 			"purpose": "General image testing",
 		},
-		"large": map[string]interface{}{
+		"large": map[string]any{
 			"size":    len(CreateLargeImage()),
 			"format":  "JPEG",
 			"purpose": "Size limit testing",
 		},
-		"corrupted": map[string]interface{}{
+		"corrupted": map[string]any{
 			"size":    len(CreateCorruptedImage()),
 			"format":  "JPEG (corrupted)",
 			"purpose": "Error handling testing",
@@ -200,7 +196,7 @@ func sin(x float64) float64 {
 	if x < 0 {
 		x = -x
 	}
-	x = x - float64(int(x/(2*3.14159)))*2*3.14159
+	x -= float64(int(x/(2*3.14159))) * 2 * 3.14159
 
 	result := x - (x*x*x)/6 + (x*x*x*x*x)/120
 	return result

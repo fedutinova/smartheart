@@ -6,18 +6,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fedutinova/smartheart/back-api/apperr"
-	"github.com/fedutinova/smartheart/back-api/auth"
-	authmocks "github.com/fedutinova/smartheart/back-api/auth/mocks"
-	"github.com/fedutinova/smartheart/back-api/config"
-	"github.com/fedutinova/smartheart/back-api/models"
-	repomocks "github.com/fedutinova/smartheart/back-api/repository/mocks"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/fedutinova/smartheart/back-api/apperr"
+	"github.com/fedutinova/smartheart/back-api/auth"
+	authmocks "github.com/fedutinova/smartheart/back-api/auth/mocks"
+	"github.com/fedutinova/smartheart/back-api/config"
+	"github.com/fedutinova/smartheart/back-api/models"
+	repomocks "github.com/fedutinova/smartheart/back-api/repository/mocks"
 )
 
 func jwt5ExpiresAt(t time.Time) *jwt.NumericDate {
@@ -51,13 +52,13 @@ func TestRegister_Success(t *testing.T) {
 
 	repo.EXPECT().
 		RunTx(mock.Anything, mock.Anything).
-		RunAndReturn(func(ctx context.Context, fn func(pgx.Tx) error) error {
+		RunAndReturn(func(_ context.Context, fn func(pgx.Tx) error) error {
 			return fn(nil)
 		})
 
 	repo.EXPECT().
 		CreateUser(mock.Anything, mock.Anything).
-		Run(func(ctx context.Context, user *models.User) {
+		Run(func(_ context.Context, user *models.User) {
 			assert.Equal(t, "testuser", user.Username)
 			assert.Equal(t, "test@example.com", user.Email)
 			assert.NotEmpty(t, user.PasswordHash)

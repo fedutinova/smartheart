@@ -2,14 +2,15 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
 
-	"github.com/fedutinova/smartheart/back-api/auth"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
+
+	"github.com/fedutinova/smartheart/back-api/auth"
 )
 
 var validate = validator.New(validator.WithRequiredStructEnabled())
@@ -38,7 +39,7 @@ func decodeJSON(r *http.Request, v any) error {
 	}
 	// Reject trailing garbage after the first JSON value.
 	if dec.More() {
-		return fmt.Errorf("unexpected data after JSON body")
+		return errors.New("unexpected data after JSON body")
 	}
 	return nil
 }
@@ -51,7 +52,8 @@ func decodeAndValidate(w http.ResponseWriter, r *http.Request, v any) bool {
 		return false
 	}
 	if err := validate.Struct(v); err != nil {
-		if ve, ok := err.(validator.ValidationErrors); ok {
+		var ve validator.ValidationErrors
+		if errors.As(err, &ve) {
 			writeError(w, http.StatusBadRequest, formatValidationErrors(ve))
 			return false
 		}
@@ -106,4 +108,3 @@ func extractUserID(r *http.Request) (uuid.UUID, *auth.Claims, bool) {
 func parseUUID(s string) (uuid.UUID, error) {
 	return uuid.Parse(s)
 }
-

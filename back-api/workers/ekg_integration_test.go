@@ -9,8 +9,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/fedutinova/smartheart/back-api/job"
 	"github.com/google/uuid"
+
+	"github.com/fedutinova/smartheart/back-api/job"
 )
 
 // Test server for mocking image downloads

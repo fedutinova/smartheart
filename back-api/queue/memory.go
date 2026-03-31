@@ -5,8 +5,9 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/fedutinova/smartheart/back-api/job"
 	"github.com/google/uuid"
+
+	"github.com/fedutinova/smartheart/back-api/job"
 )
 
 type memQueue struct {
@@ -39,7 +40,7 @@ func (q *memQueue) Enqueue(ctx context.Context, j *job.Job) (uuid.UUID, error) {
 	}
 }
 
-func (q *memQueue) Status(ctx context.Context, id uuid.UUID) (*job.Job, bool) {
+func (q *memQueue) Status(_ context.Context, id uuid.UUID) (*job.Job, bool) {
 	return q.cache.Get(id)
 }
 
@@ -88,7 +89,7 @@ func (q *memQueue) Len() int {
 	return len(q.buf)
 }
 
-func (q *memQueue) Close() error {
+func (*memQueue) Close() error {
 	// In-memory queue doesn't need cleanup
 	return nil
 }

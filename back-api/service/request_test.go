@@ -6,16 +6,17 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
 	"github.com/fedutinova/smartheart/back-api/apperr"
 	"github.com/fedutinova/smartheart/back-api/auth"
 	"github.com/fedutinova/smartheart/back-api/job"
 	jobmocks "github.com/fedutinova/smartheart/back-api/job/mocks"
 	"github.com/fedutinova/smartheart/back-api/models"
 	repomocks "github.com/fedutinova/smartheart/back-api/repository/mocks"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 )
 
 func newRequestService(t *testing.T) (*requestService, *repomocks.MockStore, *jobmocks.MockQueue) {

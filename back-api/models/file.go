@@ -18,4 +18,3 @@ type File struct {
 	S3URL            string    `json:"s3_url,omitempty"`
 	CreatedAt        time.Time `json:"created_at"`
 }
-

@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -19,7 +20,7 @@ type LocalStorage struct {
 }
 
 func NewLocalStorage(baseDir, baseURL string) (*LocalStorage, error) {
-	if err := os.MkdirAll(baseDir, 0755); err != nil {
+	if err := os.MkdirAll(baseDir, 0o755); err != nil {
 		return nil, fmt.Errorf("failed to create storage directory: %w", err)
 	}
 
@@ -29,11 +30,11 @@ func NewLocalStorage(baseDir, baseURL string) (*LocalStorage, error) {
 	}, nil
 }
 
-func (s *LocalStorage) UploadFile(ctx context.Context, filename string, content io.Reader, contentType string) (*UploadResult, error) {
+func (s *LocalStorage) UploadFile(_ context.Context, filename string, content io.Reader, _ string) (*UploadResult, error) {
 	key := s.generateKey(filename)
 	filePath := filepath.Join(s.baseDir, key)
 
-	if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(filePath), 0o755); err != nil {
 		return nil, fmt.Errorf("failed to create directory structure: %w", err)
 	}
 
@@ -47,7 +48,7 @@ func (s *LocalStorage) UploadFile(ctx context.Context, filename string, content 
 		err = closeErr
 	}
 	if err != nil {
-		os.Remove(filePath) // clean up incomplete file
+		_ = os.Remove(filePath) // clean up incomplete file
 		return nil, fmt.Errorf("failed to write file: %w", err)
 	}
 
@@ -61,8 +62,8 @@ func (s *LocalStorage) UploadFile(ctx context.Context, filename string, content 
 	}, nil
 }
 
-func (s *LocalStorage) GetPresignedURL(ctx context.Context, key string, expiration time.Duration) (string, error) {
-	return "", fmt.Errorf("presigned URLs not supported for local storage")
+func (*LocalStorage) GetPresignedURL(_ context.Context, _ string, _ time.Duration) (string, error) {
+	return "", errors.New("presigned URLs not supported for local storage")
 }
 
 // safePath resolves the key to an absolute path inside baseDir, rejecting
@@ -76,18 +77,18 @@ func (s *LocalStorage) safePath(key string) (string, error) {
 	cleaned := filepath.Clean("/" + key)
 	full := filepath.Join(baseDir, cleaned)
 
-	real, err := filepath.EvalSymlinks(full)
+	resolved, err := filepath.EvalSymlinks(full)
 	if err != nil {
 		return "", err
 	}
 
-	if !strings.HasPrefix(real, baseDir+string(os.PathSeparator)) && real != baseDir {
-		return "", fmt.Errorf("path escapes storage root")
+	if !strings.HasPrefix(resolved, baseDir+string(os.PathSeparator)) && resolved != baseDir {
+		return "", errors.New("path escapes storage root")
 	}
-	return real, nil
+	return resolved, nil
 }
 
-func (s *LocalStorage) DeleteFile(ctx context.Context, key string) error {
+func (s *LocalStorage) DeleteFile(_ context.Context, key string) error {
 	filePath, err := s.safePath(key)
 	if err != nil {
 		return fmt.Errorf("invalid key: %w", err)
@@ -101,7 +102,7 @@ func (s *LocalStorage) DeleteFile(ctx context.Context, key string) error {
 	return nil
 }
 
-func (s *LocalStorage) GetFile(ctx context.Context, key string) (io.ReadCloser, string, error) {
+func (s *LocalStorage) GetFile(_ context.Context, key string) (io.ReadCloser, string, error) {
 	filePath, err := s.safePath(key)
 	if err != nil {
 		return nil, "", fmt.Errorf("invalid key: %w", err)
@@ -153,7 +154,7 @@ func (s *LocalStorage) GetFile(ctx context.Context, key string) (io.ReadCloser, 
 	return file, contentType, nil
 }
 
-func (s *LocalStorage) generateKey(filename string) string {
+func (*LocalStorage) generateKey(filename string) string {
 	// filepath.Base strips directory components including ".." traversal
 	base := filepath.Base(filename)
 	ext := filepath.Ext(base)

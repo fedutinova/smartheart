@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"log/slog"
 
+	"github.com/google/uuid"
+
 	"github.com/fedutinova/smartheart/back-api/apperr"
 	"github.com/fedutinova/smartheart/back-api/auth"
 	"github.com/fedutinova/smartheart/back-api/job"
 	"github.com/fedutinova/smartheart/back-api/models"
 	"github.com/fedutinova/smartheart/back-api/repository"
-	"github.com/google/uuid"
 )
 
 // RequestPage is a paginated list of requests.

@@ -40,10 +40,9 @@ type Request struct {
 	Response  *Response     `json:"response,omitempty"`
 
 	// ECG analysis parameters (nullable — only set for EKG requests)
-	ECGAge          *int     `json:"ecg_age,omitempty"`
-	ECGSex          *string  `json:"ecg_sex,omitempty"`
+	ECGAge           *int     `json:"ecg_age,omitempty"`
+	ECGSex           *string  `json:"ecg_sex,omitempty"`
 	ECGPaperSpeedMMS *float64 `json:"ecg_paper_speed_mms,omitempty"`
-	ECGMmPerMvLimb  *float64 `json:"ecg_mm_per_mv_limb,omitempty"`
-	ECGMmPerMvChest *float64 `json:"ecg_mm_per_mv_chest,omitempty"`
+	ECGMmPerMvLimb   *float64 `json:"ecg_mm_per_mv_limb,omitempty"`
+	ECGMmPerMvChest  *float64 `json:"ecg_mm_per_mv_chest,omitempty"`
 }
-

@@ -1,0 +1,382 @@
+# Origin: https://github.com/powerman/golangci-lint-strict version 2.10.1
+version: "2"
+linters:
+  default: all
+  disable:
+    - containedctx
+    - contextcheck
+    - cyclop # Prefer gocognit.
+    - dogsled
+    - dupl
+    - err113 # Too noisy — dynamic errors are fine in this codebase.
+    - funlen # Function length — some handlers are long but clear.
+    - gochecknoglobals # Global vars are used for constants/sentinels.
+    - forcetypeassert
+    - gocyclo # Prefer gocognit.
+    - interfacebloat
+    - ireturn
+    - lll
+    - mnd # Magic number detector — too noisy for HTTP handlers/configs.
+    - nlreturn
+    - noctx # Too strict — not all HTTP calls need explicit context.
+    - noinlineerr # Too noisy.
+    - nonamedreturns
+    - perfsprint
+    - testpackage # Tests in same package is fine.
+    - varnamelen
+    - wrapcheck
+    - wsl
+    - wsl_v5
+    - godot # Comment period enforcement — too noisy.
+    - godoclint # Comment linting — too noisy for now.
+    - tagliatelle # Tag case — existing code uses mixed styles.
+    - tagalign # Tag alignment — too noisy.
+    - intrange # Prefer explicit for loops for clarity.
+    - usestdlibvars # Too pedantic — string literals are clearer than stdlib vars.
+    - errchkjson # Too noisy with uuid.UUID and any types.
+    - gosec # Too many false positives in this codebase.
+    - thelper # Test helper naming — not worth enforcing.
+    - prealloc # Premature optimization.
+    - iface # Interface linting — too strict for current codebase.
+    - embeddedstructfieldcheck # Embedded struct checks — not useful here.
+    - gochecknoinits # Init functions are used intentionally.
+    - modernize # Go modernization suggestions — will adopt incrementally.
+    - gocognit # Cognitive complexity — some handlers are inherently complex.
+    - unqueryvet # SELECT * in subqueries is intentional.
+  settings:
+    decorder:
+      disable-init-func-first-check: false
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: math/rand$
+              desc: use math/rand/v2
+            - pkg: github.com/pkg/errors
+              desc: Should be replaced by standard lib errors package
+            - pkg: github.com/go-errors/errors
+              desc: Should be replaced by standard lib errors package
+    errcheck:
+      exclude-functions:
+        - encoding/json.Marshal
+        - encoding/json.MarshalIndent
+    errchkjson:
+      check-error-free-encoding: true
+      report-no-exported: true
+    exhaustive:
+      check:
+        - switch
+        - map
+      explicit-exhaustive-map: true
+    exhaustruct:
+      include:
+        - ^$ # Only check structs explicitly marked.
+    fatcontext:
+      check-struct-pointers: true
+    forbidigo:
+      forbid:
+        - pattern: ^print(ln)?$
+      exclude-godoc-examples: false
+      analyze-types: true
+    funcorder:
+      struct-method: false
+    gocognit:
+      min-complexity: 20
+    gocritic:
+      enable-all: true
+      disabled-checks:
+        - exposedSyncMutex
+        - hugeParam
+        - paramTypeCombine
+        - switchTrue
+        - todoCommentWithoutDetail
+        - yodaStyleExpr
+      settings:
+        captLocal:
+          paramsOnly: false
+        ruleguard:
+          failOn: all
+        truncateCmp:
+          skipArchDependent: false
+        underef:
+          skipRecvDeref: false
+        unnamedResult:
+          checkExported: true
+    godot:
+      exclude:
+        - :$
+        - '^\s*- '
+    godox:
+      keywords:
+        - BUG
+        - FIXME
+        - DEBUG
+    gosec:
+      excludes:
+        - G104
+      config:
+        global:
+          audit: true
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+      settings:
+        shadow:
+          strict: true
+    grouper:
+      import-require-single-import: true
+    iface:
+      enable:
+        - identical
+        - unused
+        - opaque
+        - unexported
+    loggercheck:
+      require-string-key: true
+      no-printf-like: true
+    misspell:
+      mode: restricted
+    nestif:
+      min-complexity: 4
+    nilnil:
+      detect-opposite: true
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+    paralleltest:
+      ignore-missing: true
+      ignore-missing-subtests: true
+    reassign:
+      patterns:
+        - .*
+    revive:
+      rules:
+        - name: add-constant
+          disabled: true
+        - name: argument-limit
+          disabled: true
+        - name: atomic
+        - name: banned-characters
+          arguments: []
+        - name: bare-return
+          disabled: true
+        - name: blank-imports
+        - name: bool-literal-in-expr
+        - name: call-to-gc
+        - name: cognitive-complexity
+          disabled: true
+        - name: comment-spacings
+          arguments:
+            - nolint
+        - name: comments-density
+          disabled: true
+        - name: confusing-naming
+          disabled: true
+        - name: confusing-results
+        - name: constant-logical-expr
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: cyclomatic
+          disabled: true
+        - name: datarace
+        - name: deep-exit
+          disabled: true
+        - name: defer
+          disabled: true
+        - name: dot-imports
+        - name: duplicated-imports
+        - name: early-return
+        - name: empty-block
+          disabled: true
+        - name: empty-lines
+        - name: enforce-map-style
+          arguments:
+            - make
+        - name: enforce-repeated-arg-type-style
+          disabled: true
+        - name: enforce-slice-style
+          disabled: true
+        - name: enforce-switch-style
+          arguments:
+            - allowNoDefault
+        - name: error-naming
+        - name: error-return
+        - name: error-strings
+        - name: errorf
+        - name: exported
+          disabled: true # Too noisy — many existing exported types lack comments.
+        - name: file-header
+        - name: file-length-limit
+        - name: filename-format
+        - name: flag-parameter
+          disabled: true
+        - name: function-length
+          disabled: true
+        - name: function-result-limit
+          disabled: true
+        - name: get-return
+        - name: identical-branches
+        - name: if-return
+        - name: import-alias-naming
+        - name: import-shadowing
+        - name: imports-blocklist
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: max-control-nesting
+        - name: max-public-structs
+          disabled: true
+        - name: modifies-parameter
+        - name: modifies-value-receiver
+        - name: nested-structs
+          disabled: true
+        - name: optimize-operands-order
+        - name: package-comments
+          disabled: true
+        - name: range
+        - name: range-val-address
+        - name: range-val-in-closure
+        - name: receiver-naming
+        - name: redefines-builtin-id
+        - name: redundant-import-alias
+        - name: string-format
+          arguments:
+            - - fmt.Errorf[0]
+              - /(^|[^\.!?])$/
+              - must not end in punctuation
+            - - panic
+              - /^[^\n]*$/
+              - must not contain line breaks
+        - name: string-of-int
+        - name: struct-tag
+        - name: superfluous-else
+        - name: time-equal
+        - name: time-naming
+        - name: unchecked-type-assertion
+          disabled: true
+        - name: unconditional-recursion
+        - name: unexported-naming
+        - name: unexported-return
+        - name: unnecessary-stmt
+        - name: unreachable-code
+        - name: unused-parameter
+        - name: unused-receiver
+        - name: use-any
+        - name: use-errors-new
+        - name: useless-break
+        - name: var-declaration
+        - name: var-naming
+        - name: waitgroup-by-value
+    sloglint:
+      static-msg: true
+      key-naming-case: snake
+      forbidden-keys:
+        - time
+        - level
+        - msg
+        - source
+    tagalign:
+      order:
+        - json
+        - yaml
+        - validate
+      strict: true
+    tagliatelle:
+      case:
+        rules:
+          json: snake
+          yaml: kebab
+    testifylint:
+      enable-all: true
+    testpackage:
+      skip-regexp: .*_internal_test\.go
+    thelper:
+      test:
+        name: false
+    usestdlibvars:
+      time-date-month: true
+      time-month: true
+      time-layout: true
+      crypto-hash: true
+      default-rpc-path: true
+      sql-isolation-level: true
+      tls-signature-scheme: true
+  exclusions:
+    rules:
+      - path: (.+)\.go$
+        text: declaration of "(log|err|ctx)" shadows
+      - path: _test\.go|testing(_.*)?\.go
+        linters:
+          - bodyclose
+          - dupl
+          - errcheck
+          - forcetypeassert
+          - funlen
+          - gochecknoglobals
+          - gochecknoinits
+          - gocognit
+          - goconst
+          - godoclint
+          - gosec
+          - maintidx
+          - reassign
+      - source: '[Cc]onst'
+        linters:
+          - gochecknoglobals
+      - path: _test\.go|testing(_.*)?\.go
+        text: (unnamedResult|exitAfterDefer|rangeValCopy|unnecessaryBlock)
+        linters:
+          - gocritic
+      - path: _test\.go
+        text: '"t" shadows'
+        linters:
+          - govet
+      - linters:
+          - lll
+        source: '^//go:generate '
+    paths:
+      - \.[\w-]+\.go$
+      - back-api/.*/mocks/ # Auto-generated mocks.
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+    - golines
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - localmodule
+      no-inline-comments: true
+      no-prefix-comments: true
+    gofmt:
+      rewrite-rules:
+        - pattern: interface{}
+          replacement: any
+        - pattern: a[b:len(a)]
+          replacement: a[b:]
+    golines:
+      max-len: 200
+      tab-len: 8
+  exclusions:
+    generated: strict
+    paths:
+      - \.[\w-]+\.go$
+      - back-api/.*/mocks/
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+output:
+  sort-order:
+    - linter
+    - severity
+    - file
+  show-stats: false
+run:
+  timeout: 3m
+  modules-download-mode: readonly
+severity:
+  default: error

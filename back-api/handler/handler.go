@@ -3,6 +3,8 @@ package handler
 import (
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/fedutinova/smartheart/back-api/auth"
 	"github.com/fedutinova/smartheart/back-api/config"
 	"github.com/fedutinova/smartheart/back-api/job"
@@ -10,7 +12,6 @@ import (
 	"github.com/fedutinova/smartheart/back-api/repository"
 	"github.com/fedutinova/smartheart/back-api/service"
 	"github.com/fedutinova/smartheart/back-api/storage"
-	"github.com/go-chi/chi/v5"
 )
 
 // AuthHandler handles authentication endpoints (register, login, refresh, logout).

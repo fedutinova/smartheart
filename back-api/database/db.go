@@ -32,10 +32,10 @@ type DB struct {
 
 // PoolConfig holds optional connection pool tuning parameters.
 type PoolConfig struct {
-	MaxConns          int32
-	MinConns          int32
-	MaxConnLifetime   time.Duration
-	MaxConnIdleTime   time.Duration
+	MaxConns        int32
+	MinConns        int32
+	MaxConnLifetime time.Duration
+	MaxConnIdleTime time.Duration
 }
 
 func NewDB(ctx context.Context, databaseURL string, opts ...func(*PoolConfig)) (*DB, error) {

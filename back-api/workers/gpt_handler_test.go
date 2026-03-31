@@ -8,12 +8,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/mock"
+
 	"github.com/fedutinova/smartheart/back-api/gpt"
 	"github.com/fedutinova/smartheart/back-api/job"
 	"github.com/fedutinova/smartheart/back-api/models"
 	repomocks "github.com/fedutinova/smartheart/back-api/repository/mocks"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/mock"
 )
 
 // --- HandleGPTJob tests ---

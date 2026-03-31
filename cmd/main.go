@@ -43,7 +43,7 @@ func main() {
 
 	db, sessions, storageService := initInfra(ctx, cfg)
 	defer db.Close()
-	defer sessions.Close()
+	defer func() { _ = sessions.Close() }()
 
 	runMigrations(ctx, db)
 
@@ -51,7 +51,7 @@ func main() {
 	loadPermissions(ctx, repo)
 
 	q := initQueue(cfg, sessions)
-	defer q.Close()
+	defer func() { _ = q.Close() }()
 
 	hub := notify.NewHub()
 	startWorkers(ctx, cfg, db, q, storageService, repo, hub)

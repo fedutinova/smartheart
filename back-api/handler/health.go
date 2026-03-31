@@ -41,7 +41,7 @@ const (
 )
 
 // Health returns basic health status (for load balancer)
-func (h *HealthHandler) Health(w http.ResponseWriter, r *http.Request) {
+func (*HealthHandler) Health(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, HealthStatus{
 		Status:    StatusHealthy,
 		Timestamp: time.Now().UTC().Format(time.RFC3339),

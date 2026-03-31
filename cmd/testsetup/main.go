@@ -36,7 +36,7 @@ func main() {
 	}
 
 	for _, dir := range dirs {
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
 			log.Printf("Warning: Failed to create directory %s: %v", dir, err)
 		} else {
 			fmt.Printf("Created directory: %s\n", dir)
@@ -89,7 +89,7 @@ DEBUG=true
 LOG_LEVEL=debug
 `
 
-		if err := os.WriteFile(envExample, []byte(envContent), 0644); err != nil {
+		if err := os.WriteFile(envExample, []byte(envContent), 0o644); err != nil {
 			log.Printf("Warning: Failed to create .env.example: %v", err)
 		} else {
 			fmt.Printf("Created: %s\n", envExample)

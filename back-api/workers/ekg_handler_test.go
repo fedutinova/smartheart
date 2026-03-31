@@ -7,8 +7,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/fedutinova/smartheart/back-api/job"
 	"github.com/google/uuid"
+
+	"github.com/fedutinova/smartheart/back-api/job"
 )
 
 func TestEKGJobPayload_MarshalUnmarshal(t *testing.T) {

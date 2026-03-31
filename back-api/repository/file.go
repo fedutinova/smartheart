@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/fedutinova/smartheart/back-api/models"
 	"github.com/google/uuid"
+
+	"github.com/fedutinova/smartheart/back-api/models"
 )
 
 // CreateFile creates a new file record

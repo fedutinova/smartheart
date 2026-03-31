@@ -42,7 +42,7 @@ func TestStartConsumers_SucceedsAndUpdatesStatus(t *testing.T) {
 	defer cancel()
 
 	done := make(chan struct{}, 1)
-	q.StartConsumers(ctx, 1, func(ctx context.Context, j *job.Job) error {
+	q.StartConsumers(ctx, 1, func(_ context.Context, _ *job.Job) error {
 		done <- struct{}{}
 		return nil
 	})
@@ -77,7 +77,7 @@ func TestStartConsumers_TimeoutMarksFailed(t *testing.T) {
 	defer cancel()
 
 	done := make(chan struct{}, 1)
-	q.StartConsumers(ctx, 1, func(ctx context.Context, j *job.Job) error {
+	q.StartConsumers(ctx, 1, func(ctx context.Context, _ *job.Job) error {
 		<-ctx.Done()
 		done <- struct{}{}
 		return errors.New("handler timed out")

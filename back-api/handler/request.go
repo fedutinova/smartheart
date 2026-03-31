@@ -134,9 +134,9 @@ func (h *RequestHandler) GetRequestFile(w http.ResponseWriter, r *http.Request) 
 
 	// Find the file in the request
 	var s3Key string
-	for _, f := range request.Files {
-		if f.ID == fileID {
-			s3Key = f.S3Key
+	for i := range request.Files {
+		if request.Files[i].ID == fileID {
+			s3Key = request.Files[i].S3Key
 			break
 		}
 	}
@@ -150,11 +150,11 @@ func (h *RequestHandler) GetRequestFile(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusNotFound, "file not found")
 		return
 	}
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
 
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Cache-Control", "private, max-age=3600")
-	io.Copy(w, rc)
+	_, _ = io.Copy(w, rc)
 }
 
 // ServeFiles serves static files from local storage

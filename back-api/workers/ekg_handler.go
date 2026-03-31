@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -11,6 +12,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/fedutinova/smartheart/back-api/database"
 	"github.com/fedutinova/smartheart/back-api/gpt"
@@ -20,7 +23,6 @@ import (
 	"github.com/fedutinova/smartheart/back-api/repository"
 	"github.com/fedutinova/smartheart/back-api/storage"
 	"github.com/fedutinova/smartheart/back-api/validation"
-	"github.com/google/uuid"
 )
 
 // EKGWorker processes EKG analysis jobs.
@@ -51,6 +53,7 @@ func NewEKGWorker(
 	}
 }
 
+//nolint:gocognit // orchestration function with inherent branching
 func (h *EKGWorker) HandleEKGJob(ctx context.Context, j *job.Job) error {
 	if j.Type != job.TypeEKGAnalyze {
 		return fmt.Errorf("unexpected job type: %s", j.Type)
@@ -216,7 +219,7 @@ func (h *EKGWorker) HandleEKGJob(ctx context.Context, j *job.Job) error {
 		h.hub.Notify(payload.UserID, notify.Event{
 			Type:      "request_completed",
 			RequestID: requestID,
-			Status:    string(models.StatusCompleted),
+			Status:    models.StatusCompleted,
 		})
 	}
 
@@ -225,7 +228,7 @@ func (h *EKGWorker) HandleEKGJob(ctx context.Context, j *job.Job) error {
 }
 
 // Close cleans up resources used by the EKG worker.
-func (h *EKGWorker) Close() {
+func (*EKGWorker) Close() {
 	slog.Debug("ekg worker closed")
 }
 
@@ -233,7 +236,7 @@ func (h *EKGWorker) Close() {
 
 func validateImageURL(rawURL string) error {
 	if rawURL == "" {
-		return fmt.Errorf("empty image URL")
+		return errors.New("empty image URL")
 	}
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
@@ -244,7 +247,7 @@ func validateImageURL(rawURL string) error {
 	}
 	hostname := parsed.Hostname()
 	if hostname == "localhost" || hostname == "127.0.0.1" || hostname == "::1" || hostname == "0.0.0.0" {
-		return fmt.Errorf("requests to localhost are not allowed")
+		return errors.New("requests to localhost are not allowed")
 	}
 	return nil
 }
@@ -279,7 +282,7 @@ func newSSRFSafeTransport() *http.Transport {
 	}
 }
 
-func (h *EKGWorker) downloadImage(ctx context.Context, imageURL string) ([]byte, error) {
+func (*EKGWorker) downloadImage(ctx context.Context, imageURL string) ([]byte, error) {
 	if err := validateImageURL(imageURL); err != nil {
 		return nil, fmt.Errorf("URL validation failed: %w", err)
 	}
@@ -287,15 +290,15 @@ func (h *EKGWorker) downloadImage(ctx context.Context, imageURL string) ([]byte,
 	client := &http.Client{
 		Timeout:   30 * time.Second,
 		Transport: sharedSSRFTransport,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		CheckRedirect: func(_ *http.Request, via []*http.Request) error {
 			if len(via) >= 3 {
-				return fmt.Errorf("too many redirects")
+				return errors.New("too many redirects")
 			}
 			return nil
 		},
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", imageURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", imageURL, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -306,7 +309,7 @@ func (h *EKGWorker) downloadImage(ctx context.Context, imageURL string) ([]byte,
 	if err != nil {
 		return nil, fmt.Errorf("failed to download image: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
@@ -350,7 +353,7 @@ func (h *EKGWorker) readFromStorage(ctx context.Context, key string) ([]byte, er
 	if err != nil {
 		return nil, fmt.Errorf("get file from storage: %w", err)
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 
 	data, err := io.ReadAll(io.LimitReader(reader, int64(maxImageSize)+1))
 	if err != nil {

@@ -144,14 +144,14 @@ func GetTestRequestJSON(requestType string) (string, error) {
 	}
 
 	// Create API request format
-	apiRequest := map[string]interface{}{
+	apiRequest := map[string]any{
 		"image_temp_url": request.ImageURL,
 		"notes":          request.Notes,
 	}
 
 	jsonData, err := json.Marshal(apiRequest)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal request: %v", err)
+		return "", fmt.Errorf("failed to marshal request: %w", err)
 	}
 
 	return string(jsonData), nil
@@ -183,7 +183,7 @@ func PrintTestExamples() {
 	fmt.Printf("Valid Request JSON:\n%s\n", validRequest)
 
 	fmt.Println("\n=== Example API Response ===")
-	response := map[string]interface{}{
+	response := map[string]any{
 		"job_id":  "123e4567-e89b-12d3-a456-426614174000",
 		"status":  "queued",
 		"message": "EKG analysis job submitted successfully",
@@ -194,25 +194,25 @@ func PrintTestExamples() {
 }
 
 // GetTestConfig returns test configuration
-func GetTestConfig() map[string]interface{} {
-	return map[string]interface{}{
-		"test_server": map[string]interface{}{
+func GetTestConfig() map[string]any {
+	return map[string]any{
+		"test_server": map[string]any{
 			"host": "localhost",
 			"port": 8080,
 			"url":  "http://localhost:8080",
 		},
-		"test_data": map[string]interface{}{
+		"test_data": map[string]any{
 			"image_dir": "./testdata/images",
 			"max_size":  10485760, // 10MB
 			"timeout":   30,       // seconds
 		},
-		"test_users": map[string]interface{}{
-			"valid_user": map[string]interface{}{
+		"test_users": map[string]any{
+			"valid_user": map[string]any{
 				"email":    "test@example.com",
 				"password": "testpassword",
 				"role":     "user",
 			},
-			"admin_user": map[string]interface{}{
+			"admin_user": map[string]any{
 				"email":    "admin@example.com",
 				"password": "adminpassword",
 				"role":     "admin",
@@ -241,21 +241,21 @@ func ValidateTestRequest(request EKGTestRequest) []string {
 }
 
 // GetTestMetrics returns test performance metrics
-func GetTestMetrics() map[string]interface{} {
-	return map[string]interface{}{
-		"performance": map[string]interface{}{
+func GetTestMetrics() map[string]any {
+	return map[string]any{
+		"performance": map[string]any{
 			"image_processing_time_ms": 2000,
 			"http_request_time_ms":     100,
 			"database_query_time_ms":   50,
 			"total_pipeline_time_ms":   3000,
 		},
-		"limits": map[string]interface{}{
+		"limits": map[string]any{
 			"max_file_size_mb":    10,
 			"max_notes_length":    4000,
 			"max_concurrent_jobs": 4,
 			"request_timeout_sec": 30,
 		},
-		"coverage": map[string]interface{}{
+		"coverage": map[string]any{
 			"unit_tests":        "95%",
 			"integration_tests": "85%",
 			"api_tests":         "90%",

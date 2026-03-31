@@ -9,10 +9,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/fedutinova/smartheart/back-api/auth"
 	"github.com/fedutinova/smartheart/back-api/models"
 	"github.com/fedutinova/smartheart/back-api/repository"
-	"github.com/google/uuid"
 )
 
 // RAGHandler proxies knowledge-base queries to the RAG microservice.
@@ -32,7 +33,7 @@ func NewRAGHandler(ragURL string, repo repository.Store) *RAGHandler {
 }
 
 type ragQueryRequest struct {
-	Question string `json:"question" validate:"required,min=2,max=2000"`
+	Question string `json:"question"            validate:"required,min=2,max=2000"`
 	NResults int    `json:"n_results,omitempty" validate:"omitempty,gte=1,lte=20"`
 }
 
@@ -72,7 +73,7 @@ func (h *RAGHandler) Query(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadGateway, "RAG service unavailable")
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
@@ -90,8 +91,8 @@ func (h *RAGHandler) Query(w http.ResponseWriter, r *http.Request) {
 
 type ragFeedbackRequest struct {
 	Question string `json:"question" validate:"required"`
-	Answer   string `json:"answer" validate:"required"`
-	Rating   int    `json:"rating" validate:"required,oneof=-1 1"`
+	Answer   string `json:"answer"   validate:"required"`
+	Rating   int    `json:"rating"   validate:"required,oneof=-1 1"`
 }
 
 // Feedback handles POST /v1/rag/feedback — stores user feedback on RAG answers.

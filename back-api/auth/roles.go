@@ -18,8 +18,8 @@ const (
 )
 
 var (
-	permsMu      sync.RWMutex
-	roleToPerms  = map[string][]string{
+	permsMu     sync.RWMutex
+	roleToPerms = map[string][]string{
 		RoleUser:  {PermEKGSubmit, PermJobReadOwn},
 		RoleAdmin: {PermEKGSubmit, PermJobReadAll, PermAdminAll},
 	}

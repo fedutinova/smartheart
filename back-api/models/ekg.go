@@ -5,8 +5,10 @@ import (
 	"strings"
 )
 
-const EKGModelDirect = "ekg_direct_v2"
-const EKGModelStructured = "ekg_structured_v1"
+const (
+	EKGModelDirect     = "ekg_direct_v2"
+	EKGModelStructured = "ekg_structured_v1"
+)
 
 // EKGResponseContent is the typed structure stored in Response.Content
 // for EKG analysis results.
@@ -36,7 +38,7 @@ func ParseEKGContent(content string) (*EKGResponseContent, error) {
 		return nil, err
 	}
 	if ekg.AnalysisType != EKGModelDirect && ekg.AnalysisType != EKGModelStructured {
-		return nil, nil
+		return nil, nil //nolint:nilnil // nil,nil signals "not this type" without error
 	}
 	return &ekg, nil
 }
@@ -74,8 +76,8 @@ func ExtractConclusion(gptResponse string) string {
 				"\n\nThis is for informational purposes",
 			}
 			for _, disclaimer := range disclaimers {
-				if idx := strings.Index(conclusion, disclaimer); idx != -1 {
-					conclusion = strings.TrimSpace(conclusion[:idx])
+				if discIdx := strings.Index(conclusion, disclaimer); discIdx != -1 {
+					conclusion = strings.TrimSpace(conclusion[:discIdx])
 				}
 			}
 			return strings.TrimSpace(conclusion)

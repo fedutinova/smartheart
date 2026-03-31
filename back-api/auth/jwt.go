@@ -61,7 +61,7 @@ func GenerateRefreshToken() (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
-func NewTokenPair(secret, issuer string, userID uuid.UUID, roles []string, accessTTL, refreshTTL time.Duration) (*TokenPair, error) {
+func NewTokenPair(secret, issuer string, userID uuid.UUID, roles []string, accessTTL, _ time.Duration) (*TokenPair, error) {
 	accessToken, err := NewToken(secret, issuer, userID.String(), roles, accessTTL)
 	if err != nil {
 		return nil, err

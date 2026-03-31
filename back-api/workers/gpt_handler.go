@@ -3,9 +3,12 @@ package workers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
+
+	"github.com/google/uuid"
 
 	"github.com/fedutinova/smartheart/back-api/database"
 	"github.com/fedutinova/smartheart/back-api/gpt"
@@ -13,7 +16,6 @@ import (
 	"github.com/fedutinova/smartheart/back-api/models"
 	"github.com/fedutinova/smartheart/back-api/notify"
 	"github.com/fedutinova/smartheart/back-api/repository"
-	"github.com/google/uuid"
 )
 
 // GPTWorker processes GPT analysis jobs.
@@ -123,7 +125,7 @@ func (h *GPTWorker) processWithFallback(ctx context.Context, payload gpt.JobPayl
 
 	// Guard against nil result with nil error (shouldn't happen but prevents panic)
 	if gptErr == nil && result == nil {
-		gptErr = fmt.Errorf("GPT returned nil result without error")
+		gptErr = errors.New("GPT returned nil result without error")
 	}
 
 	// Only attempt EKG fallback for EKG-originated GPT requests.
@@ -154,7 +156,7 @@ func (h *GPTWorker) processWithFallback(ctx context.Context, payload gpt.JobPayl
 
 	if gptErr != nil {
 		// Complete failure — use fallback as the entire result
-		return &gpt.ProcessResult{
+		return &gpt.ProcessResult{ //nolint:nilerr // intentionally return fallback on GPT error
 			Content: fallbackContent,
 			Model:   "fallback_ekg_analysis",
 		}, nil
@@ -165,7 +167,7 @@ func (h *GPTWorker) processWithFallback(ctx context.Context, payload gpt.JobPayl
 		"request_id", payload.RequestID,
 		"fallback_length", len(fallbackContent))
 	result.Content = fallbackContent
-	result.Model = result.Model + "_with_fallback"
+	result.Model += "_with_fallback"
 	return result, nil
 }
 
@@ -184,25 +186,25 @@ func (h *GPTWorker) createFallbackResponse(ctx context.Context, payload gpt.JobP
 	// Fetch recent requests with responses in a single query (avoids N+1).
 	userRequests, err := h.repo.GetRecentRequestsWithResponses(ctx, request.UserID, 10)
 	if err != nil {
-		return formatBasicFallback(textQuery), nil
+		return formatBasicFallback(textQuery), nil //nolint:nilerr // intentionally return fallback on fetch error
 	}
 
 	// First pass: prefer the EKG response that references this exact GPT request
-	for _, ur := range userRequests {
-		if ur.ID == payload.RequestID || ur.Response == nil {
+	for i := range userRequests {
+		if userRequests[i].ID == payload.RequestID || userRequests[i].Response == nil {
 			continue
 		}
-		if ekg, _ := models.ParseEKGContent(ur.Response.Content); ekg != nil && ekg.GPTRequestID == payload.RequestID.String() {
+		if ekg, _ := models.ParseEKGContent(userRequests[i].Response.Content); ekg != nil && ekg.GPTRequestID == payload.RequestID.String() {
 			return formatEKGFallback(ekg, textQuery), nil
 		}
 	}
 
 	// Second pass: use any recent EKG response
-	for _, ur := range userRequests {
-		if ur.ID == payload.RequestID || ur.Response == nil {
+	for i := range userRequests {
+		if userRequests[i].ID == payload.RequestID || userRequests[i].Response == nil {
 			continue
 		}
-		if ekg, _ := models.ParseEKGContent(ur.Response.Content); ekg != nil {
+		if ekg, _ := models.ParseEKGContent(userRequests[i].Response.Content); ekg != nil {
 			return formatEKGFallback(ekg, textQuery), nil
 		}
 	}

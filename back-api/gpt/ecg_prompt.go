@@ -31,7 +31,7 @@ HR_bpm — одно число, если возможно.
 
 func ecgSchemaTemplate() map[string]any {
 	leadEntry := map[string]any{"R_up_sq": []any{}, "S_down_sq": []any{}}
-	leads := map[string]any{}
+	leads := make(map[string]any)
 	for _, name := range []string{"I", "II", "III", "aVR", "aVL", "aVF", "V1", "V2", "V3", "V4", "V5", "V6"} {
 		leads[name] = leadEntry
 	}
@@ -47,7 +47,7 @@ func ecgSchemaTemplate() map[string]any {
 		},
 		"HR_bpm": nil,
 		"calibration": map[string]any{
-			"mv_pulse_height_small_squares":    nil,
+			"mv_pulse_height_small_squares":     nil,
 			"paper_speed_small_squares_per_sec": nil,
 		},
 	}
@@ -55,11 +55,11 @@ func ecgSchemaTemplate() map[string]any {
 
 // RawECGMeasurement is the JSON structure returned by GPT.
 type RawECGMeasurement struct {
-	Leads       map[string]LeadData     `json:"leads"`
-	Extras      map[string][]float64    `json:"extras"`
-	IntervalsSq map[string][]float64    `json:"intervals_sq"`
-	HRBpm       *float64                `json:"HR_bpm"`
-	Calibration RawCalibration          `json:"calibration"`
+	Leads       map[string]LeadData  `json:"leads"`
+	Extras      map[string][]float64 `json:"extras"`
+	IntervalsSq map[string][]float64 `json:"intervals_sq"`
+	HRBpm       *float64             `json:"HR_bpm"`
+	Calibration RawCalibration       `json:"calibration"`
 }
 
 // LeadData holds R and S measurements in small squares.
@@ -84,12 +84,11 @@ func ParseECGMeasurementJSON(raw string) (*RawECGMeasurement, error) {
 		start, end := 0, len(lines)
 		for i, line := range lines {
 			if strings.HasPrefix(strings.TrimSpace(line), "```") {
-				if start == 0 {
-					start = i + 1
-				} else {
+				if start != 0 {
 					end = i
 					break
 				}
+				start = i + 1
 			}
 		}
 		text = strings.Join(lines[start:end], "\n")

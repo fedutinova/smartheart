@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"mime/multipart"
 	"net/http"
 
 	"github.com/fedutinova/smartheart/back-api/service"
@@ -39,13 +40,19 @@ func (h *GPTHandler) SubmitGPTRequest(w http.ResponseWriter, r *http.Request) {
 
 	// Convert multipart files to service.UploadedFile
 	var uploaded []service.UploadedFile
+	var openFiles []multipart.File
+	defer func() {
+		for _, f := range openFiles {
+			_ = f.Close()
+		}
+	}()
 	for _, fh := range files {
 		f, err := fh.Open()
 		if err != nil {
 			writeError(w, http.StatusBadRequest, fmt.Sprintf("failed to open file %s", fh.Filename))
 			return
 		}
-		defer f.Close()
+		openFiles = append(openFiles, f)
 
 		uploaded = append(uploaded, service.UploadedFile{
 			Reader:      f,

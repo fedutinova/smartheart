@@ -9,11 +9,11 @@ import (
 )
 
 func TestWebhookIPWhitelist_AllowsYooKassaIP(t *testing.T) {
-	handler := WebhookIPWhitelist("shop-123")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := WebhookIPWhitelist("shop-123")(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req := httptest.NewRequest(http.MethodPost, "/webhook", nil)
+	req := httptest.NewRequest(http.MethodPost, "/webhook", http.NoBody)
 	req.RemoteAddr = "185.71.76.1:12345"
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
@@ -22,11 +22,11 @@ func TestWebhookIPWhitelist_AllowsYooKassaIP(t *testing.T) {
 }
 
 func TestWebhookIPWhitelist_BlocksUnknownIP(t *testing.T) {
-	handler := WebhookIPWhitelist("shop-123")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := WebhookIPWhitelist("shop-123")(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req := httptest.NewRequest(http.MethodPost, "/webhook", nil)
+	req := httptest.NewRequest(http.MethodPost, "/webhook", http.NoBody)
 	req.RemoteAddr = "1.2.3.4:12345"
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
@@ -35,11 +35,11 @@ func TestWebhookIPWhitelist_BlocksUnknownIP(t *testing.T) {
 }
 
 func TestWebhookIPWhitelist_SkipsInDevMode(t *testing.T) {
-	handler := WebhookIPWhitelist("")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := WebhookIPWhitelist("")(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req := httptest.NewRequest(http.MethodPost, "/webhook", nil)
+	req := httptest.NewRequest(http.MethodPost, "/webhook", http.NoBody)
 	req.RemoteAddr = "1.2.3.4:12345"
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
@@ -48,11 +48,11 @@ func TestWebhookIPWhitelist_SkipsInDevMode(t *testing.T) {
 }
 
 func TestWebhookIPWhitelist_AllowsXForwardedFor(t *testing.T) {
-	handler := WebhookIPWhitelist("shop-123")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := WebhookIPWhitelist("shop-123")(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req := httptest.NewRequest(http.MethodPost, "/webhook", nil)
+	req := httptest.NewRequest(http.MethodPost, "/webhook", http.NoBody)
 	req.RemoteAddr = "10.0.0.1:12345"
 	req.Header.Set("X-Forwarded-For", "77.75.153.10, 10.0.0.1")
 	rr := httptest.NewRecorder()

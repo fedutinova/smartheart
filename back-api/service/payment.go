@@ -10,11 +10,12 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/fedutinova/smartheart/back-api/apperr"
 	"github.com/fedutinova/smartheart/back-api/config"
 	"github.com/fedutinova/smartheart/back-api/models"
 	"github.com/fedutinova/smartheart/back-api/repository"
-	"github.com/google/uuid"
 )
 
 // PaymentService handles payment creation and webhook processing.
@@ -38,21 +39,21 @@ type PaymentResult struct {
 
 // QuotaInfo describes the user's current quota state.
 type QuotaInfo struct {
-	DailyLimit                int     `json:"daily_limit"`
-	UsedToday                 int     `json:"used_today"`
-	FreeRemaining             int     `json:"free_remaining"`
-	PaidAnalysesRemaining     int     `json:"paid_analyses_remaining"`
-	NeedsPayment              bool    `json:"needs_payment"`
-	PricePerAnalysisKopecks   int     `json:"price_per_analysis_kopecks"`
-	SubscriptionExpiresAt     *string `json:"subscription_expires_at,omitempty"`
-	SubscriptionPriceKopecks  int     `json:"subscription_price_kopecks"`
+	DailyLimit               int     `json:"daily_limit"`
+	UsedToday                int     `json:"used_today"`
+	FreeRemaining            int     `json:"free_remaining"`
+	PaidAnalysesRemaining    int     `json:"paid_analyses_remaining"`
+	NeedsPayment             bool    `json:"needs_payment"`
+	PricePerAnalysisKopecks  int     `json:"price_per_analysis_kopecks"`
+	SubscriptionExpiresAt    *string `json:"subscription_expires_at,omitempty"`
+	SubscriptionPriceKopecks int     `json:"subscription_price_kopecks"`
 }
 
 type paymentService struct {
-	repo         repository.Store
-	cfg          config.YooKassaConfig
-	freeLimit    int
-	httpClient   *http.Client
+	repo       repository.Store
+	cfg        config.YooKassaConfig
+	freeLimit  int
+	httpClient *http.Client
 }
 
 func NewPaymentService(repo repository.Store, ykCfg config.YooKassaConfig, freeLimit int) PaymentService {
@@ -107,9 +108,9 @@ type yooKassaCreateRequest struct {
 }
 
 type yooKassaPaymentResponse struct {
-	ID           string               `json:"id"`
-	Status       string               `json:"status"`
-	Amount       yooKassaAmount       `json:"amount"`
+	ID           string                `json:"id"`
+	Status       string                `json:"status"`
+	Amount       yooKassaAmount        `json:"amount"`
 	Confirmation *yooKassaConfirmation `json:"confirmation,omitempty"`
 }
 
@@ -159,7 +160,7 @@ func (s *paymentService) createYooKassaPayment(ctx context.Context, payment *mod
 	if err != nil {
 		return nil, apperr.WrapInternal("call YooKassa API", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {

@@ -7,13 +7,14 @@ import (
 	"net/mail"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+
 	"github.com/fedutinova/smartheart/back-api/apperr"
 	"github.com/fedutinova/smartheart/back-api/auth"
 	"github.com/fedutinova/smartheart/back-api/config"
 	"github.com/fedutinova/smartheart/back-api/models"
 	"github.com/fedutinova/smartheart/back-api/repository"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 )
 
 // AuthService handles authentication business logic.

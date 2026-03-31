@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/fedutinova/smartheart/back-api/apperr"
 	"github.com/fedutinova/smartheart/back-api/config"
 	"github.com/fedutinova/smartheart/back-api/gpt"
@@ -16,7 +18,6 @@ import (
 	"github.com/fedutinova/smartheart/back-api/models"
 	"github.com/fedutinova/smartheart/back-api/repository"
 	"github.com/fedutinova/smartheart/back-api/storage"
-	"github.com/google/uuid"
 )
 
 // SubmittedJob is the result of enqueueing a job.
@@ -295,7 +296,7 @@ func (s *submissionService) SubmitGPT(ctx context.Context, userID uuid.UUID, tex
 		if err := s.repo.UpdateRequestStatus(ctx, request.ID, models.StatusFailed); err != nil {
 			slog.Error("failed to mark request as failed", "request_id", request.ID, "error", err)
 		}
-		return &GPTSubmitResult{
+		return &GPTSubmitResult{ //nolint:nilnil // intentionally returning partial result with upload errors alongside error
 			UploadErrors: uploadErrors,
 		}, fmt.Errorf("no files successfully processed: %w", apperr.ErrValidation)
 	}

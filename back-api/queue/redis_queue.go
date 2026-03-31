@@ -9,9 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fedutinova/smartheart/back-api/job"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
+
+	"github.com/fedutinova/smartheart/back-api/job"
 )
 
 const (
@@ -119,7 +120,7 @@ func (q *RedisQueue) Enqueue(ctx context.Context, j *job.Job) (uuid.UUID, error)
 }
 
 // Status returns the current status of a job
-func (q *RedisQueue) Status(ctx context.Context, id uuid.UUID) (*job.Job, bool) {
+func (q *RedisQueue) Status(_ context.Context, id uuid.UUID) (*job.Job, bool) {
 	return q.cache.Get(id)
 }
 
@@ -196,7 +197,6 @@ func (q *RedisQueue) consumer(ctx context.Context, workerID int, handler job.Han
 			Count:    1,
 			Block:    consumerBlockTime,
 		}).Result()
-
 		if err != nil {
 			if errors.Is(err, redis.Nil) || errors.Is(err, context.Canceled) {
 				continue
@@ -242,7 +242,6 @@ func (q *RedisQueue) claimStuckJobs(ctx context.Context, handler job.Handler) {
 		End:    "+",
 		Count:  100,
 	}).Result()
-
 	if err != nil {
 		if !errors.Is(err, redis.Nil) {
 			slog.Error("failed to get pending entries", "error", err)
@@ -263,7 +262,6 @@ func (q *RedisQueue) claimStuckJobs(ctx context.Context, handler job.Handler) {
 			MinIdle:  q.claimTimeout,
 			Messages: []string{p.ID},
 		}).Result()
-
 		if err != nil {
 			slog.Error("failed to claim stuck job", "message_id", p.ID, "error", err)
 			continue
@@ -346,7 +344,6 @@ func (q *RedisQueue) moveToDeadLetter(ctx context.Context, msg redis.XMessage, r
 			"moved_at":    time.Now().Format(time.RFC3339),
 		},
 	}).Result()
-
 	if err != nil {
 		slog.Error("failed to move to dead letter, not acking original message",
 			"message_id", msg.ID, "error", err)
@@ -402,7 +399,7 @@ func (q *RedisQueue) RetryDeadLetterJob(ctx context.Context, messageID string) e
 	msg := msgs[0]
 	data, ok := msg.Values["data"].(string)
 	if !ok {
-		return fmt.Errorf("invalid message format")
+		return errors.New("invalid message format")
 	}
 
 	// Re-add to main stream

@@ -15,12 +15,12 @@ const maxBodySize = 1 << 20 // 1 MB
 
 type registerRequest struct {
 	Username string `json:"username" validate:"required,max=100"`
-	Email    string `json:"email" validate:"required,email"`
+	Email    string `json:"email"    validate:"required,email"`
 	Password string `json:"password" validate:"required,min=10,max=72"`
 }
 
 type loginRequest struct {
-	Email    string `json:"email" validate:"required,email"`
+	Email    string `json:"email"    validate:"required,email"`
 	Password string `json:"password" validate:"required"`
 }
 

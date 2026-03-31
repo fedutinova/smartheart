@@ -59,7 +59,7 @@ func (s *Service) GetRefreshTokenUserID(ctx context.Context, tokenHash string) (
 	key := fmt.Sprintf("refresh_token:%s", tokenHash)
 	userID, err := s.client.Get(ctx, key).Result()
 	if errors.Is(err, redis.Nil) {
-		return "", fmt.Errorf("refresh token not found")
+		return "", errors.New("refresh token not found")
 	}
 	if err != nil {
 		return "", fmt.Errorf("failed to get refresh token: %w", err)

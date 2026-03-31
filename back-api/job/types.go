@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	uuid "github.com/google/uuid"
+	"github.com/google/uuid"
 )
 
 // Handler processes a single job.
@@ -83,7 +83,7 @@ const (
 )
 
 type Job struct {
-	mu       sync.Mutex `json:"-"`
+	mu       sync.Mutex
 	ID       uuid.UUID  `json:"id"`
 	Type     Type       `json:"type"`
 	Payload  []byte     `json:"payload"`

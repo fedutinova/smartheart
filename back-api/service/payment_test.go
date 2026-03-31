@@ -6,13 +6,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fedutinova/smartheart/back-api/apperr"
-	"github.com/fedutinova/smartheart/back-api/config"
-	repomocks "github.com/fedutinova/smartheart/back-api/repository/mocks"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/fedutinova/smartheart/back-api/apperr"
+	"github.com/fedutinova/smartheart/back-api/config"
+	repomocks "github.com/fedutinova/smartheart/back-api/repository/mocks"
 )
 
 func newPaymentService(t *testing.T) (*paymentService, *repomocks.MockStore) {

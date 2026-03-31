@@ -10,6 +10,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/mock"
+
 	"github.com/fedutinova/smartheart/back-api/apperr"
 	"github.com/fedutinova/smartheart/back-api/auth"
 	authmocks "github.com/fedutinova/smartheart/back-api/auth/mocks"
@@ -21,10 +26,6 @@ import (
 	"github.com/fedutinova/smartheart/back-api/service"
 	svcmocks "github.com/fedutinova/smartheart/back-api/service/mocks"
 	storagemocks "github.com/fedutinova/smartheart/back-api/storage/mocks"
-	"github.com/go-chi/chi/v5"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/mock"
 )
 
 // --- Helpers ---
@@ -81,7 +82,7 @@ func addChiURLParam(r *http.Request, key, value string) *http.Request {
 func TestHealth_ReturnsOK(t *testing.T) {
 	d := newTestDeps(t)
 	h := d.handler()
-	req := httptest.NewRequest("GET", "/health", nil)
+	req := httptest.NewRequest("GET", "/health", http.NoBody)
 	w := httptest.NewRecorder()
 
 	h.Healthz.Health(w, req)
@@ -177,7 +178,7 @@ func TestSubmitEKGAnalyze_MissingImageURL(t *testing.T) {
 	userID := uuid.New()
 
 	// Missing image_temp_url is caught by struct tag validation (required)
-	body, _ := json.Marshal(map[string]string{})
+	body, _ := json.Marshal(make(map[string]string))
 	req := httptest.NewRequest("POST", "/v1/ekg/analyze", bytes.NewReader(body))
 	req = withAuthContext(req, userID, []string{"user"})
 	w := httptest.NewRecorder()
@@ -239,7 +240,7 @@ func TestGetJob_NotFound(t *testing.T) {
 	h := d.handler()
 	userID := uuid.New()
 
-	req := httptest.NewRequest("GET", "/v1/jobs/"+jobID.String(), nil)
+	req := httptest.NewRequest("GET", "/v1/jobs/"+jobID.String(), http.NoBody)
 	req = withAuthContext(req, userID, []string{"user"})
 	req = addChiURLParam(req, "id", jobID.String())
 	w := httptest.NewRecorder()
@@ -256,7 +257,7 @@ func TestGetJob_BadID(t *testing.T) {
 	h := d.handler()
 	userID := uuid.New()
 
-	req := httptest.NewRequest("GET", "/v1/jobs/not-a-uuid", nil)
+	req := httptest.NewRequest("GET", "/v1/jobs/not-a-uuid", http.NoBody)
 	req = withAuthContext(req, userID, []string{"user"})
 	req = addChiURLParam(req, "id", "not-a-uuid")
 	w := httptest.NewRecorder()
@@ -285,7 +286,7 @@ func TestGetJob_Success(t *testing.T) {
 
 	h := d.handler()
 
-	req := httptest.NewRequest("GET", "/v1/jobs/"+jobID.String(), nil)
+	req := httptest.NewRequest("GET", "/v1/jobs/"+jobID.String(), http.NoBody)
 	req = withAuthContext(req, userID, []string{"user"})
 	req = addChiURLParam(req, "id", jobID.String())
 	w := httptest.NewRecorder()
@@ -547,7 +548,7 @@ func TestRefresh_MissingToken(t *testing.T) {
 	h := d.handler()
 
 	// Missing refresh_token caught by struct tag validation (required)
-	body, _ := json.Marshal(map[string]string{})
+	body, _ := json.Marshal(make(map[string]string))
 	req := httptest.NewRequest("POST", "/v1/auth/refresh", bytes.NewReader(body))
 	w := httptest.NewRecorder()
 
@@ -612,7 +613,7 @@ func TestLogout_EmptyBody(t *testing.T) {
 
 	h := d.handler()
 
-	body, _ := json.Marshal(map[string]string{})
+	body, _ := json.Marshal(make(map[string]string))
 	req := httptest.NewRequest("POST", "/v1/auth/logout", bytes.NewReader(body))
 	req = withAuthContext(req, userID, []string{"user"})
 	w := httptest.NewRecorder()

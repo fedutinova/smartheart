@@ -9,7 +9,7 @@ import (
 
 // Event is a notification sent to connected clients.
 type Event struct {
-	Type      string    `json:"type"`       // "request_completed", "request_failed"
+	Type      string    `json:"type"` // "request_completed", "request_failed"
 	RequestID uuid.UUID `json:"request_id"`
 	Status    string    `json:"status"`
 }

@@ -3,6 +3,7 @@ package gpt
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -10,9 +11,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sashabaranov/go-openai"
+
 	"github.com/fedutinova/smartheart/back-api/storage"
 	"github.com/fedutinova/smartheart/back-api/validation"
-	"github.com/sashabaranov/go-openai"
 )
 
 // Processor is the interface for GPT processing, enabling testability.
@@ -122,7 +124,7 @@ func (c *Client) ProcessRequest(ctx context.Context, textQuery string, fileKeys 
 	}
 
 	if len(content) == 0 {
-		return nil, fmt.Errorf("no valid content to process")
+		return nil, errors.New("no valid content to process")
 	}
 
 	messages = append(messages, openai.ChatCompletionMessage{
@@ -141,7 +143,7 @@ func (c *Client) ProcessRequest(ctx context.Context, textQuery string, fileKeys 
 		MaxTokens: 2000,
 	})
 	if err != nil {
-		return nil, classifyOpenAIError(err, reqCtx, c.timeout)
+		return nil, classifyOpenAIError(reqCtx, err, c.timeout)
 	}
 
 	if len(resp.Choices) == 0 {
@@ -149,7 +151,7 @@ func (c *Client) ProcessRequest(ctx context.Context, textQuery string, fileKeys 
 			"model", resp.Model,
 			"tokens_used", resp.Usage.TotalTokens,
 			"response_id", resp.ID)
-		return nil, fmt.Errorf("no response from OpenAI")
+		return nil, errors.New("no response from OpenAI")
 	}
 
 	responseContent := resp.Choices[0].Message.Content
@@ -178,7 +180,7 @@ func (c *Client) createMessagePartFromFile(ctx context.Context, key string) (*op
 	if err != nil {
 		return nil, fmt.Errorf("failed to get file from storage: %w", err)
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 
 	const maxFileSize = 20 * 1024 * 1024 // 20 MB
 	data, err := io.ReadAll(io.LimitReader(reader, maxFileSize+1))
@@ -306,11 +308,11 @@ func (c *Client) ProcessStructuredECG(ctx context.Context, fileKeys []string, sy
 		},
 	})
 	if err != nil {
-		return nil, classifyOpenAIError(err, reqCtx, c.timeout)
+		return nil, classifyOpenAIError(reqCtx, err, c.timeout)
 	}
 
 	if len(resp.Choices) == 0 {
-		return nil, fmt.Errorf("no response from OpenAI")
+		return nil, errors.New("no response from OpenAI")
 	}
 
 	responseContent := resp.Choices[0].Message.Content
@@ -335,7 +337,7 @@ func isLocalhostURL(u string) bool {
 }
 
 // classifyOpenAIError wraps an OpenAI API error with a descriptive message based on its type.
-func classifyOpenAIError(err error, reqCtx context.Context, timeout time.Duration) error {
+func classifyOpenAIError(reqCtx context.Context, err error, timeout time.Duration) error {
 	errStr := err.Error()
 
 	type errClass struct {
@@ -354,7 +356,7 @@ func classifyOpenAIError(err error, reqCtx context.Context, timeout time.Duratio
 	for _, c := range classes {
 		for _, kw := range c.keywords {
 			if strings.Contains(errStr, kw) {
-				slog.Error(c.message, "error", err, "hint", c.hint)
+				slog.Error(c.message, "error", err, "hint", c.hint) //nolint:sloglint // message varies by error class
 				return fmt.Errorf("%s: %w", c.message, err)
 			}
 		}

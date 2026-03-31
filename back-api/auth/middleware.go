@@ -20,7 +20,7 @@ func writeJSONError(w http.ResponseWriter, code int, msg string) {
 	type errBody struct {
 		Error string `json:"error"`
 	}
-	json.NewEncoder(w).Encode(errBody{Error: msg}) //nolint:errcheck
+	json.NewEncoder(w).Encode(errBody{Error: msg}) //nolint:errcheck // response write error is unrecoverable
 }
 
 type ctxKey string
@@ -65,7 +65,7 @@ func JWTMiddleware(secret, issuer string, opts ...func(*jwtMWConfig)) func(http.
 
 			parser := jwt.NewParser(jwt.WithValidMethods([]string{"HS256"}))
 			cl := &Claims{}
-			_, err := parser.ParseWithClaims(tokenStr, cl, func(t *jwt.Token) (any, error) {
+			_, err := parser.ParseWithClaims(tokenStr, cl, func(_ *jwt.Token) (any, error) {
 				return []byte(secret), nil
 			})
 			if err != nil {
@@ -121,11 +121,11 @@ func RequirePerm(required string) func(http.Handler) http.Handler {
 				return
 			}
 			perms := PermsForRoles(cl.Roles)
-			if _, ok := perms[PermAdminAll]; ok {
+			if _, hasAdmin := perms[PermAdminAll]; hasAdmin {
 				next.ServeHTTP(w, r)
 				return
 			}
-			if _, ok := perms[required]; !ok {
+			if _, hasPerm := perms[required]; !hasPerm {
 				writeJSONError(w, http.StatusForbidden, "forbidden")
 				return
 			}

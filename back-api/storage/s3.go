@@ -13,8 +13,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	appconfig "github.com/fedutinova/smartheart/back-api/config"
 	"github.com/google/uuid"
+
+	appconfig "github.com/fedutinova/smartheart/back-api/config"
 )
 
 type S3Storage struct {
@@ -162,7 +163,7 @@ func (s *S3Storage) GetFile(ctx context.Context, key string) (io.ReadCloser, str
 	return result.Body, contentType, nil
 }
 
-func (s *S3Storage) generateKey(filename string) string {
+func (*S3Storage) generateKey(filename string) string {
 	// filepath.Base strips directory components including ".." traversal
 	base := filepath.Base(filename)
 	ext := filepath.Ext(base)

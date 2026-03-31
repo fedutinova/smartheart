@@ -4,10 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/fedutinova/smartheart/back-api/database"
-	"github.com/fedutinova/smartheart/back-api/models"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+
+	"github.com/fedutinova/smartheart/back-api/database"
+	"github.com/fedutinova/smartheart/back-api/models"
 )
 
 // UserRepo provides user-related data access.

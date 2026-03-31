@@ -6,16 +6,17 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
 	"github.com/fedutinova/smartheart/back-api/apperr"
 	jobmocks "github.com/fedutinova/smartheart/back-api/job/mocks"
 	"github.com/fedutinova/smartheart/back-api/models"
 	repomocks "github.com/fedutinova/smartheart/back-api/repository/mocks"
 	"github.com/fedutinova/smartheart/back-api/storage"
 	storagemocks "github.com/fedutinova/smartheart/back-api/storage/mocks"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 )
 
 func newSubmissionService(t *testing.T) (*submissionService, *repomocks.MockStore, *jobmocks.MockQueue, *storagemocks.MockStorage) {
@@ -36,7 +37,7 @@ func TestSubmitEKG_Success(t *testing.T) {
 
 	repo.EXPECT().
 		CreateRequest(mock.Anything, mock.Anything).
-		Run(func(ctx context.Context, req *models.Request) {
+		Run(func(_ context.Context, req *models.Request) {
 			assert.Equal(t, userID, req.UserID)
 			assert.Equal(t, models.StatusPending, req.Status)
 		}).
@@ -109,7 +110,7 @@ func TestSubmitEKGFile_Success(t *testing.T) {
 
 	repo.EXPECT().
 		CreateFile(mock.Anything, mock.Anything).
-		Run(func(ctx context.Context, f *models.File) {
+		Run(func(_ context.Context, f *models.File) {
 			assert.Equal(t, "uploads/ekg.jpg", f.S3Key)
 			assert.Equal(t, "image/jpeg", f.FileType)
 		}).
@@ -230,7 +231,7 @@ func TestSubmitGPT_NoFiles(t *testing.T) {
 
 	result, err := svc.SubmitGPT(ctx, uuid.New(), "query", nil)
 	require.Error(t, err)
-	assert.ErrorIs(t, err, apperr.ErrValidation)
+	require.ErrorIs(t, err, apperr.ErrValidation)
 	assert.NotNil(t, result)
 }
 
@@ -261,7 +262,7 @@ func TestSubmitGPT_AllUploadsFail(t *testing.T) {
 
 	result, err := svc.SubmitGPT(ctx, uuid.New(), "query", files)
 	require.Error(t, err)
-	assert.ErrorIs(t, err, apperr.ErrValidation)
+	require.ErrorIs(t, err, apperr.ErrValidation)
 	assert.Len(t, result.UploadErrors, 1)
 }
 

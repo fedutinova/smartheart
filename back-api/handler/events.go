@@ -40,11 +40,11 @@ func (h *EventsHandler) StreamEvents(w http.ResponseWriter, r *http.Request) {
 		select {
 		case <-r.Context().Done():
 			return
-		case data, ok := <-ch:
-			if !ok {
+		case data, chOpen := <-ch:
+			if !chOpen {
 				return
 			}
-			fmt.Fprintf(w, "data: %s\n\n", data)
+			_, _ = fmt.Fprintf(w, "data: %s\n\n", data)
 			flusher.Flush()
 		}
 	}

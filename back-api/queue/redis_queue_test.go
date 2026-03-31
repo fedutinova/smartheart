@@ -8,9 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fedutinova/smartheart/back-api/job"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
+
+	"github.com/fedutinova/smartheart/back-api/job"
 )
 
 func getTestRedisClient(t *testing.T) *redis.Client {
@@ -71,7 +72,7 @@ func TestRedisQueue_EnqueueAndConsume(t *testing.T) {
 	processedJobs := make(chan *job.Job, 10)
 
 	// Start consumers
-	q.StartConsumers(ctx, 2, func(ctx context.Context, j *job.Job) error {
+	q.StartConsumers(ctx, 2, func(_ context.Context, j *job.Job) error {
 		atomic.AddInt32(&processedCount, 1)
 		processedJobs <- j
 		return nil
@@ -170,7 +171,7 @@ func TestRedisQueue_JobFailure(t *testing.T) {
 	done := make(chan struct{})
 
 	// Start consumer that fails
-	q.StartConsumers(ctx, 1, func(ctx context.Context, j *job.Job) error {
+	q.StartConsumers(ctx, 1, func(_ context.Context, _ *job.Job) error {
 		close(done)
 		return context.DeadlineExceeded // Simulate failure
 	})
@@ -286,7 +287,7 @@ func TestRedisQueue_Persistence(t *testing.T) {
 	consumerCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	q2.StartConsumers(consumerCtx, 1, func(ctx context.Context, j *job.Job) error {
+	q2.StartConsumers(consumerCtx, 1, func(_ context.Context, j *job.Job) error {
 		processed <- j
 		return nil
 	})

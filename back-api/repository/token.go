@@ -5,10 +5,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/fedutinova/smartheart/back-api/apperr"
-	"github.com/fedutinova/smartheart/back-api/models"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+
+	"github.com/fedutinova/smartheart/back-api/apperr"
+	"github.com/fedutinova/smartheart/back-api/models"
 )
 
 // CreateRefreshToken creates a new refresh token record

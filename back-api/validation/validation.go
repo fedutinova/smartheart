@@ -110,7 +110,7 @@ func ValidateGPTRequest(textQuery string, files []*multipart.FileHeader) Validat
 				buf := make([]byte, 512)
 				n, _ := f.Read(buf)
 				contentType = http.DetectContentType(buf[:n])
-				f.Close()
+				_ = f.Close()
 			}
 		}
 
