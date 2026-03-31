@@ -4,9 +4,11 @@
       <stop offset="0%" stop-color="#fb7185"/>
       <stop offset="100%" stop-color="#e11d48"/>
     </linearGradient>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Dela+Gothic+One&amp;display=swap');
+    </style>
   </defs>
-  <!-- Heart shape from two arcs meeting at bottom -->
-  <path d="M32 56 C32 56 8 38 8 22 C8 12 16 6 26 6 C30 6 32 8 32 8 C32 8 34 6 38 6 C48 6 56 12 56 22 C56 38 32 56 32 56Z" fill="url(#g)"/>
-  <!-- Letter У carved out in white -->
-  <text x="32" y="42" text-anchor="middle" font-family="'Arial', sans-serif" font-weight="900" font-size="32" fill="white" stroke="white" stroke-width="1.5">У</text>
+  <path d="M32 54 C28 50 6 36 6 23 A13 13 0 0 1 32 17 A13 13 0 0 1 58 23 C58 36 36 50 32 54Z" fill="url(#g)"/>
+  <!-- Dela Gothic One + white stroke for extra thickness -->
+  <text x="32" y="40" text-anchor="middle" font-family="'Dela Gothic One', sans-serif" font-size="30" fill="white" stroke="white" stroke-width="2">У</text>
 </svg>
