@@ -111,6 +111,8 @@ export interface QuotaInfo {
   paid_analyses_remaining: number;
   needs_payment: boolean;
   price_per_analysis_kopecks: number;
+  subscription_expires_at?: string;
+  subscription_price_kopecks: number;
 }
 
 export interface PaymentResult {

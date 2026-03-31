@@ -8,6 +8,8 @@ import { PaymentModal } from '@/components/PaymentModal';
 import { ROUTES, REFRESH_TOKEN_KEY } from '@/config';
 import { storage } from '@/utils/storage';
 import { useState } from 'react';
+import { formatPrice } from '@/utils/format';
+import { AccountSkeleton } from '@/components/Skeleton';
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('ru-RU', {
@@ -15,12 +17,6 @@ function formatDate(iso: string) {
     month: 'long',
     year: 'numeric',
   });
-}
-
-function formatPrice(kopecks: number): string {
-  const rub = Math.floor(kopecks / 100);
-  const kop = kopecks % 100;
-  return kop === 0 ? `${rub}` : `${rub}.${String(kop).padStart(2, '0')}`;
 }
 
 export function Account() {
@@ -43,11 +39,12 @@ export function Account() {
   };
 
   const isLoading = profileLoading || quotaLoading;
+  const hasActiveSub = quota?.subscription_expires_at && new Date(quota.subscription_expires_at) > new Date();
 
   if (isLoading) {
     return (
       <Layout>
-        <div className="text-center py-12 text-gray-400">Загрузка...</div>
+        <AccountSkeleton />
       </Layout>
     );
   }
@@ -85,38 +82,69 @@ export function Account() {
           </div>
         )}
 
-        {/* Quota & Subscription */}
+        {/* Subscription */}
+        {quota && (
+          <div className="bg-white shadow rounded-xl p-6 mb-6">
+            <h2 className="text-sm font-medium text-gray-400 mb-4">Подписка</h2>
+            {hasActiveSub ? (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-green-700">Активна</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    до {formatDate(quota.subscription_expires_at!)} — безлимитные анализы
+                  </p>
+                </div>
+                <span className="px-3 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">
+                  Активна
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Нет активной подписки</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Безлимитные анализы на 30 дней — {formatPrice(quota.subscription_price_kopecks || 0)} руб/мес
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowPayment(true)}
+                  className="px-4 py-2 bg-rose-600 text-white text-sm rounded-lg hover:bg-rose-700 transition-colors"
+                >
+                  Оформить
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Quota */}
         {quota && (
           <div className="bg-white shadow rounded-xl p-6 mb-6">
             <h2 className="text-sm font-medium text-gray-400 mb-4">Анализы</h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-              <div className="bg-gray-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-semibold text-gray-900">{quota.free_remaining}</p>
-                <p className="text-xs text-gray-400 mt-1">бесплатных сегодня</p>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-semibold text-rose-600">{quota.paid_analyses_remaining}</p>
-                <p className="text-xs text-gray-400 mt-1">оплаченных</p>
-              </div>
+            {hasActiveSub ? (
               <div className="bg-gray-50 rounded-lg p-4 text-center">
                 <p className="text-3xl font-semibold text-gray-900">{quota.used_today}</p>
-                <p className="text-xs text-gray-400 mt-1">использовано сегодня</p>
+                <p className="text-xs text-gray-400 mt-1">выполнено сегодня</p>
               </div>
-            </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-gray-50 rounded-lg p-4 text-center">
+                  <p className="text-3xl font-semibold text-gray-900">{quota.free_remaining}</p>
+                  <p className="text-xs text-gray-400 mt-1">бесплатных сегодня</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-4 text-center">
+                  <p className="text-3xl font-semibold text-gray-900">{quota.used_today}</p>
+                  <p className="text-xs text-gray-400 mt-1">использовано сегодня</p>
+                </div>
+              </div>
+            )}
 
-            <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-              <p className="text-sm text-gray-500">
-                Бесплатный лимит: {quota.daily_limit} анализа в день.
-                Стоимость дополнительного: {formatPrice(quota.price_per_analysis_kopecks)} руб.
+            {!hasActiveSub && (
+              <p className="text-xs text-gray-400 mt-4">
+                Бесплатный лимит: {quota.daily_limit} анализа в день. Для безлимита оформите подписку.
               </p>
-              <button
-                onClick={() => setShowPayment(true)}
-                className="px-4 py-2 bg-rose-600 text-white text-sm rounded-lg hover:bg-rose-700 transition-colors"
-              >
-                Купить анализы
-              </button>
-            </div>
+            )}
           </div>
         )}
 

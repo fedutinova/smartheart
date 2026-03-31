@@ -13,6 +13,12 @@ const (
 	PaymentCanceled  = "canceled"
 )
 
+// Payment type constants.
+const (
+	PaymentTypeAnalyses     = "analyses"
+	PaymentTypeSubscription = "subscription"
+)
+
 // Payment represents a YooKassa payment record.
 type Payment struct {
 	ID             uuid.UUID  `json:"id"`
@@ -22,6 +28,7 @@ type Payment struct {
 	AmountKopecks  int        `json:"amount_kopecks"`
 	Description    string     `json:"description"`
 	AnalysesCount  int        `json:"analyses_count"`
+	PaymentType    string     `json:"payment_type"`
 	CreatedAt      time.Time  `json:"created_at"`
 	ConfirmedAt    *time.Time `json:"confirmed_at,omitempty"`
 }

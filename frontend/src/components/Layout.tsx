@@ -60,7 +60,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { to: ROUTES.ANALYZE, label: 'Анализ' },
     { to: ROUTES.HISTORY, label: 'История' },
     { to: ROUTES.KNOWLEDGE_BASE, label: 'Чат-бот' },
-    { to: ROUTES.CONTACTS, label: 'О нас' },
   ];
 
   const bottomTabs: { to: string; label: string; icon: React.ReactNode }[] = [

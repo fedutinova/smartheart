@@ -7,6 +7,7 @@ import { ToastContainer } from '@/components/Toast';
 import { useToastNotifications } from '@/hooks/useToastNotifications';
 import { Login } from '@/pages/Login';
 import { Register } from '@/pages/Register';
+import { Landing } from '@/pages/Landing';
 
 const Dashboard = lazy(() => import('@/pages/Dashboard').then((m) => ({ default: m.Dashboard })));
 const Analyze = lazy(() => import('@/pages/Analyze').then((m) => ({ default: m.Analyze })));
@@ -40,7 +41,8 @@ function App() {
           <Route path={ROUTES.REGISTER} element={<Register />} />
           <Route path={ROUTES.PRIVACY} element={<Privacy />} />
           <Route path={ROUTES.TERMS} element={<Terms />} />
-          <Route path={ROUTES.HOME} element={<Navigate to={ROUTES.DASHBOARD} replace />} />
+          <Route path={ROUTES.CONTACTS} element={<Contacts />} />
+          <Route path={ROUTES.HOME} element={<Landing />} />
 
           <Route
             path={ROUTES.DASHBOARD}
@@ -83,14 +85,6 @@ function App() {
             }
           />
           <Route
-            path={ROUTES.CONTACTS}
-            element={
-              <ProtectedRoute>
-                <Contacts />
-              </ProtectedRoute>
-            }
-          />
-          <Route
             path="/results/:id"
             element={
               <ProtectedRoute>
@@ -99,7 +93,7 @@ function App() {
             }
           />
 
-          <Route path="*" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
+          <Route path="*" element={<Navigate to={ROUTES.HOME} replace />} />
         </Routes>
       </Suspense>
     </ErrorBoundary>

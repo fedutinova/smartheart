@@ -58,6 +58,23 @@ func (h *PaymentHandler) Webhook(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// CreateSubscription creates a YooKassa payment for a monthly subscription.
+func (h *PaymentHandler) CreateSubscription(w http.ResponseWriter, r *http.Request) {
+	userID, _, ok := extractUserID(r)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "no auth context")
+		return
+	}
+
+	result, err := h.Service.CreateSubscription(r.Context(), userID)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, result)
+}
+
 // GetQuota returns the user's current quota information.
 func (h *PaymentHandler) GetQuota(w http.ResponseWriter, r *http.Request) {
 	userID, _, ok := extractUserID(r)

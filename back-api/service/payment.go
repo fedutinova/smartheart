@@ -19,8 +19,10 @@ import (
 
 // PaymentService handles payment creation and webhook processing.
 type PaymentService interface {
-	// CreatePayment creates a YooKassa payment and returns the confirmation URL.
+	// CreatePayment creates a YooKassa payment for analysis packs and returns the confirmation URL.
 	CreatePayment(ctx context.Context, userID uuid.UUID, analysesCount int) (*PaymentResult, error)
+	// CreateSubscription creates a YooKassa payment for a monthly subscription.
+	CreateSubscription(ctx context.Context, userID uuid.UUID) (*PaymentResult, error)
 	// HandleWebhook processes a YooKassa webhook notification.
 	HandleWebhook(ctx context.Context, body []byte) error
 	// GetQuotaInfo returns the user's current quota status.
@@ -36,12 +38,14 @@ type PaymentResult struct {
 
 // QuotaInfo describes the user's current quota state.
 type QuotaInfo struct {
-	DailyLimit             int  `json:"daily_limit"`
-	UsedToday              int  `json:"used_today"`
-	FreeRemaining          int  `json:"free_remaining"`
-	PaidAnalysesRemaining  int  `json:"paid_analyses_remaining"`
-	NeedsPayment           bool `json:"needs_payment"`
-	PricePerAnalysisKopecks int `json:"price_per_analysis_kopecks"`
+	DailyLimit                int     `json:"daily_limit"`
+	UsedToday                 int     `json:"used_today"`
+	FreeRemaining             int     `json:"free_remaining"`
+	PaidAnalysesRemaining     int     `json:"paid_analyses_remaining"`
+	NeedsPayment              bool    `json:"needs_payment"`
+	PricePerAnalysisKopecks   int     `json:"price_per_analysis_kopecks"`
+	SubscriptionExpiresAt     *string `json:"subscription_expires_at,omitempty"`
+	SubscriptionPriceKopecks  int     `json:"subscription_price_kopecks"`
 }
 
 type paymentService struct {
@@ -53,11 +57,33 @@ type paymentService struct {
 
 func NewPaymentService(repo repository.Store, ykCfg config.YooKassaConfig, freeLimit int) PaymentService {
 	return &paymentService{
-		repo:      repo,
-		cfg:       ykCfg,
-		freeLimit: freeLimit,
+		repo:       repo,
+		cfg:        ykCfg,
+		freeLimit:  freeLimit,
 		httpClient: &http.Client{Timeout: 15 * time.Second},
 	}
+}
+
+// StartStalePaymentCleaner launches a background goroutine that periodically
+// cancels pending payments older than maxAge. It stops when ctx is canceled.
+func StartStalePaymentCleaner(ctx context.Context, repo repository.Store, interval, maxAge time.Duration) {
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				canceled, err := repo.CancelStalePayments(ctx, maxAge)
+				if err != nil {
+					slog.Warn("failed to cancel stale payments", "error", err)
+				} else if canceled > 0 {
+					slog.Info("canceled stale payments", "count", canceled)
+				}
+			}
+		}
+	}()
 }
 
 // YooKassa API types
@@ -95,21 +121,14 @@ type yooKassaWebhook struct {
 	} `json:"object"`
 }
 
-func (s *paymentService) CreatePayment(ctx context.Context, userID uuid.UUID, analysesCount int) (*PaymentResult, error) {
+// createYooKassaPayment is the shared logic for creating a payment in YooKassa and saving it locally.
+func (s *paymentService) createYooKassaPayment(ctx context.Context, payment *models.Payment, metadata map[string]string) (*PaymentResult, error) {
 	if s.cfg.ShopID == "" || s.cfg.SecretKey == "" {
 		return nil, fmt.Errorf("payments not configured: %w", apperr.ErrInternal)
 	}
-	if analysesCount < 1 || analysesCount > 100 {
-		return nil, fmt.Errorf("analyses count must be 1-100: %w", apperr.ErrValidation)
-	}
 
-	totalKopecks := s.cfg.PriceKopecks * analysesCount
-	amountRub := fmt.Sprintf("%d.%02d", totalKopecks/100, totalKopecks%100)
-	description := fmt.Sprintf("SmartHeart: %d анализ(ов) ЭКГ", analysesCount)
+	amountRub := fmt.Sprintf("%d.%02d", payment.AmountKopecks/100, payment.AmountKopecks%100)
 
-	paymentID := uuid.New()
-
-	// Create payment in YooKassa
 	reqBody := yooKassaCreateRequest{
 		Amount: yooKassaAmount{
 			Value:    amountRub,
@@ -119,11 +138,8 @@ func (s *paymentService) CreatePayment(ctx context.Context, userID uuid.UUID, an
 			Type:      "redirect",
 			ReturnURL: s.cfg.ReturnURL,
 		},
-		Description: description,
-		Metadata: map[string]string{
-			"payment_id": paymentID.String(),
-			"user_id":    userID.String(),
-		},
+		Description: payment.Description,
+		Metadata:    metadata,
 	}
 
 	bodyBytes, err := json.Marshal(reqBody)
@@ -136,7 +152,7 @@ func (s *paymentService) CreatePayment(ctx context.Context, userID uuid.UUID, an
 		return nil, apperr.WrapInternal("create payment request", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Idempotence-Key", paymentID.String())
+	req.Header.Set("Idempotence-Key", payment.ID.String())
 	req.SetBasicAuth(s.cfg.ShopID, s.cfg.SecretKey)
 
 	resp, err := s.httpClient.Do(req)
@@ -164,27 +180,67 @@ func (s *paymentService) CreatePayment(ctx context.Context, userID uuid.UUID, an
 		return nil, fmt.Errorf("no confirmation URL in response: %w", apperr.ErrInternal)
 	}
 
-	// Save payment record
-	payment := &models.Payment{
-		ID:            paymentID,
-		UserID:        userID,
-		YooKassaID:    ykResp.ID,
-		Status:        models.PaymentPending,
-		AmountKopecks: totalKopecks,
-		Description:   description,
-		AnalysesCount: analysesCount,
-	}
+	payment.YooKassaID = ykResp.ID
+	payment.Status = models.PaymentPending
 	if err := s.repo.CreatePayment(ctx, payment); err != nil {
 		return nil, apperr.WrapInternal("save payment record", err)
 	}
 
-	slog.Info("payment created", "payment_id", paymentID, "yookassa_id", ykResp.ID, "user_id", userID, "amount", amountRub)
+	slog.Info("payment created", "payment_id", payment.ID, "yookassa_id", ykResp.ID, "user_id", payment.UserID, "type", payment.PaymentType, "amount", amountRub)
 
 	return &PaymentResult{
-		PaymentID:       paymentID,
+		PaymentID:       payment.ID,
 		ConfirmationURL: ykResp.Confirmation.URL,
 		AmountRub:       amountRub,
 	}, nil
+}
+
+func (s *paymentService) CreatePayment(ctx context.Context, userID uuid.UUID, analysesCount int) (*PaymentResult, error) {
+	if analysesCount < 1 || analysesCount > 100 {
+		return nil, fmt.Errorf("analyses count must be 1-100: %w", apperr.ErrValidation)
+	}
+
+	totalKopecks := s.cfg.PriceKopecks * analysesCount
+	paymentID := uuid.New()
+
+	return s.createYooKassaPayment(ctx, &models.Payment{
+		ID:            paymentID,
+		UserID:        userID,
+		AmountKopecks: totalKopecks,
+		Description:   fmt.Sprintf("SmartHeart: %d анализ(ов) ЭКГ", analysesCount),
+		AnalysesCount: analysesCount,
+		PaymentType:   models.PaymentTypeAnalyses,
+	}, map[string]string{
+		"payment_id": paymentID.String(),
+		"user_id":    userID.String(),
+	})
+}
+
+func (s *paymentService) CreateSubscription(ctx context.Context, userID uuid.UUID) (*PaymentResult, error) {
+	// Reject if user already has an active subscription.
+	subExpires, err := s.repo.GetSubscriptionExpiresAt(ctx, userID)
+	if err != nil {
+		return nil, apperr.WrapInternal("check subscription", err)
+	}
+	if subExpires != nil && subExpires.After(time.Now()) {
+		return nil, fmt.Errorf("subscription is already active until %s: %w",
+			subExpires.Format("2006-01-02"), apperr.ErrConflict)
+	}
+
+	paymentID := uuid.New()
+
+	return s.createYooKassaPayment(ctx, &models.Payment{
+		ID:            paymentID,
+		UserID:        userID,
+		AmountKopecks: s.cfg.SubscriptionPriceKopecks,
+		Description:   "SmartHeart: подписка на 30 дней",
+		AnalysesCount: 0,
+		PaymentType:   models.PaymentTypeSubscription,
+	}, map[string]string{
+		"payment_id": paymentID.String(),
+		"user_id":    userID.String(),
+		"type":       "subscription",
+	})
 }
 
 func (s *paymentService) HandleWebhook(ctx context.Context, body []byte) error {
@@ -223,7 +279,7 @@ func (s *paymentService) HandleWebhook(ctx context.Context, body []byte) error {
 func (s *paymentService) GetQuotaInfo(ctx context.Context, userID uuid.UUID) (*QuotaInfo, error) {
 	usedToday, err := s.repo.GetDailyUsage(ctx, userID)
 	if err != nil {
-		slog.Warn("failed to get daily usage", "user_id", userID, "error", err)
+		slog.Error("failed to get daily usage", "user_id", userID, "error", err)
 		usedToday = 0
 	}
 
@@ -233,19 +289,34 @@ func (s *paymentService) GetQuotaInfo(ctx context.Context, userID uuid.UUID) (*Q
 		paidRemaining = 0
 	}
 
+	subExpiresAt, err := s.repo.GetSubscriptionExpiresAt(ctx, userID)
+	if err != nil {
+		slog.Warn("failed to get subscription", "user_id", userID, "error", err)
+	}
+
+	hasActiveSubscription := subExpiresAt != nil && subExpiresAt.After(time.Now())
+
 	freeRemaining := s.freeLimit - usedToday
 	if freeRemaining < 0 {
 		freeRemaining = 0
 	}
 
-	needsPayment := freeRemaining == 0 && paidRemaining == 0
+	needsPayment := !hasActiveSubscription && freeRemaining == 0 && paidRemaining == 0
 
-	return &QuotaInfo{
-		DailyLimit:              s.freeLimit,
-		UsedToday:               usedToday,
-		FreeRemaining:           freeRemaining,
-		PaidAnalysesRemaining:   paidRemaining,
-		NeedsPayment:            needsPayment,
-		PricePerAnalysisKopecks: s.cfg.PriceKopecks,
-	}, nil
+	info := &QuotaInfo{
+		DailyLimit:               s.freeLimit,
+		UsedToday:                usedToday,
+		FreeRemaining:            freeRemaining,
+		PaidAnalysesRemaining:    paidRemaining,
+		NeedsPayment:             needsPayment,
+		PricePerAnalysisKopecks:  s.cfg.PriceKopecks,
+		SubscriptionPriceKopecks: s.cfg.SubscriptionPriceKopecks,
+	}
+
+	if subExpiresAt != nil {
+		formatted := subExpiresAt.Format(time.RFC3339)
+		info.SubscriptionExpiresAt = &formatted
+	}
+
+	return info, nil
 }

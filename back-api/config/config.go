@@ -86,6 +86,8 @@ type YooKassaConfig struct {
 	ReturnURL string // URL to redirect after payment
 	// Price in kopecks for a single analysis beyond the free quota.
 	PriceKopecks int
+	// Price in kopecks for a monthly subscription (unlimited analyses).
+	SubscriptionPriceKopecks int
 }
 
 // RAGConfig holds RAG microservice settings.
@@ -334,10 +336,11 @@ func Load() Config {
 			URL: envString("RAG_URL", "http://localhost:8000"),
 		},
 		YooKassa: YooKassaConfig{
-			ShopID:       envString("YOOKASSA_SHOP_ID", ""),
-			SecretKey:    envString("YOOKASSA_SECRET_KEY", ""),
-			ReturnURL:    envString("YOOKASSA_RETURN_URL", "http://localhost:3000/dashboard"),
-			PriceKopecks: envInt("YOOKASSA_PRICE_KOPECKS", 4900), // 49 rub default
+			ShopID:                   envString("YOOKASSA_SHOP_ID", ""),
+			SecretKey:                envString("YOOKASSA_SECRET_KEY", ""),
+			ReturnURL:                envString("YOOKASSA_RETURN_URL", "http://localhost:3000/dashboard"),
+			PriceKopecks:             envInt("YOOKASSA_PRICE_KOPECKS", 4900),               // 49 rub default
+			SubscriptionPriceKopecks: envInt("YOOKASSA_SUBSCRIPTION_PRICE_KOPECKS", 199900), // 1999 rub default
 		},
 	}
 }

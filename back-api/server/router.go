@@ -24,17 +24,13 @@ func NewRouter(h *handler.Handler, cfg config.Config) http.Handler {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(60 * time.Second))
 
-	// Rate limiting by IP address
+	// Global rate limiting by IP address
 	if cfg.RateLimit.RPM > 0 {
 		r.Use(httprate.Limit(
 			cfg.RateLimit.RPM,
 			time.Minute,
 			httprate.WithKeyFuncs(httprate.KeyByIP),
-			httprate.WithLimitHandler(func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusTooManyRequests)
-				_, _ = w.Write([]byte(`{"error":"rate limit exceeded","retry_after":"60s"}`))
-			}),
+			httprate.WithLimitHandler(rateLimitHandler),
 		))
 	}
 
@@ -44,8 +40,30 @@ func NewRouter(h *handler.Handler, cfg config.Config) http.Handler {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
+	// Set middleware on handler before route registration.
+	h.WebhookIPMiddleware = WebhookIPWhitelist(cfg.YooKassa.ShopID)
+	h.AnalyzeRateLimit = EndpointRateLimit(10)       // 10 RPM per IP for analysis
+	h.SubscriptionRateLimit = EndpointRateLimit(5)    // 5 RPM per IP for subscriptions
+
 	h.RegisterRoutes(r)
 	return r
+}
+
+// rateLimitHandler is the shared response for rate-limited requests.
+func rateLimitHandler(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusTooManyRequests)
+	_, _ = w.Write([]byte(`{"error":"rate limit exceeded","retry_after":"60s"}`))
+}
+
+// EndpointRateLimit returns a rate-limiting middleware for a specific endpoint.
+func EndpointRateLimit(rpm int) func(http.Handler) http.Handler {
+	return httprate.Limit(
+		rpm,
+		time.Minute,
+		httprate.WithKeyFuncs(httprate.KeyByIP),
+		httprate.WithLimitHandler(rateLimitHandler),
+	)
 }
 
 // securityHeaders adds standard security headers to every response.

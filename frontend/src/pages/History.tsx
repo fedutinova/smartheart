@@ -3,6 +3,7 @@ import { formatDate, formatStatus, getStatusColor, formatECGParams } from '@/uti
 import { Layout } from '@/components/Layout';
 import { useUserRequests } from '@/hooks/useUserRequests';
 import { useSessionState } from '@/hooks/useSessionState';
+import { HistoryTableSkeleton } from '@/components/Skeleton';
 
 const PAGE_SIZE = 20;
 
@@ -22,7 +23,7 @@ export function History() {
 
         <div className="bg-white shadow rounded-lg">
           {isLoading ? (
-            <div className="px-4 sm:px-6 py-8 text-center text-gray-500">Загрузка...</div>
+            <HistoryTableSkeleton />
           ) : error ? (
             <div className="px-4 sm:px-6 py-8 text-center text-red-500">
               Ошибка при загрузке данных

@@ -268,6 +268,10 @@ export const paymentAPI = {
     const response = await api.post<PaymentResult>('/v1/payments', { analyses_count: analysesCount });
     return response.data;
   },
+  createSubscription: async () => {
+    const response = await api.post<PaymentResult>('/v1/subscriptions');
+    return response.data;
+  },
 };
 
 export default api;

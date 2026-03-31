@@ -14,7 +14,8 @@ type User struct {
 	PasswordHash string    `json:"-" db:"password_hash"`
 	CreatedAt    time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at" db:"updated_at"`
-	Roles        []Role    `json:"roles,omitempty"`
+	Roles                []Role     `json:"roles,omitempty"`
+	SubscriptionExpiresAt *time.Time `json:"subscription_expires_at,omitempty" db:"subscription_expires_at"`
 }
 
 // Role represents a user role

@@ -2,9 +2,11 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 // IncrementDailyUsage atomically increments the user's daily submission count
@@ -31,8 +33,10 @@ func (r *Repository) GetDailyUsage(ctx context.Context, userID uuid.UUID) (int, 
 		WHERE user_id = $1 AND usage_date = CURRENT_DATE
 	`, userID).Scan(&count)
 	if err != nil {
-		// No row means 0 usage today
-		return 0, nil
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("get daily usage: %w", err)
 	}
 	return count, nil
 }

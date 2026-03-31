@@ -60,8 +60,10 @@ type PaymentRepo interface {
 	CreatePayment(ctx context.Context, p *models.Payment) error
 	ConfirmPayment(ctx context.Context, yookassaID string) error
 	CancelPayment(ctx context.Context, yookassaID string) error
+	CancelStalePayments(ctx context.Context, olderThan time.Duration) (int, error)
 	GetPaidAnalysesRemaining(ctx context.Context, userID uuid.UUID) (int, error)
 	DecrementPaidAnalyses(ctx context.Context, userID uuid.UUID) (int, error)
+	GetSubscriptionExpiresAt(ctx context.Context, userID uuid.UUID) (*time.Time, error)
 	GetPaymentsByUserID(ctx context.Context, userID uuid.UUID) ([]models.Payment, error)
 }
 

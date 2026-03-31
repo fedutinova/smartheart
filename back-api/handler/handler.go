@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"net/http"
+
 	"github.com/fedutinova/smartheart/back-api/auth"
 	"github.com/fedutinova/smartheart/back-api/config"
 	"github.com/fedutinova/smartheart/back-api/job"
@@ -41,6 +43,9 @@ type HealthHandler struct {
 	Storage  storage.Storage
 }
 
+// Middleware is an HTTP middleware function.
+type Middleware = func(http.Handler) http.Handler
+
 // Handler composes all focused handlers and registers routes.
 type Handler struct {
 	Auth    *AuthHandler
@@ -53,6 +58,13 @@ type Handler struct {
 	Payment *PaymentHandler
 	Profile *ProfileHandler
 	Config  config.Config
+
+	// WebhookIPMiddleware restricts webhook access to trusted IPs.
+	WebhookIPMiddleware Middleware
+	// AnalyzeRateLimit is a stricter per-endpoint rate limit for analysis submission.
+	AnalyzeRateLimit Middleware
+	// SubscriptionRateLimit is a stricter per-endpoint rate limit for subscription creation.
+	SubscriptionRateLimit Middleware
 }
 
 // NewHandler creates a Handler with all sub-handlers wired to shared dependencies.
@@ -98,7 +110,11 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 	})
 
 	// YooKassa webhook (public — called by YooKassa servers, no JWT)
-	r.Post("/v1/payments/webhook", h.Payment.Webhook)
+	if h.WebhookIPMiddleware != nil {
+		r.With(h.WebhookIPMiddleware).Post("/v1/payments/webhook", h.Payment.Webhook)
+	} else {
+		r.Post("/v1/payments/webhook", h.Payment.Webhook)
+	}
 
 	// Protected endpoints
 	r.Group(func(r chi.Router) {
@@ -111,8 +127,12 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 
 		r.Post("/v1/auth/logout", h.Auth.Logout)
 
-		r.With(auth.RequirePerm(auth.PermEKGSubmit)).Post("/v1/ekg/analyze", h.EKG.SubmitEKGAnalyze)
-		r.With(auth.RequirePerm(auth.PermEKGSubmit)).Post("/v1/gpt/process", h.GPT.SubmitGPTRequest)
+		ekgMiddleware := []func(http.Handler) http.Handler{auth.RequirePerm(auth.PermEKGSubmit)}
+		if h.AnalyzeRateLimit != nil {
+			ekgMiddleware = append(ekgMiddleware, h.AnalyzeRateLimit)
+		}
+		r.With(ekgMiddleware...).Post("/v1/ekg/analyze", h.EKG.SubmitEKGAnalyze)
+		r.With(ekgMiddleware...).Post("/v1/gpt/process", h.GPT.SubmitGPTRequest)
 
 		r.With(auth.RequirePerm(auth.PermJobReadOwn)).Get("/v1/jobs/{id}", h.Request.GetJob)
 		r.With(auth.RequirePerm(auth.PermJobReadOwn)).Get("/v1/requests/{id}", h.Request.GetRequest)
@@ -132,6 +152,11 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		// Payments & quota
 		r.Get("/v1/quota", h.Payment.GetQuota)
 		r.Post("/v1/payments", h.Payment.CreatePayment)
+		if h.SubscriptionRateLimit != nil {
+			r.With(h.SubscriptionRateLimit).Post("/v1/subscriptions", h.Payment.CreateSubscription)
+		} else {
+			r.Post("/v1/subscriptions", h.Payment.CreateSubscription)
+		}
 
 		// Admin-only endpoints
 		r.With(auth.RequirePerm(auth.PermAdminAll)).Get("/ready", h.Healthz.Ready)

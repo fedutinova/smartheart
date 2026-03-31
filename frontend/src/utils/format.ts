@@ -36,6 +36,12 @@ export const getStatusColor = (status: string): string => {
   return colorMap[status] || 'bg-gray-100 text-gray-800';
 };
 
+export const formatPrice = (kopecks: number): string => {
+  const rub = Math.floor(kopecks / 100);
+  const kop = kopecks % 100;
+  return kop === 0 ? `${rub}` : `${rub}.${String(kop).padStart(2, '0')}`;
+};
+
 export const formatECGParams = (r: Request): string => {
   const parts: string[] = [];
   if (r.ecg_sex === 'male') parts.push('М');

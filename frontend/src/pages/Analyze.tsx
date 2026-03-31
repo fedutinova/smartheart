@@ -248,36 +248,53 @@ export function Analyze() {
         <h1 className="text-2xl font-semibold text-gray-900 mb-6">Анализ ЭКГ</h1>
 
         {/* Quota */}
-        {quota && (
-          <div className="mb-4 flex items-center justify-between text-sm">
-            <div className="flex items-center gap-3 text-gray-400">
-              <span className="flex items-center gap-1.5">
-                <span className={`inline-block w-1.5 h-1.5 rounded-full ${quota.needs_payment ? 'bg-amber-400' : 'bg-green-400'}`} />
-                {quota.needs_payment
-                  ? 'Лимит исчерпан'
-                  : `${quota.free_remaining} из ${quota.daily_limit} бесплатных`}
-              </span>
-              {quota.paid_analyses_remaining > 0 && (
-                <span className="text-rose-500">+{quota.paid_analyses_remaining} оплач.</span>
+        {quota && (() => {
+          const hasActiveSub = quota.subscription_expires_at && new Date(quota.subscription_expires_at) > new Date();
+          return (
+            <div className="mb-4 flex items-center justify-between text-sm">
+              <div className="flex items-center gap-3 text-gray-400">
+                <span className="flex items-center gap-1.5">
+                  <span className={`inline-block w-1.5 h-1.5 rounded-full ${quota.needs_payment ? 'bg-amber-400' : 'bg-green-400'}`} />
+                  {hasActiveSub
+                    ? `${quota.used_today} выполнено сегодня`
+                    : quota.needs_payment
+                      ? 'Лимит исчерпан'
+                      : `${quota.free_remaining} из ${quota.daily_limit} бесплатных`}
+                </span>
+                {!hasActiveSub && quota.paid_analyses_remaining > 0 && (
+                  <span className="text-rose-500">+{quota.paid_analyses_remaining} оплач.</span>
+                )}
+              </div>
+              {quota.needs_payment && (
+                <button
+                  type="button"
+                  onClick={() => setShowPayment(true)}
+                  className="text-xs text-rose-600 hover:text-rose-700 font-medium"
+                >
+                  Подписка
+                </button>
               )}
             </div>
-            {quota.needs_payment && (
-              <button
-                type="button"
-                onClick={() => setShowPayment(true)}
-                className="text-xs text-rose-600 hover:text-rose-700 font-medium"
-              >
-                Купить
-              </button>
-            )}
-          </div>
-        )}
+          );
+        })()}
 
         <div className="bg-white shadow rounded-lg p-4 sm:p-6">
           <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded text-sm">
                 {error}
+              </div>
+            )}
+            {quota?.needs_payment && !error && (
+              <div className="flex items-center justify-between bg-amber-50 border border-amber-200 px-4 py-3 rounded text-sm">
+                <span className="text-amber-800">Бесплатный лимит исчерпан. Оформите подписку для продолжения.</span>
+                <button
+                  type="button"
+                  onClick={() => setShowPayment(true)}
+                  className="ml-3 flex-shrink-0 px-3 py-1 bg-rose-600 text-white text-xs font-medium rounded-lg hover:bg-rose-700 transition-colors"
+                >
+                  Подписка
+                </button>
               </div>
             )}
 

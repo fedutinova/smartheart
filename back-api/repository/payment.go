@@ -3,44 +3,64 @@ package repository
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/fedutinova/smartheart/back-api/models"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 // CreatePayment inserts a new payment record.
 func (r *Repository) CreatePayment(ctx context.Context, p *models.Payment) error {
 	_, err := r.querier.Exec(ctx, `
-		INSERT INTO payments (id, user_id, yookassa_id, status, amount_kopecks, description, analyses_count)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-	`, p.ID, p.UserID, p.YooKassaID, p.Status, p.AmountKopecks, p.Description, p.AnalysesCount)
+		INSERT INTO payments (id, user_id, yookassa_id, status, amount_kopecks, description, analyses_count, payment_type)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	`, p.ID, p.UserID, p.YooKassaID, p.Status, p.AmountKopecks, p.Description, p.AnalysesCount, p.PaymentType)
 	if err != nil {
 		return fmt.Errorf("create payment: %w", err)
 	}
 	return nil
 }
 
-// ConfirmPayment marks a payment as succeeded and credits paid analyses to the user.
+// ConfirmPayment marks a payment as succeeded and credits the user atomically.
+// For "analyses" type — increments paid_analyses_remaining.
+// For "subscription" type — sets subscription_expires_at to 30 days from now.
 func (r *Repository) ConfirmPayment(ctx context.Context, yookassaID string) error {
-	tag, err := r.querier.Exec(ctx, `
-		WITH confirmed AS (
+	return r.db.WithTx(ctx, func(tx pgx.Tx) error {
+		// Confirm the payment and get its type.
+		var userID uuid.UUID
+		var paymentType string
+		var analysesCount int
+		err := tx.QueryRow(ctx, `
 			UPDATE payments
 			SET status = 'succeeded', confirmed_at = now()
 			WHERE yookassa_id = $1 AND status = 'pending'
-			RETURNING user_id, analyses_count
-		)
-		UPDATE users
-		SET paid_analyses_remaining = paid_analyses_remaining + confirmed.analyses_count
-		FROM confirmed
-		WHERE users.id = confirmed.user_id
-	`, yookassaID)
-	if err != nil {
-		return fmt.Errorf("confirm payment: %w", err)
-	}
-	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("payment not found or already confirmed")
-	}
-	return nil
+			RETURNING user_id, payment_type, analyses_count
+		`, yookassaID).Scan(&userID, &paymentType, &analysesCount)
+		if err != nil {
+			return fmt.Errorf("confirm payment: %w", err)
+		}
+
+		// Credit the user based on payment type.
+		switch paymentType {
+		case models.PaymentTypeSubscription:
+			_, err = tx.Exec(ctx, `
+				UPDATE users
+				SET subscription_expires_at = GREATEST(COALESCE(subscription_expires_at, now()), now()) + INTERVAL '30 days'
+				WHERE id = $1
+			`, userID)
+		default:
+			_, err = tx.Exec(ctx, `
+				UPDATE users
+				SET paid_analyses_remaining = paid_analyses_remaining + $2
+				WHERE id = $1
+			`, userID, analysesCount)
+		}
+		if err != nil {
+			return fmt.Errorf("credit user after payment: %w", err)
+		}
+		return nil
+	})
 }
 
 // CancelPayment marks a payment as canceled.
@@ -52,6 +72,20 @@ func (r *Repository) CancelPayment(ctx context.Context, yookassaID string) error
 		return fmt.Errorf("cancel payment: %w", err)
 	}
 	return nil
+}
+
+// CancelStalePayments cancels all pending payments older than the given duration.
+// Returns the number of canceled payments.
+func (r *Repository) CancelStalePayments(ctx context.Context, olderThan time.Duration) (int, error) {
+	cutoff := time.Now().Add(-olderThan)
+	tag, err := r.querier.Exec(ctx, `
+		UPDATE payments SET status = 'canceled'
+		WHERE status = 'pending' AND created_at < $1
+	`, cutoff)
+	if err != nil {
+		return 0, fmt.Errorf("cancel stale payments: %w", err)
+	}
+	return int(tag.RowsAffected()), nil
 }
 
 // GetPaidAnalysesRemaining returns how many paid analyses the user has left.
@@ -82,10 +116,22 @@ func (r *Repository) DecrementPaidAnalyses(ctx context.Context, userID uuid.UUID
 	return remaining, nil
 }
 
+// GetSubscriptionExpiresAt returns the user's subscription expiration time, or nil if none.
+func (r *Repository) GetSubscriptionExpiresAt(ctx context.Context, userID uuid.UUID) (*time.Time, error) {
+	var expiresAt *time.Time
+	err := r.querier.QueryRow(ctx, `
+		SELECT subscription_expires_at FROM users WHERE id = $1
+	`, userID).Scan(&expiresAt)
+	if err != nil {
+		return nil, fmt.Errorf("get subscription: %w", err)
+	}
+	return expiresAt, nil
+}
+
 // GetPaymentsByUserID returns payment history for a user.
 func (r *Repository) GetPaymentsByUserID(ctx context.Context, userID uuid.UUID) ([]models.Payment, error) {
 	rows, err := r.querier.Query(ctx, `
-		SELECT id, user_id, yookassa_id, status, amount_kopecks, description, analyses_count, created_at, confirmed_at
+		SELECT id, user_id, yookassa_id, status, amount_kopecks, description, analyses_count, payment_type, created_at, confirmed_at
 		FROM payments WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50
 	`, userID)
 	if err != nil {
@@ -97,7 +143,7 @@ func (r *Repository) GetPaymentsByUserID(ctx context.Context, userID uuid.UUID) 
 	for rows.Next() {
 		var p models.Payment
 		if err := rows.Scan(&p.ID, &p.UserID, &p.YooKassaID, &p.Status, &p.AmountKopecks,
-			&p.Description, &p.AnalysesCount, &p.CreatedAt, &p.ConfirmedAt); err != nil {
+			&p.Description, &p.AnalysesCount, &p.PaymentType, &p.CreatedAt, &p.ConfirmedAt); err != nil {
 			return nil, fmt.Errorf("scan payment: %w", err)
 		}
 		payments = append(payments, p)

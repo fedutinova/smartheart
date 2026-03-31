@@ -4,6 +4,7 @@ import { ROUTES } from '@/config';
 import { Layout } from '@/components/Layout';
 import { useUserRequests } from '@/hooks/useUserRequests';
 import { usePendingJobs } from '@/hooks/usePendingJobs';
+import { DashboardHistorySkeleton } from '@/components/Skeleton';
 
 export function Dashboard() {
   const { requests, isLoading } = useUserRequests();
@@ -59,7 +60,7 @@ export function Dashboard() {
             <h2 className="text-base sm:text-lg font-medium text-gray-900">История</h2>
           </div>
           {isLoading ? (
-            <div className="px-4 sm:px-6 py-8 text-center text-gray-500">Загрузка...</div>
+            <DashboardHistorySkeleton />
           ) : recentRequests.length === 0 ? (
             <div className="px-4 sm:px-6 py-8 text-center text-gray-500">
               <p>У вас пока нет анализов</p>

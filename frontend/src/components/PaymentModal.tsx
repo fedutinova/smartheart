@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { paymentAPI } from '@/services/api';
+import { formatPrice } from '@/utils/format';
 import type { QuotaInfo } from '@/types';
 
 interface PaymentModalProps {
@@ -8,31 +9,18 @@ interface PaymentModalProps {
   onSuccess?: () => void;
 }
 
-const PACK_OPTIONS = [
-  { count: 1, label: '1 anализ' },
-  { count: 5, label: '5 анализов' },
-  { count: 10, label: '10 анализов' },
-];
-
-function formatPrice(kopecks: number): string {
-  const rub = Math.floor(kopecks / 100);
-  const kop = kopecks % 100;
-  return kop === 0 ? `${rub}` : `${rub}.${String(kop).padStart(2, '0')}`;
-}
-
 export function PaymentModal({ quota, onClose }: PaymentModalProps) {
-  const [selected, setSelected] = useState(5);
+  const hasActiveSub = quota.subscription_expires_at && new Date(quota.subscription_expires_at) > new Date();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const pricePerAnalysis = quota.price_per_analysis_kopecks;
+  const subscriptionPrice = quota.subscription_price_kopecks || 0;
 
-  const handlePurchase = async () => {
+  const handleSubscribe = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await paymentAPI.createPayment(selected);
-      // Redirect to YooKassa payment page
+      const result = await paymentAPI.createSubscription();
       window.location.href = result.confirmation_url;
     } catch (err: any) {
       setError(err.response?.data?.error || 'Ошибка при создании платежа');
@@ -46,8 +34,8 @@ export function PaymentModal({ quota, onClose }: PaymentModalProps) {
         className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-gray-900">Купить анализы</h2>
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-lg font-bold text-gray-900">Подписка</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -55,49 +43,59 @@ export function PaymentModal({ quota, onClose }: PaymentModalProps) {
           </button>
         </div>
 
-        <div className="mb-4 p-3 bg-rose-50 rounded-lg">
-          <div className="text-sm text-rose-800">
-            <p>Бесплатный лимит: <strong>{quota.daily_limit}</strong> анализа в день</p>
-            <p>Использовано сегодня: <strong>{quota.used_today}</strong></p>
-            {quota.paid_analyses_remaining > 0 && (
-              <p>Оплаченных осталось: <strong>{quota.paid_analyses_remaining}</strong></p>
-            )}
+        {hasActiveSub ? (
+          <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-sm font-medium text-green-800">Подписка активна</p>
+            <p className="text-xs text-green-600 mt-1">
+              до {new Date(quota.subscription_expires_at!).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </p>
           </div>
-        </div>
-
-        <div className="space-y-2 mb-4">
-          {PACK_OPTIONS.map((opt) => (
+        ) : (
+          <>
+            <div className="p-5 border-2 border-rose-200 bg-rose-50/50 rounded-xl mb-4">
+              <div className="flex items-baseline justify-between mb-2">
+                <span className="text-lg font-bold text-gray-900">30 дней</span>
+                <span className="text-2xl font-bold text-rose-600">{formatPrice(subscriptionPrice)} &#8381;</span>
+              </div>
+              <ul className="space-y-1.5 text-sm text-gray-600">
+                <li className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-rose-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                  </svg>
+                  Безлимитные анализы ЭКГ
+                </li>
+                <li className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-rose-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                  </svg>
+                  Без дневных ограничений
+                </li>
+                <li className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-rose-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                  </svg>
+                  Продлевается по необходимости
+                </li>
+              </ul>
+            </div>
             <button
-              key={opt.count}
-              onClick={() => setSelected(opt.count)}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-lg border-2 transition-colors ${
-                selected === opt.count
-                  ? 'border-rose-500 bg-rose-50'
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
+              onClick={handleSubscribe}
+              disabled={isLoading}
+              className="w-full py-3 bg-rose-600 text-white rounded-lg font-medium hover:bg-rose-700 disabled:opacity-50 transition-colors"
             >
-              <span className="font-medium text-gray-900">{opt.label}</span>
-              <span className="text-gray-600">{formatPrice(pricePerAnalysis * opt.count)} &#8381;</span>
+              {isLoading ? 'Переход к оплате...' : `Оформить — ${formatPrice(subscriptionPrice)} \u20BD`}
             </button>
-          ))}
-        </div>
+          </>
+        )}
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
             {error}
           </div>
         )}
 
-        <button
-          onClick={handlePurchase}
-          disabled={isLoading}
-          className="w-full py-3 bg-rose-600 text-white rounded-lg font-medium hover:bg-rose-700 disabled:opacity-50 transition-colors"
-        >
-          {isLoading ? 'Переход к оплате...' : `Оплатить ${formatPrice(pricePerAnalysis * selected)} \u20BD`}
-        </button>
-
-        <p className="mt-3 text-xs text-gray-400 text-center">
-          Оплата через ЮKassa. После оплаты анализы будут доступны сразу.
+        <p className="mt-4 text-xs text-gray-400 text-center">
+          Оплата через ЮKassa. Подписка активируется сразу после оплаты.
         </p>
       </div>
     </div>

@@ -50,7 +50,10 @@ export function Login() {
         <div className="max-w-md w-full bg-white shadow-xl rounded-2xl p-8 space-y-8">
           <div>
             <h2 className="text-center text-3xl font-extrabold text-gray-900">
-              Вход в <span style={{ fontFamily: "'Prosto One', cursive" }}>Умное сердце</span>
+              Вход в{' '}
+              <Link to={ROUTES.HOME} className="hover:text-rose-600 transition-colors" style={{ fontFamily: "'Prosto One', cursive" }}>
+                Умное сердце
+              </Link>
             </h2>
             <p className="mt-2 text-center text-sm text-gray-600">
               Или{' '}

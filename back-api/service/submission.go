@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/fedutinova/smartheart/back-api/apperr"
 	"github.com/fedutinova/smartheart/back-api/config"
@@ -112,19 +113,32 @@ func ecgRequest(requestID, userID uuid.UUID, p ECGParams) *models.Request {
 	return req
 }
 
-// checkQuota enforces the freemium model:
-//  1. If daily usage < dailyLimit → free, allow.
-//  2. If daily usage >= dailyLimit but user has paid analyses → decrement paid counter, allow.
-//  3. Otherwise → return ErrPaymentRequired.
+// checkQuota enforces the freemium model (always tracks usage):
+//  1. Increment daily usage counter.
+//  2. If user has active subscription → allow.
+//  3. If daily usage <= dailyLimit → free, allow.
+//  4. If daily usage > dailyLimit but user has paid analyses → decrement paid counter, allow.
+//  5. Otherwise → return ErrPaymentRequired.
 func (s *submissionService) checkQuota(ctx context.Context, userID uuid.UUID) error {
 	if s.dailyLimit <= 0 {
 		return nil // unlimited
 	}
+
+	// Always increment usage counter for accurate "used today" display.
 	count, err := s.repo.IncrementDailyUsage(ctx, userID)
 	if err != nil {
 		slog.Warn("failed to check quota, allowing request", "user_id", userID, "error", err)
 		return nil // fail-open
 	}
+
+	// Active subscription — unlimited, but usage is tracked above.
+	subExpires, err := s.repo.GetSubscriptionExpiresAt(ctx, userID)
+	if err != nil {
+		slog.Warn("failed to check subscription, continuing with quota", "user_id", userID, "error", err)
+	} else if subExpires != nil && subExpires.After(time.Now()) {
+		return nil
+	}
+
 	if count <= s.dailyLimit {
 		return nil // within free quota
 	}
@@ -132,7 +146,6 @@ func (s *submissionService) checkQuota(ctx context.Context, userID uuid.UUID) er
 	// Free quota exceeded — try to use a paid analysis
 	remaining, err := s.repo.DecrementPaidAnalyses(ctx, userID)
 	if err != nil {
-		// No paid analyses left or DB error
 		slog.Info("quota exceeded, no paid analyses", "user_id", userID, "daily_count", count)
 		return fmt.Errorf("daily free limit (%d) exceeded, purchase more analyses: %w", s.dailyLimit, apperr.ErrPaymentRequired)
 	}

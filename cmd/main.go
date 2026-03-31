@@ -56,6 +56,9 @@ func main() {
 
 	srv := startHTTPServer(cfg, repo, sessions, storageService, q, hub)
 
+	// Cancel pending payments older than 1 hour, check every 10 minutes.
+	service.StartStalePaymentCleaner(ctx, repo, 10*time.Minute, 1*time.Hour)
+
 	waitForShutdown(srv, cancel)
 }
 
