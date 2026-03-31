@@ -153,7 +153,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </button>
 
                 {profileOpen && (
-                  <div className="absolute right-0 mt-1 w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50">
+                  <div className="absolute right-0 mt-1 w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50 animate-fade-in-down">
                     {profile && (
                       <div className="px-4 py-2 border-b border-gray-100">
                         <p className="text-sm font-medium text-gray-900 truncate">{profile.username}</p>
@@ -207,7 +207,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <Link
                 key={tab.to}
                 to={tab.to}
-                className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors ${
+                className={`flex flex-col items-center justify-center flex-1 py-1 active:scale-90 transition-all duration-150 ${
                   active ? 'text-rose-600' : 'text-gray-400'
                 }`}
               >

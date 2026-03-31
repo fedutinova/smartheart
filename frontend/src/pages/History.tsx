@@ -117,14 +117,14 @@ export function History() {
                 <button
                   onClick={() => setPage((p: number) => p - 1)}
                   disabled={!hasPrev}
-                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50 active:bg-gray-100 disabled:opacity-40 disabled:cursor-default"
+                  className="px-4 py-2.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 active:bg-gray-100 disabled:opacity-40 disabled:cursor-default transition-colors"
                 >
                   Назад
                 </button>
                 <button
                   onClick={() => setPage((p: number) => p + 1)}
                   disabled={!hasNext}
-                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50 active:bg-gray-100 disabled:opacity-40 disabled:cursor-default"
+                  className="px-4 py-2.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 active:bg-gray-100 disabled:opacity-40 disabled:cursor-default transition-colors"
                 >
                   Вперёд
                 </button>

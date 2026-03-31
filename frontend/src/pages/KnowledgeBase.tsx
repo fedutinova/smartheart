@@ -62,6 +62,13 @@ export function KnowledgeBase() {
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
   };
 
+  // Scroll to bottom on mount if there are messages (navigating back to chat)
+  useEffect(() => {
+    if (messages.length > 0) {
+      messagesEndRef.current?.scrollIntoView();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSubmit = async (question: string) => {
     if (!question.trim() || isLoading) return;
 
@@ -89,7 +96,6 @@ export function KnowledgeBase() {
       setError(msg);
     } finally {
       setIsLoading(false);
-      scrollToBottom();
     }
   };
 
@@ -134,14 +140,13 @@ export function KnowledgeBase() {
         {/* Messages area */}
         <div className="flex-1 overflow-y-auto bg-white rounded-lg shadow border border-gray-200 p-3 sm:p-4 mb-3 sm:mb-4 space-y-3 sm:space-y-4">
           {messages.length === 0 && !isLoading && (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-              <p className="text-gray-400 mb-6">Задайте вопрос по ЭКГ или выберите из примеров:</p>
-              <div className="flex flex-wrap gap-2 justify-center max-w-2xl">
+            <div className="flex flex-col items-left justify-center h-full text-center">
+              <div className="flex flex-wrap gap-2 justify-left max-w-2xl stagger-children">
                 {EXAMPLE_QUESTIONS.map((q) => (
                   <button
                     key={q}
                     onClick={() => handleSubmit(q)}
-                    className="px-3 py-2 text-sm bg-rose-50 text-rose-700 rounded-lg hover:bg-rose-100 border border-rose-200 transition-colors text-left"
+                    className="px-3 py-2 text-sm bg-rose-50 text-rose-700 rounded-lg hover:bg-rose-100 active:scale-95 border border-rose-200 transition-all duration-150 text-left"
                   >
                     {q}
                   </button>
@@ -151,9 +156,9 @@ export function KnowledgeBase() {
           )}
 
           {messages.map((msg) => (
-            <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div key={msg.id} className={`flex animate-fade-in-up ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div
-                className={`max-w-3xl rounded-lg px-4 py-3 ${
+                className={`max-w-[85%] sm:max-w-3xl rounded-lg px-4 py-3 ${
                   msg.role === 'user'
                     ? 'bg-rose-600 text-white'
                     : 'bg-gray-50 border border-gray-200 text-gray-900'
@@ -177,6 +182,7 @@ export function KnowledgeBase() {
                             onClick={() => handleFeedback(msg, 1)}
                             className="p-1 text-gray-400 hover:text-green-600 transition-colors"
                             title="Полезный ответ"
+                            aria-label="Полезный ответ"
                           >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M6.633 10.25c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 0 1 2.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 0 0 .322-1.672V3a.75.75 0 0 1 .75-.75 2.25 2.25 0 0 1 2.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282m0 0h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 0 1-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 0 0-1.423-.23H5.904m10.598-9.75H14.25M5.904 18.5c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 0 1-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 9.953 4.167 9.5 5 9.5h1.053c.472 0 .745.556.5.96a8.958 8.958 0 0 0-1.302 4.665c0 1.194.232 2.333.654 3.375Z" />
@@ -186,6 +192,7 @@ export function KnowledgeBase() {
                             onClick={() => handleFeedback(msg, -1)}
                             className="p-1 text-gray-400 hover:text-red-600 transition-colors"
                             title="Неполезный ответ"
+                            aria-label="Неполезный ответ"
                           >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M7.498 15.25H4.372c-1.026 0-1.945-.694-2.054-1.715a12.137 12.137 0 0 1-.068-1.285c0-2.848.992-5.464 2.649-7.521C5.287 4.247 5.886 4 6.504 4h4.016a4.5 4.5 0 0 1 1.423.23l3.114 1.04a4.5 4.5 0 0 0 1.423.23h1.294M7.498 15.25c.618 0 .991.724.725 1.282A7.471 7.471 0 0 0 7.5 19.75 2.25 2.25 0 0 0 9.75 22a.75.75 0 0 0 .75-.75v-.633c0-.573.11-1.14.322-1.672.304-.76.93-1.33 1.653-1.715a9.04 9.04 0 0 0 2.86-2.4c.498-.634 1.226-1.08 2.032-1.08h.384m-10.253 1.5H9.7m8.075-9.75c.01.05.027.1.05.148.593 1.2.925 2.55.925 3.977 0 1.31-.269 2.559-.754 3.695-.124.291.023.654.34.71a.757.757 0 0 0 .888-.524 12.098 12.098 0 0 0 .526-3.506c0-1.553-.295-3.036-.831-4.398A2.204 2.204 0 0 0 17 9.5h-1.053c-.472 0-.745-.556-.5-.96a8.95 8.95 0 0 1 .303-.54" />

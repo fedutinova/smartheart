@@ -76,22 +76,22 @@ export function Landing() {
     <div className="min-h-screen bg-white">
       {/* Header */}
       <header className="fixed top-0 inset-x-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <span className="text-xl text-rose-600" style={{ fontFamily: "'Prosto One', cursive" }}>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
+          <span className="text-lg sm:text-xl text-rose-600 shrink-0" style={{ fontFamily: "'Prosto One', cursive" }}>
             Умное сердце
           </span>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <Link
               to={ROUTES.LOGIN}
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors px-3 py-2"
+              className="text-sm text-gray-600 hover:text-gray-900 transition-colors px-2 sm:px-3 py-2 whitespace-nowrap"
             >
               Войти
             </Link>
             <Link
               to={ROUTES.REGISTER}
-              className="text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 px-4 py-2 rounded-lg transition-colors"
+              className="text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 px-3 sm:px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
             >
-              Начать бесплатно
+              Начать
             </Link>
           </div>
         </div>
@@ -99,7 +99,7 @@ export function Landing() {
 
       {/* Hero */}
       <section className="pt-32 pb-16 sm:pt-40 sm:pb-24 px-4 sm:px-6">
-        <div className="max-w-3xl mx-auto text-center">
+        <div className="max-w-3xl mx-auto text-center animate-fade-in-up">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 tracking-tight leading-tight">
             Анализ ЭКГ с помощью{' '}
             <span className="text-rose-600">искусственного интеллекта</span>
@@ -111,13 +111,13 @@ export function Landing() {
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
               to={ROUTES.REGISTER}
-              className="w-full sm:w-auto px-8 py-3.5 text-base font-medium text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors shadow-lg shadow-rose-200"
+              className="w-full sm:w-auto px-8 py-3.5 text-base font-medium text-white bg-rose-600 hover:bg-rose-700 active:scale-95 rounded-xl transition-all duration-150 shadow-lg shadow-rose-200"
             >
               Попробовать бесплатно
             </Link>
             <a
               href="#how-it-works"
-              className="w-full sm:w-auto px-8 py-3.5 text-base font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+              className="w-full sm:w-auto px-8 py-3.5 text-base font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 active:scale-95 rounded-xl transition-all duration-150"
             >
               Как это работает
             </a>
@@ -134,7 +134,7 @@ export function Landing() {
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center mb-12">
             Как это работает
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 stagger-children">
             {STEPS.map((step) => (
               <div key={step.num} className="text-center">
                 <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 text-lg font-bold flex items-center justify-center mx-auto mb-4">
@@ -154,11 +154,11 @@ export function Landing() {
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center mb-12">
             Возможности
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 stagger-children">
             {FEATURES.map((feature) => (
               <div
                 key={feature.title}
-                className="p-6 rounded-2xl border border-gray-100 hover:border-rose-100 hover:bg-rose-50/30 transition-colors"
+                className="p-6 rounded-2xl border border-gray-100 hover:border-rose-100 hover:bg-rose-50/30 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200"
               >
                 <div className="w-10 h-10 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center mb-4">
                   {feature.icon}
@@ -177,7 +177,7 @@ export function Landing() {
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center mb-12">
             Для кого
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 stagger-children">
             {[
               {
                 title: 'Студенты-медики',
@@ -207,7 +207,7 @@ export function Landing() {
                 ),
               },
             ].map((item) => (
-              <div key={item.title} className="bg-white rounded-2xl p-6 border border-gray-100">
+              <div key={item.title} className="bg-white rounded-2xl p-6 border border-gray-100 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
                 <div className="w-10 h-10 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center mb-4">
                   {item.icon}
                 </div>
@@ -230,7 +230,7 @@ export function Landing() {
           </p>
           <Link
             to={ROUTES.REGISTER}
-            className="inline-block px-8 py-3.5 text-base font-medium text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors shadow-lg shadow-rose-200"
+            className="inline-block px-8 py-3.5 text-base font-medium text-white bg-rose-600 hover:bg-rose-700 active:scale-95 rounded-xl transition-all duration-150 shadow-lg shadow-rose-200"
           >
             Создать аккаунт
           </Link>
@@ -245,16 +245,16 @@ export function Landing() {
 
       {/* Footer */}
       <footer className="border-t border-gray-100 py-8 px-4 sm:px-6">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-400">
-          <span>Самозанятая Федутинова А. А., ИНН 575212369164</span>
-          <div className="flex gap-4">
+        <div className="max-w-6xl mx-auto flex flex-col items-center gap-4 text-xs text-gray-400 sm:flex-row sm:justify-between">
+          <span className="text-center sm:text-left">Самозанятая Федутинова А.А., ИНН 575212369164</span>
+          <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
             <Link to={ROUTES.CONTACTS} className="hover:text-gray-600 transition-colors">О нас</Link>
             <Link to={ROUTES.TERMS} className="hover:text-gray-600 transition-colors">Оферта</Link>
             <Link to={ROUTES.PRIVACY} className="hover:text-gray-600 transition-colors">Конфиденциальность</Link>
-            <a href="mailto:support@smartheart.cloud" className="hover:text-gray-600 transition-colors">support@smartheart.cloud</a>
+            <a href="mailto:support@smartheart.cloud" className="hover:text-gray-600 transition-colors">Поддержка</a>
           </div>
         </div>
-        <p className="max-w-6xl mx-auto mt-4 text-center text-[11px] text-gray-300">
+        <p className="max-w-6xl mx-auto mt-4 text-center text-[11px] text-gray-300 leading-relaxed">
           Сервис не является медицинским изделием. Результаты носят информационный характер и не заменяют консультацию врача.
         </p>
       </footer>

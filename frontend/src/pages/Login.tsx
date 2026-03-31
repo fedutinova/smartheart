@@ -47,7 +47,7 @@ export function Login() {
   return (
     <Layout>
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-rose-50 to-blue-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full bg-white shadow-xl rounded-2xl p-8 space-y-8">
+        <div className="max-w-md w-full bg-white shadow-xl rounded-2xl p-8 space-y-8 animate-scale-in">
           <div>
             <h2 className="text-center text-3xl font-extrabold text-gray-900">
               Вход в{' '}
@@ -110,13 +110,13 @@ export function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 disabled:opacity-50 transition-colors"
+                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-rose-600 hover:bg-rose-700 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 disabled:opacity-50 transition-all duration-150"
               >
                 {loading ? 'Вход...' : 'Войти'}
               </button>
             </div>
           </form>
-          <p className="text-center text-[11px] text-gray-300 mt-4">
+          <p className="text-center text-[11px] text-gray-400 mt-4">
             <Link to={ROUTES.TERMS} className="hover:text-gray-500">Оферта</Link>
             {' · '}
             <Link to={ROUTES.PRIVACY} className="hover:text-gray-500">Конфиденциальность</Link>

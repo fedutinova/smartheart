@@ -37,10 +37,10 @@ export function Register() {
   return (
     <Layout>
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-rose-50 to-blue-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full bg-white shadow-xl rounded-2xl p-8 space-y-8">
+        <div className="max-w-md w-full bg-white shadow-xl rounded-2xl p-8 space-y-8 animate-scale-in">
           <div>
             <h2 className="text-center text-3xl font-extrabold text-gray-900">
-              Регистрация в <span style={{ fontFamily: "'Prosto One', cursive" }}>Умное сердце</span>
+              Регистрация в <Link to={ROUTES.HOME} style={{ fontFamily: "'Prosto One', cursive" }} className="text-rose-600 hover:text-rose-700 transition-colors">Умное сердце</Link>
             </h2>
             <p className="mt-2 text-center text-sm text-gray-600">
               Уже есть аккаунт?{' '}
@@ -128,7 +128,7 @@ export function Register() {
               <button
                 type="submit"
                 disabled={loading || !agreed}
-                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 disabled:opacity-50 transition-colors"
+                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-rose-600 hover:bg-rose-700 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 disabled:opacity-50 transition-all duration-150"
               >
                 {loading ? 'Регистрация...' : 'Зарегистрироваться'}
               </button>

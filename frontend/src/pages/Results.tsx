@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
 import { requestAPI } from '@/services/api';
@@ -18,6 +18,7 @@ function fmt(v: number | null | undefined, decimals = 1): string {
 
 export function Results() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { removeJob } = usePendingJobs();
 
@@ -83,7 +84,39 @@ export function Results() {
   if (isLoading) {
     return (
       <Layout>
-        <div className="text-center py-8 text-gray-500">Загрузка...</div>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6">
+          <div className="animate-pulse">
+            <div className="h-4 w-16 bg-gray-200 rounded mb-4" />
+            <div className="h-7 w-56 bg-gray-200 rounded mb-6" />
+            <div className="bg-white shadow rounded-lg p-6 mb-6">
+              <div className="flex justify-between mb-3">
+                <div className="h-5 w-24 bg-gray-200 rounded-full" />
+                <div className="h-4 w-32 bg-gray-200 rounded" />
+              </div>
+              <div className="flex gap-2">
+                <div className="h-7 w-20 bg-gray-200 rounded-md" />
+                <div className="h-7 w-16 bg-gray-200 rounded-md" />
+                <div className="h-7 w-24 bg-gray-200 rounded-md" />
+              </div>
+            </div>
+            <div className="bg-white shadow rounded-lg p-6 mb-6">
+              <div className="h-6 w-48 bg-gray-200 rounded mb-4" />
+              <div className="h-48 bg-gray-200 rounded" />
+            </div>
+            <div className="bg-white shadow rounded-lg p-6 mb-6">
+              <div className="h-6 w-52 bg-gray-200 rounded mb-4" />
+              {[1,2,3,4,5,6].map(i => (
+                <div key={i} className="flex justify-between py-2 border-b border-gray-100">
+                  <div className="h-4 w-12 bg-gray-200 rounded" />
+                  <div className="flex gap-4">
+                    <div className="h-4 w-12 bg-gray-200 rounded" />
+                    <div className="h-4 w-12 bg-gray-200 rounded" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </Layout>
     );
   }
@@ -100,7 +133,16 @@ export function Results() {
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 animate-fade-in">
+        <button
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 transition-colors mb-4"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+          </svg>
+          Назад
+        </button>
         <h1 className="text-2xl font-semibold text-gray-900 mb-6">Результаты анализа</h1>
 
         {/* Request Info */}
@@ -203,7 +245,7 @@ function StructuredResultView({ result }: { result: ECGStructuredResult }) {
   return (
     <>
       {/* Measurements Table */}
-      <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 overflow-x-auto">
+      <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 overflow-x-auto animate-fade-in-up">
         <h2 className="text-lg font-bold text-gray-900 mb-4">Измерения по отведениям</h2>
         <table className="w-full text-sm">
           <thead>
@@ -235,7 +277,7 @@ function StructuredResultView({ result }: { result: ECGStructuredResult }) {
       {result.rhythm && (
         <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
           <h2 className="text-lg font-bold text-gray-900 mb-3">Интервалы и ритм</h2>
-          <div className="grid grid-cols-3 gap-4 text-center">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-center">
             <MetricCard label="QRS" value={fmt(result.rhythm.QRS_ms, 0)} unit="мс" />
             <MetricCard label="RR" value={fmt(result.rhythm.RR_ms, 0)} unit="мс" />
             <MetricCard label="ЧСС" value={fmt(result.rhythm.HR_bpm, 0)} unit="уд/мин" />
@@ -314,7 +356,7 @@ function LVHIndicesView({ indices, sex }: { indices: LVHIndices; sex?: string })
 
 function MetricCard({ label, value, unit }: { label: string; value: string; unit?: string }) {
   return (
-    <div className="bg-gray-50 rounded-lg p-3">
+    <div className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors duration-150">
       <p className="text-xs text-gray-500 mb-1">{label}</p>
       <p className="text-lg font-semibold text-gray-900">
         {value}
@@ -336,7 +378,12 @@ function RequestImage({ requestId, fileId }: { requestId: string; fileId: string
     return () => { if (revoke) URL.revokeObjectURL(revoke); };
   }, [requestId, fileId]);
 
-  if (!src) return null;
+  if (!src) return (
+    <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="h-6 w-48 bg-gray-200 rounded mb-4 animate-pulse" />
+      <div className="h-48 bg-gray-200 rounded animate-pulse" />
+    </div>
+  );
 
   return (
     <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
