@@ -13,6 +13,7 @@ services:
     volumes:
       - /opt/smartheart/infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - /opt/smartheart/frontend/dist:/var/www/frontend:ro
+      - /opt/smartheart/admin/dist:/var/www/admin:ro
       - /opt/smartheart/caddy/data:/data
       - /opt/smartheart/caddy/config:/config
     depends_on:

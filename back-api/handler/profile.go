@@ -25,10 +25,16 @@ func (h *ProfileHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	roles := make([]string, len(user.Roles))
+	for i, r := range user.Roles {
+		roles[i] = r.Name
+	}
+
 	writeJSON(w, http.StatusOK, map[string]any{
 		"id":         user.ID,
 		"username":   user.Username,
 		"email":      user.Email,
+		"roles":      roles,
 		"created_at": user.CreatedAt,
 	})
 }

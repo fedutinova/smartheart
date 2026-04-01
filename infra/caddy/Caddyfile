@@ -16,6 +16,18 @@
 	}
 }
 
+admin.{$DOMAIN_NAME} {
+	root * /var/www/admin
+	try_files {path} /index.html
+	file_server
+	encode gzip
+
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+	}
+}
+
 api.{$DOMAIN_NAME} {
 	reverse_proxy app:8080 {
 		header_up X-Real-IP {remote_host}

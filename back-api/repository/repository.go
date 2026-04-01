@@ -69,6 +69,14 @@ type PaymentRepo interface {
 	GetPaymentsByUserID(ctx context.Context, userID uuid.UUID) ([]models.Payment, error)
 }
 
+// AdminRepo provides admin dashboard data access.
+type AdminRepo interface {
+	GetAdminStats(ctx context.Context) (*AdminStats, error)
+	ListUsers(ctx context.Context, limit, offset int, search string) ([]AdminUserRow, int, error)
+	ListPayments(ctx context.Context, limit, offset int) ([]AdminPaymentRow, int, error)
+	ListRAGFeedback(ctx context.Context, limit, offset int) ([]AdminFeedbackRow, int, error)
+}
+
 // Store is the composite interface that embeds all focused interfaces.
 type Store interface {
 	UserRepo
@@ -78,6 +86,7 @@ type Store interface {
 	QuotaRepo
 	RAGFeedbackRepo
 	PaymentRepo
+	AdminRepo
 
 	// Transaction support
 	RunTx(ctx context.Context, fn func(tx pgx.Tx) error) error

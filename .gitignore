@@ -32,6 +32,13 @@ bin/
 uploads/
 docs/
 
+# Node.js
+node_modules/
+dist/
+
+# Claude Code
+.claude/
+
 # Editor/IDE
 .idea/
 .vscode/

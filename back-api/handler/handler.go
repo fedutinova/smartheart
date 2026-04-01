@@ -68,6 +68,7 @@ type Handler struct {
 	RAG     *RAGHandler
 	Payment *PaymentHandler
 	Profile *ProfileHandler
+	Admin   *AdminHandler
 	Config  config.Config
 	MW      Middlewares
 }
@@ -96,6 +97,7 @@ func NewHandler(
 		RAG:     NewRAGHandler(cfg.RAG.URL, repo),
 		Payment: &PaymentHandler{Service: paymentSvc},
 		Profile: &ProfileHandler{Repo: repo},
+		Admin:   &AdminHandler{Repo: repo},
 		Config:  cfg,
 		MW:      mw,
 	}
@@ -167,5 +169,12 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 
 		// Admin-only endpoints
 		r.With(auth.RequirePerm(auth.PermAdminAll)).Get("/ready", h.Healthz.Ready)
+		r.Route("/v1/admin", func(r chi.Router) {
+			r.Use(auth.RequirePerm(auth.PermAdminAll))
+			r.Get("/stats", h.Admin.GetStats)
+			r.Get("/users", h.Admin.ListUsers)
+			r.Get("/payments", h.Admin.ListPayments)
+			r.Get("/feedback", h.Admin.ListFeedback)
+		})
 	})
 }
