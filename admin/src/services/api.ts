@@ -124,7 +124,7 @@ export interface AdminUser {
   id: string;
   username: string;
   email: string;
-  role: string;
+  roles: string[];
   paid_analyses_remaining: number;
   subscription_expires_at: string | null;
   requests_count: number;

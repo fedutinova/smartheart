@@ -61,11 +61,15 @@ export function Users() {
                     <td className="px-4 py-3 font-medium text-gray-900">{u.username}</td>
                     <td className="px-4 py-3 text-gray-600">{u.email}</td>
                     <td className="px-4 py-3 text-center">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {u.role}
-                      </span>
+                      <div className="flex gap-1 justify-center flex-wrap">
+                        {u.roles.map((role) => (
+                          <span key={role} className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            {role}
+                          </span>
+                        ))}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-center text-gray-700">{u.requests_count}</td>
                     <td className="px-4 py-3 text-center">

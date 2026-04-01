@@ -15,7 +15,7 @@ type AdminUserRow struct {
 	ID                    uuid.UUID  `json:"id"`
 	Username              string     `json:"username"`
 	Email                 string     `json:"email"`
-	RoleName              string     `json:"role"`
+	Roles                 []string   `json:"roles"`
 	PaidAnalysesRemaining int        `json:"paid_analyses_remaining"`
 	SubscriptionExpiresAt *time.Time `json:"subscription_expires_at,omitempty"`
 	RequestsCount         int        `json:"requests_count"`
@@ -142,7 +142,7 @@ func (r *Repository) ListUsers(ctx context.Context, limit, offset int, search st
 
 	query := `
 		SELECT u.id, u.username, u.email,
-		       COALESCE((SELECT r.name FROM user_roles ur JOIN roles r ON r.id = ur.role_id WHERE ur.user_id = u.id LIMIT 1), 'user') AS role,
+		       COALESCE(ARRAY(SELECT r.name FROM user_roles ur JOIN roles r ON r.id = ur.role_id WHERE ur.user_id = u.id ORDER BY r.name), ARRAY[]::text[]) AS roles,
 		       u.paid_analyses_remaining,
 		       u.subscription_expires_at,
 		       (SELECT COUNT(*) FROM requests req WHERE req.user_id = u.id) AS requests_count,
@@ -172,7 +172,7 @@ func (r *Repository) ListUsers(ctx context.Context, limit, offset int, search st
 	var users []AdminUserRow
 	for rows.Next() {
 		var u AdminUserRow
-		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &u.RoleName,
+		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &u.Roles,
 			&u.PaidAnalysesRemaining, &u.SubscriptionExpiresAt,
 			&u.RequestsCount, &u.CreatedAt); err != nil {
 			return nil, 0, fmt.Errorf("scan user: %w", err)

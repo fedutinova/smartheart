@@ -146,13 +146,14 @@ export function KnowledgeBase() {
         {/* Messages area */}
         <div ref={chatContainerRef} className="flex-1 overflow-y-auto bg-white rounded-lg shadow border border-gray-200 p-3 sm:p-4 mb-3 sm:mb-4 space-y-3 sm:space-y-4">
           {messages.length === 0 && !isLoading && (
-            <div className="flex flex-col items-left justify-center h-full text-center">
-              <div className="flex flex-wrap gap-2 justify-left max-w-2xl stagger-children">
+            <div className="flex flex-col items-center justify-center h-full">
+              <p className="text-sm text-gray-400 mb-3">Попробуйте спросить:</p>
+              <div className="flex flex-col gap-2.5 max-w-xl w-full stagger-children">
                 {EXAMPLE_QUESTIONS.map((q) => (
                   <button
                     key={q}
                     onClick={() => handleSubmit(q)}
-                    className="px-3 py-2 text-sm bg-rose-50 text-rose-700 rounded-lg hover:bg-rose-100 active:scale-95 border border-rose-200 transition-all duration-150 text-left"
+                    className="px-4 py-3 text-sm sm:text-base text-gray-600 bg-gray-50 rounded-xl hover:bg-rose-50 hover:text-rose-800 active:scale-[0.98] border border-gray-100 hover:border-rose-200 transition-all duration-150 text-left"
                   >
                     {q}
                   </button>
