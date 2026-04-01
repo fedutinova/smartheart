@@ -12,14 +12,14 @@ import (
 
 // AdminUserRow is a user record enriched with admin-relevant fields.
 type AdminUserRow struct {
-	ID                     uuid.UUID  `json:"id"`
-	Username               string     `json:"username"`
-	Email                  string     `json:"email"`
-	RoleName               string     `json:"role"`
-	PaidAnalysesRemaining  int        `json:"paid_analyses_remaining"`
-	SubscriptionExpiresAt  *time.Time `json:"subscription_expires_at,omitempty"`
-	RequestsCount          int        `json:"requests_count"`
-	CreatedAt              time.Time  `json:"created_at"`
+	ID                    uuid.UUID  `json:"id"`
+	Username              string     `json:"username"`
+	Email                 string     `json:"email"`
+	RoleName              string     `json:"role"`
+	PaidAnalysesRemaining int        `json:"paid_analyses_remaining"`
+	SubscriptionExpiresAt *time.Time `json:"subscription_expires_at,omitempty"`
+	RequestsCount         int        `json:"requests_count"`
+	CreatedAt             time.Time  `json:"created_at"`
 }
 
 // AdminPaymentRow is a payment record with the user's email.
@@ -34,14 +34,22 @@ type AdminFeedbackRow struct {
 	UserEmail string `json:"user_email"`
 }
 
+// DailyCount is a date→count pair for time-series charts.
+type DailyCount struct {
+	Date  string `json:"date"`
+	Count int    `json:"count"`
+}
+
 // AdminStats holds aggregate dashboard numbers.
 type AdminStats struct {
-	UsersCount      int            `json:"users_count"`
-	RequestsByStatus map[string]int `json:"requests_by_status"`
-	PaymentsSucceeded int          `json:"payments_succeeded"`
-	PaymentsTotalRub  float64      `json:"payments_total_rub"`
-	FeedbackPositive  int          `json:"feedback_positive"`
-	FeedbackNegative  int          `json:"feedback_negative"`
+	UsersCount           int            `json:"users_count"`
+	RequestsByStatus     map[string]int `json:"requests_by_status"`
+	RequestsDaily        []DailyCount   `json:"requests_daily"`
+	PaymentsSucceeded    int            `json:"payments_succeeded"`
+	PaymentsTotalRub     float64        `json:"payments_total_rub"`
+	FeedbackPositive     int            `json:"feedback_positive"`
+	FeedbackNegative     int            `json:"feedback_negative"`
+	FeedbackSatisfaction float64        `json:"feedback_satisfaction_pct"`
 }
 
 // GetAdminStats returns aggregate dashboard statistics.
@@ -77,6 +85,27 @@ func (r *Repository) GetAdminStats(ctx context.Context) (*AdminStats, error) {
 	}
 	stats.PaymentsTotalRub /= 100 // kopecks → rubles
 
+	// Requests daily (last 30 days)
+	dailyRows, err := r.querier.Query(ctx, `
+		SELECT created_at::date AS day, COUNT(*)
+		FROM requests
+		WHERE created_at >= now() - INTERVAL '30 days'
+		GROUP BY day ORDER BY day
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("daily requests: %w", err)
+	}
+	defer dailyRows.Close()
+	for dailyRows.Next() {
+		var dc DailyCount
+		var day time.Time
+		if err := dailyRows.Scan(&day, &dc.Count); err != nil {
+			return nil, fmt.Errorf("scan daily: %w", err)
+		}
+		dc.Date = day.Format("2006-01-02")
+		stats.RequestsDaily = append(stats.RequestsDaily, dc)
+	}
+
 	// Feedback
 	if err := r.querier.QueryRow(ctx, `
 		SELECT
@@ -85,6 +114,11 @@ func (r *Repository) GetAdminStats(ctx context.Context) (*AdminStats, error) {
 		FROM rag_feedback
 	`).Scan(&stats.FeedbackPositive, &stats.FeedbackNegative); err != nil {
 		return nil, fmt.Errorf("feedback stats: %w", err)
+	}
+
+	total := stats.FeedbackPositive + stats.FeedbackNegative
+	if total > 0 {
+		stats.FeedbackSatisfaction = float64(stats.FeedbackPositive) / float64(total) * 100
 	}
 
 	return stats, nil

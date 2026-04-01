@@ -5,7 +5,7 @@ const NAV = [
   { to: '/', label: 'Статистика' },
   { to: '/users', label: 'Пользователи' },
   { to: '/payments', label: 'Платежи' },
-  { to: '/feedback', label: 'Feedback' },
+  { to: '/feedback', label: 'Обратная связь' },
 ];
 
 export function AdminLayout() {
@@ -21,7 +21,8 @@ export function AdminLayout() {
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-14">
           <div className="flex items-center gap-6">
-            <span className="font-bold text-gray-900">SmartHeart Admin</span>
+            <span className="font-bold text-gray-900" style={{ fontFamily: "'Prosto One', cursive" }}>Умное сердце</span>
+            <span className="text-xs text-gray-400 -ml-4">Админ</span>
             <nav className="flex gap-1">
               {NAV.map((item) => (
                 <NavLink

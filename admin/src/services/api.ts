@@ -36,13 +36,20 @@ export interface UserProfile {
   roles: string[];
 }
 
+export interface DailyCount {
+  date: string;
+  count: number;
+}
+
 export interface AdminStats {
   users_count: number;
   requests_by_status: Record<string, number>;
+  requests_daily: DailyCount[];
   payments_succeeded: number;
   payments_total_rub: number;
   feedback_positive: number;
   feedback_negative: number;
+  feedback_satisfaction_pct: number;
 }
 
 export interface Paginated<T> {

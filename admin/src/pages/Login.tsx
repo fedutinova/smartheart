@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authAPI, saveTokens, clearTokens, type LoginResponse } from '@/services/api';
+import { authAPI, saveTokens, clearTokens } from '@/services/api';
 
 function parseRolesFromJWT(token: string): string[] {
   try {
@@ -22,8 +22,10 @@ export function Login() {
     e.preventDefault();
     setError('');
     setLoading(true);
+    let accessToken = '';
     try {
       const tokens = await authAPI.login(email, password);
+      accessToken = tokens.access_token;
       saveTokens(tokens.access_token, tokens.refresh_token);
     } catch {
       setError('Неверный email или пароль');
@@ -33,7 +35,7 @@ export function Login() {
 
     try {
       const profile = await authAPI.me();
-      const roles = profile.roles ?? parseRolesFromJWT(tokens.access_token);
+      const roles = profile.roles ?? parseRolesFromJWT(accessToken);
       if (!roles.includes('admin')) {
         clearTokens();
         setError('Нет прав администратора');
@@ -52,7 +54,10 @@ export function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-sm w-full bg-white shadow rounded-xl p-8">
-        <h1 className="text-xl font-bold text-gray-900 mb-6 text-center">SmartHeart Admin</h1>
+        <h1 className="text-xl font-bold text-gray-900 mb-6 text-center">
+          <span style={{ fontFamily: "'Prosto One', cursive" }}>Умное сердце</span>{' '}
+          <span className="text-sm text-gray-400 font-normal">Админ</span>
+        </h1>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm">

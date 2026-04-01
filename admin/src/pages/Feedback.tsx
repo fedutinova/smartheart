@@ -21,7 +21,7 @@ export function Feedback() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-gray-900 mb-6">RAG Feedback</h1>
+      <h1 className="text-xl font-bold text-gray-900 mb-6">Обратная связь для чат-бота</h1>
 
       {!data ? (
         <div className="text-gray-400">Загрузка...</div>
