@@ -10,9 +10,22 @@ import time
 
 import chromadb
 from fastapi import FastAPI, HTTPException, Request
+from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field
 from sentence_transformers import SentenceTransformer
 
+from api.metrics import (
+    ENGINE_READY,
+    INDEX_CHUNKS,
+    INDEX_REBUILD_LATENCY,
+    INDEX_REBUILD_TOTAL,
+    LLM_CALLS,
+    LLM_LATENCY,
+    LLM_RETRIES,
+    QUERY_ERRORS,
+    QUERY_LATENCY,
+    QUERY_TOTAL,
+)
 from rag_pipeline.config import env_int
 
 logger = logging.getLogger("rag_api")
@@ -22,6 +35,10 @@ logging.basicConfig(
 )
 
 app = FastAPI(title="SmartHeart RAG API", version="1.0.0")
+
+# Auto-instrument HTTP metrics (request count, latency, in-flight)
+# and expose /metrics endpoint for Prometheus scraping.
+Instrumentator().instrument(app).expose(app)
 
 # Lazy-loaded globals (initialised on startup in a background thread)
 _engine = None
@@ -174,6 +191,7 @@ def _get_engine(force_rebuild: bool = False):
             w_vector=RRF_W_VECTOR,
             w_bm25=RRF_W_BM25,
         )
+        INDEX_CHUNKS.set(len(all_chunk_ids))
         logger.info("RAG engine ready (%d chunks)", len(all_chunk_ids))
         return _engine
 
@@ -217,8 +235,10 @@ def _warmup():
     try:
         _get_engine()
         _ready.set()
+        ENGINE_READY.set(1)
         logger.info("Warmup complete — engine ready")
     except Exception:
+        ENGINE_READY.set(0)
         logger.exception("Warmup failed")
 
 
@@ -270,12 +290,14 @@ class SearchResponse(BaseModel):
 
 
 def _search_sync(question: str, n_results: int) -> tuple[list[dict], float]:
+    QUERY_TOTAL.labels(endpoint="search").inc()
     start = time.monotonic()
     engine = _get_engine()
     from rag_pipeline.generation import retrieve_context
     _, items = retrieve_context(engine, question, n_results=n_results)
-    elapsed_ms = (time.monotonic() - start) * 1000
-    return items, elapsed_ms
+    elapsed = time.monotonic() - start
+    QUERY_LATENCY.labels(endpoint="search").observe(elapsed)
+    return items, elapsed * 1000
 
 
 @app.post("/search", response_model=SearchResponse)
@@ -286,6 +308,7 @@ async def search(req: QueryRequest):
             _search_sync, req.question, req.n_results,
         )
     except RuntimeError as exc:
+        QUERY_ERRORS.labels(endpoint="search", error_type="engine_error").inc()
         raise HTTPException(status_code=503, detail=str(exc)) from None
 
     return SearchResponse(
@@ -295,6 +318,7 @@ async def search(req: QueryRequest):
 
 def _query_sync(question: str, n_results: int) -> tuple[str, list[dict], float]:
     """Run retrieval + LLM in a thread (blocking I/O)."""
+    QUERY_TOTAL.labels(endpoint="query").inc()
     start = time.monotonic()
     engine = _get_engine()
     chain = _get_chain()
@@ -304,21 +328,29 @@ def _query_sync(question: str, n_results: int) -> tuple[str, list[dict], float]:
     context, items = retrieve_context(engine, question, n_results=n_results)
 
     last_exc = None
+    max_retries = 2
     for attempt in range(3):
+        LLM_CALLS.inc()
+        llm_start = time.monotonic()
         try:
             answer = get_llm_answer(chain, question, context)
+            LLM_LATENCY.observe(time.monotonic() - llm_start)
             break
         except Exception as exc:
+            LLM_LATENCY.observe(time.monotonic() - llm_start)
             last_exc = exc
+            if attempt > 0:
+                LLM_RETRIES.inc()
             logger.warning("LLM call attempt %d failed: %s", attempt + 1, exc)
-            max_retries = 2
             if attempt < max_retries:
                 time.sleep(1.0 * (attempt + 1))
     else:
+        QUERY_ERRORS.labels(endpoint="query", error_type="llm_error").inc()
         raise RuntimeError(f"LLM call failed after 3 attempts: {last_exc}")
 
-    elapsed_ms = (time.monotonic() - start) * 1000
-    return answer, items, elapsed_ms
+    elapsed = time.monotonic() - start
+    QUERY_LATENCY.labels(endpoint="query").observe(elapsed)
+    return answer, items, elapsed * 1000
 
 
 QUERY_TIMEOUT_S = env_int("RAG_QUERY_TIMEOUT", 90)
@@ -332,6 +364,7 @@ async def query(req: QueryRequest):
             timeout=QUERY_TIMEOUT_S,
         )
     except asyncio.TimeoutError:
+        QUERY_ERRORS.labels(endpoint="query", error_type="timeout").inc()
         logger.exception(
             "Query timed out after %ds: %s", QUERY_TIMEOUT_S, req.question[:80],
         )
@@ -344,6 +377,7 @@ async def query(req: QueryRequest):
             raise HTTPException(
                 status_code=502, detail="LLM service error",
             ) from None
+        QUERY_ERRORS.labels(endpoint="query", error_type="engine_error").inc()
         raise HTTPException(status_code=503, detail=detail) from None
 
     elapsed = int(elapsed_ms)
@@ -375,6 +409,7 @@ def reindex(req: Request):
     if not admin_key or not hmac.compare_digest(provided, admin_key):
         raise HTTPException(status_code=403, detail="forbidden")
 
+    INDEX_REBUILD_TOTAL.inc()
     start = time.monotonic()
 
     try:
@@ -382,8 +417,11 @@ def reindex(req: Request):
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from None
 
+    elapsed = time.monotonic() - start
+    INDEX_REBUILD_LATENCY.observe(elapsed)
     chunk_count = engine.collection.count()
-    elapsed_ms = int((time.monotonic() - start) * 1000)
+    INDEX_CHUNKS.set(chunk_count)
+    elapsed_ms = int(elapsed * 1000)
     logger.info("reindex completed in %dms: %d chunks", elapsed_ms, chunk_count)
 
     return ReindexResponse(status="ok", chunks=chunk_count, elapsed_ms=elapsed_ms)
