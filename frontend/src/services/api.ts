@@ -113,7 +113,7 @@ api.interceptors.response.use(
         const isNetwork = refreshError instanceof AxiosError && !refreshError.response;
         const reason = isNetwork
           ? 'Не удалось связаться с сервером. Проверьте подключение к интернету.'
-          : 'Время сессии истекло — войдите снова';
+          : 'Время сессии истекло, войдите снова';
         sessionStorage.setItem(AUTH_ERROR_KEY, reason);
 
         useAuthStore.getState().logout();

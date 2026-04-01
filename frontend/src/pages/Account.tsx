@@ -91,7 +91,7 @@ export function Account() {
                 <div>
                   <p className="text-sm font-medium text-green-700">Активна</p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    до {formatDate(quota.subscription_expires_at!)} — безлимитные анализы
+                    до {formatDate(quota.subscription_expires_at!)}, безлимитные анализы
                   </p>
                 </div>
                 <span className="px-3 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">
@@ -103,7 +103,7 @@ export function Account() {
                 <div>
                   <p className="text-sm text-gray-600">Нет активной подписки</p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    Безлимитные анализы на 30 дней — {formatPrice(quota.subscription_price_kopecks || 0)} руб/мес
+                    Безлимитные анализы на 30 дней, {formatPrice(quota.subscription_price_kopecks || 0)} руб/мес
                   </p>
                 </div>
                 <button

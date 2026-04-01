@@ -1,5 +1,10 @@
+import logging
+import pickle
+from pathlib import Path
 
 from rank_bm25 import BM25Okapi
+
+logger = logging.getLogger(__name__)
 
 
 class BM25Index:
@@ -19,6 +24,33 @@ class BM25Index:
         self._ids = list(ids)
         self._corpus_tokens = [self.tokenizer(d) for d in documents]
         self._bm25 = BM25Okapi(self._corpus_tokens)
+
+    def save(self, path: str | Path) -> None:
+        path = Path(path)
+        data = {
+            "ids": self._ids,
+            "corpus_tokens": self._corpus_tokens,
+        }
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "wb") as f:
+            pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
+        logger.info("BM25 index saved to %s (%d docs)", path, len(self._ids))
+
+    def load(self, path: str | Path) -> bool:
+        path = Path(path)
+        if not path.exists():
+            return False
+        try:
+            with open(path, "rb") as f:
+                data = pickle.load(f)  # noqa: S301
+            self._ids = data["ids"]
+            self._corpus_tokens = data["corpus_tokens"]
+            self._bm25 = BM25Okapi(self._corpus_tokens)
+            logger.info("BM25 index loaded from %s (%d docs)", path, len(self._ids))
+            return True
+        except Exception:
+            logger.warning("Failed to load BM25 index from %s, will rebuild", path)
+            return False
 
     def search(self, query: str, top_k: int = 20) -> list[tuple[str, float]]:
         if self._bm25 is None:

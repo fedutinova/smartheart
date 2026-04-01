@@ -27,7 +27,7 @@ export function Dashboard() {
                   to={`/results/${job.requestId}`}
                   className="inline-flex items-center px-3 py-1.5 text-sm bg-amber-100 text-amber-900 rounded-md hover:bg-amber-200 transition-colors"
                 >
-                  {job.requestId.slice(0, 8)}... — Посмотреть
+                  {job.requestId.slice(0, 8)}... · Посмотреть
                 </Link>
               ))}
             </div>

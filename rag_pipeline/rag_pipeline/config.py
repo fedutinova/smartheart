@@ -38,6 +38,7 @@ CHUNK_OVERLAP_CHARS = env_int("RAG_CHUNK_OVERLAP", 250)
 
 # ChromaDB
 CHROMA_PATH = os.getenv("RAG_CHROMA_PATH", "./chroma_db_4")
+BM25_PATH = os.getenv("RAG_BM25_PATH", "./chroma_db_4/bm25_index.pkl")
 COLLECTION_NAME = os.getenv("RAG_COLLECTION_NAME", "cardio_docs_hybrid")
 HNSW_SPACE = os.getenv("RAG_HNSW_SPACE", "cosine")
 
@@ -51,4 +52,7 @@ RRF_W_VECTOR = env_float("RAG_RRF_W_VECTOR", 1.0)
 RRF_W_BM25 = env_float("RAG_RRF_W_BM25", 1.0)
 
 # LLM
-LLM_MAX_TOKENS = env_int("LLM_MAX_TOKENS", 1000)
+LLM_MAX_TOKENS = env_int("LLM_MAX_TOKENS", 2000)
+
+# Hybrid search relevance threshold — queries below this are off-topic
+RELEVANCE_THRESHOLD = env_float("RAG_RELEVANCE_THRESHOLD", 0.005)

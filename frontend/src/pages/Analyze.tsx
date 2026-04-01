@@ -37,6 +37,7 @@ export function Analyze() {
 
   // URL mode state
   const [imageUrl, setImageUrl, clearImageUrl] = useDraft('analyze_url');
+  const [noPersonalData, setNoPersonalData] = useState(false);
 
   // File inputs
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -89,7 +90,7 @@ export function Analyze() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if ((mode === 'file' || mode === 'camera') && !image.croppedBlob) {
-      image.setError(mode === 'camera' ? 'Сделайте фото и обрежьте изобра��ение' : 'Выберите и обрежьте изображение');
+      image.setError(mode === 'camera' ? 'Сделайте фото и обрежьте изображение' : 'Выберите и обрежьте изображение');
       return;
     }
     if (mode === 'url' && !imageUrl.trim()) {
@@ -103,13 +104,16 @@ export function Analyze() {
   const switchMode = (newMode: Mode) => {
     image.reset();
     clearImageUrl();
+    setNoPersonalData(false);
     setMode(newMode);
   };
 
   const canSubmit =
-    (mode === 'file' || mode === 'camera')
-      ? image.step === 'ready' && image.croppedBlob !== null
-      : imageUrl.trim() !== '';
+    noPersonalData && (
+      (mode === 'file' || mode === 'camera')
+        ? image.step === 'ready' && image.croppedBlob !== null
+        : imageUrl.trim() !== ''
+    );
 
   return (
     <Layout>
@@ -160,7 +164,12 @@ export function Analyze() {
               />
             )}
 
-            {/* Ready — preview with overlay actions */}
+            {(image.step === 'ready' || image.step === 'crop') && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 text-sm text-amber-800">
+                Если на изображении есть персональные данные (ФИО, дата рождения, номер карты), обрежьте эту область перед отправкой
+              </div>
+            )}
+
             {image.step === 'ready' && image.croppedPreview && (
               <ImagePreview
                 src={image.croppedPreview}
@@ -180,6 +189,21 @@ export function Analyze() {
               onMmPerMvChestChange={setMmPerMvChest}
             />
 
+            {/* Personal data confirmation */}
+            {(image.step === 'ready' || mode === 'url') && (
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={noPersonalData}
+                  onChange={(e) => setNoPersonalData(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-rose-600 focus:ring-rose-500"
+                />
+                <span className="text-sm text-gray-600">
+                  Изображение не содержит персональных данных
+                </span>
+              </label>
+            )}
+
             {/* Actions */}
             <div className="flex items-center justify-between pt-2 sm:pt-4">
               <button
@@ -194,7 +218,7 @@ export function Analyze() {
                 disabled={mutation.isPending || !canSubmit}
                 className="px-5 sm:px-6 py-2.5 bg-rose-600 text-white rounded-xl hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 disabled:opacity-50 text-sm sm:text-base font-medium transition-colors"
               >
-                {mutation.isPending ? 'Отп��авка...' : 'Запустить анализ'}
+                {mutation.isPending ? 'Отправка...' : 'Запустить анализ'}
               </button>
             </div>
           </form>
@@ -239,7 +263,7 @@ function PaymentPrompt({ onShowPayment }: { onShowPayment: () => void }) {
         <div className="flex-1 min-w-0">
           <p className="text-base font-semibold text-gray-900">Бесплатные анализы на сегодня закончились</p>
           <p className="text-sm text-gray-500 mt-1">
-            Оформите подписку — безлимитные анализы ЭКГ и доступ ко всем функциям
+            Оформите подписку: безлимитные анализы ЭКГ и доступ ко всем функциям
           </p>
         </div>
         <button

@@ -23,7 +23,7 @@ function ContactsContent() {
     <div className="max-w-3xl mx-auto">
       <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">О нас</h1>
       <p className="text-gray-500 mb-10 leading-relaxed">
-        <span style={{ fontFamily: "'Prosto One', cursive" }} className="text-gray-700">Умное сердце</span> — платформа
+        <span style={{ fontFamily: "'Prosto One', cursive" }} className="text-gray-700">Умное сердце</span>, платформа
         для анализа электрокардиограмм с помощью искусственного интеллекта.
         Объединяем медицинскую экспертизу и разработку ПО для помощи в диагностике
         сердечно-сосудистых заболеваний.

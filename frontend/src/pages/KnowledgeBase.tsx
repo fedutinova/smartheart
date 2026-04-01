@@ -139,7 +139,7 @@ export function KnowledgeBase() {
         <div className="mb-3 sm:mb-4">
           <h1 className="text-2xl font-semibold text-gray-900 mb-1">Чат-бот</h1>
           <p className="text-gray-500 text-xs sm:text-sm">
-            Задайте вопрос по ЭКГ и кардиологии — ответ формируется на основе медицинской литературы
+            Задайте вопрос по ЭКГ и кардиологии. Ответ формируется на основе медицинской литературы
           </p>
         </div>
 

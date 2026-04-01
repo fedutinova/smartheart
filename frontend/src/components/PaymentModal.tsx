@@ -84,7 +84,7 @@ export function PaymentModal({ quota, onClose }: PaymentModalProps) {
               disabled={isLoading}
               className="w-full py-3 bg-rose-600 text-white rounded-lg font-medium hover:bg-rose-700 disabled:opacity-50 transition-colors"
             >
-              {isLoading ? 'Переход к оплате...' : `Оформить — ${formatPrice(subscriptionPrice)} \u20BD`}
+              {isLoading ? 'Переход к оплате...' : `Оформить: ${formatPrice(subscriptionPrice)} \u20BD`}
             </button>
           </>
         )}

@@ -94,6 +94,7 @@ def _get_engine(force_rebuild: bool = False):
 
         from rag_pipeline.bm25 import BM25Index
         from rag_pipeline.config import (
+            BM25_PATH,
             CHROMA_PATH,
             CHUNK_MAX_CHARS,
             CHUNK_MIN_CHARS,
@@ -179,9 +180,18 @@ def _get_engine(force_rebuild: bool = False):
             all_chunk_ids = all_data["ids"]
             all_chunk_texts = all_data["documents"]
 
-        # Build BM25 index (always in-memory, fast).
+        # Build or load persisted BM25 index.
         bm25 = BM25Index(tokenizer=medical_ru_tokenizer)
-        bm25.build(ids=all_chunk_ids, documents=all_chunk_texts)
+        if not force_rebuild and bm25.load(BM25_PATH):
+            if bm25.ids == all_chunk_ids:
+                logger.info("Reusing persisted BM25 index")
+            else:
+                logger.info("BM25 index stale (chunk count changed), rebuilding")
+                bm25.build(ids=all_chunk_ids, documents=all_chunk_texts)
+                bm25.save(BM25_PATH)
+        else:
+            bm25.build(ids=all_chunk_ids, documents=all_chunk_texts)
+            bm25.save(BM25_PATH)
 
         _engine = HybridSearchEngine(
             collection=collection,
@@ -316,6 +326,12 @@ async def search(req: QueryRequest):
     )
 
 
+OFF_TOPIC_ANSWER = (
+    "К сожалению, я могу помочь только с вопросами по ЭКГ и кардиологии. "
+    "Попробуйте переформулировать вопрос."
+)
+
+
 def _query_sync(question: str, n_results: int) -> tuple[str, list[dict], float]:
     """Run retrieval + LLM in a thread (blocking I/O)."""
     QUERY_TOTAL.labels(endpoint="query").inc()
@@ -323,9 +339,20 @@ def _query_sync(question: str, n_results: int) -> tuple[str, list[dict], float]:
     engine = _get_engine()
     chain = _get_chain()
 
+    from rag_pipeline.config import RELEVANCE_THRESHOLD
     from rag_pipeline.generation import get_llm_answer, retrieve_context
 
     context, items = retrieve_context(engine, question, n_results=n_results)
+
+    top_score = items[0]["combined"] if items else 0.0
+    if top_score < RELEVANCE_THRESHOLD:
+        elapsed = time.monotonic() - start
+        QUERY_LATENCY.labels(endpoint="query").observe(elapsed)
+        logger.info(
+            "Off-topic query (score=%.4f < %.4f): %s",
+            top_score, RELEVANCE_THRESHOLD, question[:80],
+        )
+        return OFF_TOPIC_ANSWER, items, elapsed * 1000
 
     last_exc = None
     max_retries = 2
