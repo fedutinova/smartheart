@@ -129,7 +129,7 @@ func (h *GPTWorker) processWithFallback(ctx context.Context, payload gpt.JobPayl
 	}
 
 	// Only attempt EKG fallback for EKG-originated GPT requests.
-	if !isEKGRequest(payload.TextQuery) {
+	if !isECGRequest(payload.TextQuery) {
 		if gptErr != nil {
 			return nil, gptErr
 		}
@@ -194,8 +194,8 @@ func (h *GPTWorker) createFallbackResponse(ctx context.Context, payload gpt.JobP
 		if userRequests[i].ID == payload.RequestID || userRequests[i].Response == nil {
 			continue
 		}
-		if ekg, _ := models.ParseEKGContent(userRequests[i].Response.Content); ekg != nil && ekg.GPTRequestID == payload.RequestID.String() {
-			return formatEKGFallback(ekg, textQuery), nil
+		if ekg, _ := models.ParseECGContent(userRequests[i].Response.Content); ekg != nil && ekg.GPTRequestID == payload.RequestID.String() {
+			return formatECGFallback(ekg, textQuery), nil
 		}
 	}
 
@@ -204,16 +204,16 @@ func (h *GPTWorker) createFallbackResponse(ctx context.Context, payload gpt.JobP
 		if userRequests[i].ID == payload.RequestID || userRequests[i].Response == nil {
 			continue
 		}
-		if ekg, _ := models.ParseEKGContent(userRequests[i].Response.Content); ekg != nil {
-			return formatEKGFallback(ekg, textQuery), nil
+		if ekg, _ := models.ParseECGContent(userRequests[i].Response.Content); ekg != nil {
+			return formatECGFallback(ekg, textQuery), nil
 		}
 	}
 
 	return formatBasicFallback(textQuery), nil
 }
 
-// formatEKGFallback formats fallback response from typed EKG data
-func formatEKGFallback(ekg *models.EKGResponseContent, textQuery string) string {
+// formatECGFallback formats fallback response from typed EKG data
+func formatECGFallback(ekg *models.ECGResponseContent, textQuery string) string {
 	result := "Автоматический анализ ЭКГ изображения временно недоступен.\n\n"
 	result += fmt.Sprintf("Время анализа: %s\n", ekg.Timestamp)
 
@@ -240,9 +240,9 @@ func formatBasicFallback(textQuery string) string {
 	return result
 }
 
-// isEKGRequest checks whether the text query originated from the EKG analysis
+// isECGRequest checks whether the text query originated from the EKG analysis
 // pipeline rather than from a direct user GPT request.
-func isEKGRequest(textQuery string) bool {
+func isECGRequest(textQuery string) bool {
 	return strings.Contains(textQuery, "Analyze this ECG/EKG image")
 }
 

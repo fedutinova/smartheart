@@ -18,17 +18,17 @@ type ekgAnalyzeRequest struct {
 	MmPerMvChest  *float64 `json:"mm_per_mv_chest,omitempty" validate:"omitempty,min=1,max=40"`
 }
 
-// SubmitEKGAnalyze handles EKG image analysis submission.
+// SubmitECGAnalyze handles EKG image analysis submission.
 // Accepts either JSON (URL mode) or multipart/form-data (file upload mode).
-func (h *EKGHandler) SubmitEKGAnalyze(w http.ResponseWriter, r *http.Request) {
+func (h *ECGHandler) SubmitECGAnalyze(w http.ResponseWriter, r *http.Request) {
 	contentType := r.Header.Get("Content-Type")
 
 	if strings.HasPrefix(contentType, "multipart/form-data") {
-		h.submitEKGFile(w, r)
+		h.submitECGFile(w, r)
 		return
 	}
 
-	h.submitEKGURL(w, r)
+	h.submitECGURL(w, r)
 }
 
 func ecgParamsFromRequest(req *ekgAnalyzeRequest) service.ECGParams {
@@ -51,8 +51,8 @@ func ecgParamsFromRequest(req *ekgAnalyzeRequest) service.ECGParams {
 	return p
 }
 
-// submitEKGURL handles URL-based EKG submission.
-func (h *EKGHandler) submitEKGURL(w http.ResponseWriter, r *http.Request) {
+// submitECGURL handles URL-based EKG submission.
+func (h *ECGHandler) submitECGURL(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
 	var req ekgAnalyzeRequest
@@ -67,13 +67,13 @@ func (h *EKGHandler) submitEKGURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	params := ecgParamsFromRequest(&req)
-	result, err := h.Service.SubmitEKG(r.Context(), userID, req.ImageTempURL, params)
+	result, err := h.Service.SubmitECG(r.Context(), userID, req.ImageTempURL, params)
 	if err != nil {
 		handleServiceError(w, err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, SubmitEKGResponse{
+	writeJSON(w, http.StatusOK, SubmitECGResponse{
 		JobID:     result.JobID,
 		RequestID: result.RequestID,
 		Status:    result.Status,
@@ -81,8 +81,8 @@ func (h *EKGHandler) submitEKGURL(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// submitEKGFile handles file-based EKG submission (multipart upload).
-func (h *EKGHandler) submitEKGFile(w http.ResponseWriter, r *http.Request) {
+// submitECGFile handles file-based EKG submission (multipart upload).
+func (h *ECGHandler) submitECGFile(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		writeError(w, http.StatusBadRequest, "failed to parse form")
 		return
@@ -140,13 +140,13 @@ func (h *EKGHandler) submitEKGFile(w http.ResponseWriter, r *http.Request) {
 		Size:        header.Size,
 	}
 
-	result, err := h.Service.SubmitEKGFile(r.Context(), userID, uploaded, params)
+	result, err := h.Service.SubmitECGFile(r.Context(), userID, uploaded, params)
 	if err != nil {
 		handleServiceError(w, err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, SubmitEKGResponse{
+	writeJSON(w, http.StatusOK, SubmitECGResponse{
 		JobID:     result.JobID,
 		RequestID: result.RequestID,
 		Status:    result.Status,

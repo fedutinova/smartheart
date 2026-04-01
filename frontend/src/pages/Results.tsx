@@ -7,7 +7,7 @@ import { formatDate, formatStatus, getStatusColor, formatECGParams } from '@/uti
 import { Layout } from '@/components/Layout';
 import { useEventSource } from '@/hooks/useEventSource';
 import { usePendingJobs } from '@/hooks/usePendingJobs';
-import type { EKGAnalysisResult, ECGStructuredResult, LVHIndices } from '@/types';
+import type { ECGAnalysisResult, ECGStructuredResult, LVHIndices } from '@/types';
 
 const LEADS_ORDER = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6'];
 
@@ -61,13 +61,13 @@ export function Results() {
     }
   }, [id, request?.status, removeJob]);
 
-  let ekgResult: EKGAnalysisResult | null = null;
+  let ecgResult: ECGAnalysisResult | null = null;
   let isStructured = false;
   if (request?.response?.content) {
     try {
       const parsed = JSON.parse(request.response.content);
       if (parsed?.analysis_type === 'ekg_direct_v2' || parsed?.analysis_type === 'ekg_structured_v1') {
-        ekgResult = parsed as EKGAnalysisResult;
+        ecgResult = parsed as ECGAnalysisResult;
         isStructured = parsed.analysis_type === 'ekg_structured_v1';
       }
     } catch {
@@ -75,8 +75,8 @@ export function Results() {
     }
   }
 
-  const gptContent = ekgResult
-    ? ekgResult.gpt_full_response || null
+  const gptContent = ecgResult
+    ? ecgResult.gpt_full_response || null
     : (request?.response && request.response.model !== 'ekg_direct_v2')
       ? request.response.content
       : null;
@@ -192,8 +192,8 @@ export function Results() {
         )}
 
         {/* Structured ECG Results */}
-        {isStructured && ekgResult?.structured_result && (
-          <StructuredResultView result={ekgResult.structured_result} />
+        {isStructured && ecgResult?.structured_result && (
+          <StructuredResultView result={ecgResult.structured_result} />
         )}
 
         {/* GPT Interpretation / Analysis Result (old format) */}
@@ -211,11 +211,11 @@ export function Results() {
         )}
 
         {/* GPT interpretation pending/failed message for old EKG requests */}
-        {!isStructured && ekgResult && !gptContent && ekgResult.gpt_request_id && (
+        {!isStructured && ecgResult && !gptContent && ecgResult.gpt_request_id && (
           <div className="bg-yellow-50 border border-yellow-200 shadow rounded-lg p-6 mb-6">
             <h2 className="text-xl font-bold text-gray-900 mb-2">Заключение</h2>
             <p className="text-sm text-yellow-800">
-              {ekgResult.gpt_interpretation_status === 'failed'
+              {ecgResult.gpt_interpretation_status === 'failed'
                 ? 'GPT-интерпретация не удалась. Попробуйте повторить запрос.'
                 : 'GPT-интерпретация в обработке...'}
             </p>
@@ -223,10 +223,10 @@ export function Results() {
         )}
 
         {/* Notes */}
-        {ekgResult?.notes && (
+        {ecgResult?.notes && (
           <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
             <h2 className="text-sm font-medium text-gray-400 mb-2">Примечания</h2>
-            <p className="text-sm text-gray-600">{ekgResult.notes}</p>
+            <p className="text-sm text-gray-600">{ecgResult.notes}</p>
           </div>
         )}
 
@@ -370,12 +370,20 @@ function RequestImage({ requestId, fileId }: { requestId: string; fileId: string
   const [src, setSrc] = useState<string | null>(null);
 
   useEffect(() => {
-    let revoke: string | null = null;
+    let cancelled = false;
+    let objectUrl: string | null = null;
     requestAPI.getFileURL(requestId, fileId).then((url) => {
-      revoke = url;
+      if (cancelled) {
+        URL.revokeObjectURL(url);
+        return;
+      }
+      objectUrl = url;
       setSrc(url);
     }).catch(() => {});
-    return () => { if (revoke) URL.revokeObjectURL(revoke); };
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
   }, [requestId, fileId]);
 
   if (!src) return (

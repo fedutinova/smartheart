@@ -24,8 +24,8 @@ type SubmitGPTResponse struct {
 	UploadErrors   []string  `json:"upload_errors,omitempty"`
 }
 
-// SubmitEKGResponse is returned when an EKG analysis job is enqueued.
-type SubmitEKGResponse struct {
+// SubmitECGResponse is returned when an EKG analysis job is enqueued.
+type SubmitECGResponse struct {
 	JobID     uuid.UUID `json:"job_id"`
 	RequestID uuid.UUID `json:"request_id"`
 	Status    string    `json:"status"`

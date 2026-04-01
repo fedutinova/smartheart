@@ -54,13 +54,13 @@ type Queue interface {
 type Type string
 
 const (
-	TypeEKGAnalyze Type = "ekg_analyze"
+	TypeECGAnalyze Type = "ekg_analyze"
 	TypeGPTProcess Type = "gpt_process"
 )
 
-// EKGJobPayload represents the payload for EKG analysis jobs.
+// ECGJobPayload represents the payload for EKG analysis jobs.
 // Either ImageTempURL (URL mode) or ImageFileKey (file upload mode) is set.
-type EKGJobPayload struct {
+type ECGJobPayload struct {
 	ImageTempURL  string    `json:"image_temp_url,omitempty"`
 	ImageFileKey  string    `json:"image_file_key,omitempty"`
 	Notes         string    `json:"notes,omitempty"`

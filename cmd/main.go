@@ -172,10 +172,10 @@ func initQueue(cfg appconfig.Config, sessions *session.Service) job.Queue {
 func startWorkers(ctx context.Context, cfg appconfig.Config, db *database.DB, q job.Queue, storageService storage.Storage, repo repository.Store, hub *notify.Hub) {
 	gptClient := gpt.NewClient(cfg.GPT.APIKey, storageService, gpt.WithModel(cfg.GPT.Model))
 	gptWorker := workers.NewGPTWorker(db, gptClient, repo, hub)
-	ekgWorker := workers.NewEKGWorker(db, q, storageService, repo, gptClient, hub)
+	ecgWorker := workers.NewECGWorker(db, q, storageService, repo, gptClient, hub)
 
 	registry := job.NewRegistry()
-	registry.Register(job.TypeEKGAnalyze, ekgWorker.HandleEKGJob)
+	registry.Register(job.TypeECGAnalyze, ecgWorker.HandleECGJob)
 	registry.Register(job.TypeGPTProcess, gptWorker.HandleGPTJob)
 
 	q.StartConsumers(ctx, cfg.Queue.Workers, registry.Dispatch)
@@ -187,7 +187,12 @@ func startHTTPServer(cfg appconfig.Config, repo repository.Store, sessions *sess
 	requestSvc := service.NewRequestService(repo, q)
 	paymentSvc := service.NewPaymentService(repo, cfg.YooKassa, cfg.Quota.DailyLimit)
 
-	handlers := handler.NewHandler(authSvc, submissionSvc, requestSvc, paymentSvc, q, repo, sessions, storageService, hub, cfg)
+	mw := handler.Middlewares{
+		WebhookIP:             server.WebhookIPWhitelist(cfg.YooKassa.ShopID),
+		AnalyzeRateLimit:      server.EndpointRateLimit(10), // 10 RPM per IP for analysis
+		SubscriptionRateLimit: server.EndpointRateLimit(5),  // 5 RPM per IP for subscriptions
+	}
+	handlers := handler.NewHandler(authSvc, submissionSvc, requestSvc, paymentSvc, q, repo, sessions, storageService, hub, cfg, mw)
 	r := server.NewRouter(handlers, cfg)
 
 	srv := &http.Server{

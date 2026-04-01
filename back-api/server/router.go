@@ -41,11 +41,6 @@ func NewRouter(h *handler.Handler, cfg config.Config) http.Handler {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	// Set middleware on handler before route registration.
-	h.WebhookIPMiddleware = WebhookIPWhitelist(cfg.YooKassa.ShopID)
-	h.AnalyzeRateLimit = EndpointRateLimit(10)     // 10 RPM per IP for analysis
-	h.SubscriptionRateLimit = EndpointRateLimit(5) // 5 RPM per IP for subscriptions
-
 	h.RegisterRoutes(r)
 	return r
 }

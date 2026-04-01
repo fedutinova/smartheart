@@ -80,8 +80,8 @@ func (s *requestService) GetRequest(ctx context.Context, requestID uuid.UUID, cl
 	}
 
 	// Enrich old EKG responses with GPT interpretation (not needed for structured)
-	if request.Response != nil && request.Response.Model == models.EKGModelDirect {
-		enrichEKGResponse(ctx, s.repo, request, claims)
+	if request.Response != nil && request.Response.Model == models.ECGModelDirect {
+		enrichECGResponse(ctx, s.repo, request, claims)
 	}
 
 	return request, nil
@@ -106,10 +106,10 @@ func (s *requestService) GetJobStatus(ctx context.Context, jobID uuid.UUID, clai
 	return j, nil
 }
 
-// enrichEKGResponse adds GPT interpretation to an EKG response.
+// enrichECGResponse adds GPT interpretation to an EKG response.
 // Moved from handler/enrich.go to the service layer.
-func enrichEKGResponse(ctx context.Context, repo repository.RequestRepo, request *models.Request, claims *auth.Claims) {
-	ekg, err := models.ParseEKGContent(request.Response.Content)
+func enrichECGResponse(ctx context.Context, repo repository.RequestRepo, request *models.Request, claims *auth.Claims) {
+	ekg, err := models.ParseECGContent(request.Response.Content)
 	if err != nil {
 		slog.DebugContext(ctx, "Failed to parse EKG content for enrichment", "request_id", request.ID, "error", err)
 		return

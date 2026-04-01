@@ -3,6 +3,7 @@ import { useNavigate, Navigate, Link } from 'react-router-dom';
 import { authAPI } from '@/services/api';
 import { useAuthStore } from '@/store/auth';
 import { ROUTES, AUTH_ERROR_KEY } from '@/config';
+import { getApiError } from '@/utils/apiError';
 import { Layout } from '@/components/Layout';
 
 export function Login() {
@@ -37,16 +38,16 @@ export function Login() {
       const tokens = await authAPI.login({ email, password });
       login(tokens);
       navigate(ROUTES.DASHBOARD);
-    } catch (err: any) {
-      const serverMsg = err.response?.data?.error;
-      if (err.response?.status === 401) {
+    } catch (err: unknown) {
+      const { status, message } = getApiError(err);
+      if (status === 401) {
         setError('Неверный email или пароль');
-      } else if (err.response?.status === 429) {
+      } else if (status === 429) {
         setError('Слишком много попыток. Попробуйте позже');
-      } else if (!err.response) {
+      } else if (!status) {
         setError('Не удалось связаться с сервером. Проверьте подключение к интернету');
       } else {
-        setError(serverMsg || 'Ошибка входа');
+        setError(message || 'Ошибка входа');
       }
     } finally {
       setLoading(false);

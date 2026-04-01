@@ -29,7 +29,7 @@ export interface TokenPair {
   refresh_token: string;
 }
 
-export interface EKGAnalysisRequest {
+export interface ECGAnalysisRequest {
   image_temp_url: string;
   notes?: string;
   age?: number;
@@ -121,7 +121,7 @@ export interface PaymentResult {
   amount_rub: string;
 }
 
-export interface EKGAnalysisResult {
+export interface ECGAnalysisResult {
   analysis_type: string;
   notes?: string;
   timestamp: string;

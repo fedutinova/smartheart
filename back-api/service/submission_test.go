@@ -27,7 +27,7 @@ func newSubmissionService(t *testing.T) (*submissionService, *repomocks.MockStor
 	return svc, repo, queue, store
 }
 
-// --- SubmitEKG ---
+// --- SubmitECG ---
 
 func TestSubmitEKG_Success(t *testing.T) {
 	svc, repo, queue, _ := newSubmissionService(t)
@@ -47,7 +47,7 @@ func TestSubmitEKG_Success(t *testing.T) {
 		Enqueue(mock.Anything, mock.Anything).
 		Return(jobID, nil)
 
-	result, err := svc.SubmitEKG(ctx, userID, "https://example.com/ekg.jpg", ECGParams{})
+	result, err := svc.SubmitECG(ctx, userID, "https://example.com/ekg.jpg", ECGParams{})
 	require.NoError(t, err)
 	assert.Equal(t, jobID, result.JobID)
 	assert.NotEqual(t, uuid.Nil, result.RequestID)
@@ -57,7 +57,7 @@ func TestSubmitEKG_EmptyImageURL(t *testing.T) {
 	svc, _, _, _ := newSubmissionService(t)
 	ctx := context.Background()
 
-	_, err := svc.SubmitEKG(ctx, uuid.New(), "", ECGParams{})
+	_, err := svc.SubmitECG(ctx, uuid.New(), "", ECGParams{})
 	require.Error(t, err)
 	assert.ErrorIs(t, err, apperr.ErrValidation)
 }
@@ -70,7 +70,7 @@ func TestSubmitEKG_CreateRequestFails(t *testing.T) {
 		CreateRequest(mock.Anything, mock.Anything).
 		Return(errors.New("db error"))
 
-	_, err := svc.SubmitEKG(ctx, uuid.New(), "https://example.com/ekg.jpg", ECGParams{})
+	_, err := svc.SubmitECG(ctx, uuid.New(), "https://example.com/ekg.jpg", ECGParams{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "create request")
 }
@@ -87,14 +87,14 @@ func TestSubmitEKG_EnqueueFails(t *testing.T) {
 		Enqueue(mock.Anything, mock.Anything).
 		Return(uuid.Nil, errors.New("queue full"))
 
-	_, err := svc.SubmitEKG(ctx, uuid.New(), "https://example.com/ekg.jpg", ECGParams{})
+	_, err := svc.SubmitECG(ctx, uuid.New(), "https://example.com/ekg.jpg", ECGParams{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "enqueue EKG job")
 }
 
-// --- SubmitEKGFile ---
+// --- SubmitECGFile ---
 
-func TestSubmitEKGFile_Success(t *testing.T) {
+func TestSubmitECGFile_Success(t *testing.T) {
 	svc, repo, queue, store := newSubmissionService(t)
 	ctx := context.Background()
 	userID := uuid.New()
@@ -127,13 +127,13 @@ func TestSubmitEKGFile_Success(t *testing.T) {
 		Size:        10,
 	}
 
-	result, err := svc.SubmitEKGFile(ctx, userID, file, ECGParams{})
+	result, err := svc.SubmitECGFile(ctx, userID, file, ECGParams{})
 	require.NoError(t, err)
 	assert.Equal(t, jobID, result.JobID)
 	assert.NotEqual(t, uuid.Nil, result.RequestID)
 }
 
-func TestSubmitEKGFile_UploadFails(t *testing.T) {
+func TestSubmitECGFile_UploadFails(t *testing.T) {
 	svc, _, _, store := newSubmissionService(t)
 	ctx := context.Background()
 
@@ -148,12 +148,12 @@ func TestSubmitEKGFile_UploadFails(t *testing.T) {
 		Size:        4,
 	}
 
-	_, err := svc.SubmitEKGFile(ctx, uuid.New(), file, ECGParams{})
+	_, err := svc.SubmitECGFile(ctx, uuid.New(), file, ECGParams{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "upload EKG image")
 }
 
-func TestSubmitEKGFile_CreateRequestFails(t *testing.T) {
+func TestSubmitECGFile_CreateRequestFails(t *testing.T) {
 	svc, repo, _, store := newSubmissionService(t)
 	ctx := context.Background()
 
@@ -172,7 +172,7 @@ func TestSubmitEKGFile_CreateRequestFails(t *testing.T) {
 		Size:        4,
 	}
 
-	_, err := svc.SubmitEKGFile(ctx, uuid.New(), file, ECGParams{})
+	_, err := svc.SubmitECGFile(ctx, uuid.New(), file, ECGParams{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "create request")
 }

@@ -25,8 +25,8 @@ import (
 	"github.com/fedutinova/smartheart/back-api/validation"
 )
 
-// EKGWorker processes EKG analysis jobs.
-type EKGWorker struct {
+// ECGWorker processes EKG analysis jobs.
+type ECGWorker struct {
 	txb       database.TxBeginner
 	queue     job.Queue
 	storage   storage.Storage
@@ -36,15 +36,15 @@ type EKGWorker struct {
 	hub       *notify.Hub
 }
 
-func NewEKGWorker(
+func NewECGWorker(
 	txb database.TxBeginner,
 	queue job.Queue,
 	storageService storage.Storage,
 	repo repository.Store,
 	gptClient gpt.Processor,
 	hub *notify.Hub,
-) *EKGWorker {
-	return &EKGWorker{
+) *ECGWorker {
+	return &ECGWorker{
 		txb:       txb,
 		queue:     queue,
 		storage:   storageService,
@@ -55,44 +55,47 @@ func NewEKGWorker(
 	}
 }
 
-//nolint:gocognit // orchestration function with inherent branching
-func (h *EKGWorker) HandleEKGJob(ctx context.Context, j *job.Job) error {
-	if j.Type != job.TypeEKGAnalyze {
+func (h *ECGWorker) HandleECGJob(ctx context.Context, j *job.Job) error {
+	if j.Type != job.TypeECGAnalyze {
 		return fmt.Errorf("unexpected job type: %s", j.Type)
 	}
 
-	var payload job.EKGJobPayload
+	var payload job.ECGJobPayload
 	if err := json.Unmarshal(j.Payload, &payload); err != nil {
 		return fmt.Errorf("failed to unmarshal EKG job payload: %w", err)
 	}
 
 	err := h.processEKG(ctx, j, &payload)
 	if err != nil {
-		// Refund the daily usage counter so failed analyses don't count
-		if decErr := h.quotaRepo.DecrementDailyUsage(ctx, payload.UserID); decErr != nil {
-			slog.WarnContext(ctx, "Failed to decrement daily usage after EKG failure", "user_id", payload.UserID, "error", decErr)
-		}
-		// Mark request as failed and notify user
-		if payload.RequestID != uuid.Nil {
-			if updErr := h.repo.UpdateRequestStatus(ctx, payload.RequestID, models.StatusFailed); updErr != nil {
-				slog.ErrorContext(ctx, "Failed to update request status to failed", "request_id", payload.RequestID, "error", updErr)
-			}
-			h.hub.Notify(payload.UserID, notify.Event{
-				Type:      "request_completed",
-				RequestID: payload.RequestID,
-				Status:    models.StatusFailed,
-			})
-		}
+		h.handleEKGFailure(ctx, &payload)
 	}
 	return err
 }
 
-func (h *EKGWorker) processEKG(ctx context.Context, j *job.Job, payload *job.EKGJobPayload) error {
+func (h *ECGWorker) handleEKGFailure(ctx context.Context, payload *job.ECGJobPayload) {
+	// Refund the daily usage counter so failed analyses don't count.
+	if decErr := h.quotaRepo.DecrementDailyUsage(ctx, payload.UserID); decErr != nil {
+		slog.WarnContext(ctx, "Failed to decrement daily usage after EKG failure", "user_id", payload.UserID, "error", decErr)
+	}
+	// Mark request as failed and notify user.
+	if payload.RequestID == uuid.Nil {
+		return
+	}
+	if updErr := h.repo.UpdateRequestStatus(ctx, payload.RequestID, models.StatusFailed); updErr != nil {
+		slog.ErrorContext(ctx, "Failed to update request status to failed", "request_id", payload.RequestID, "error", updErr)
+	}
+	h.hub.Notify(payload.UserID, notify.Event{
+		Type:      "request_completed",
+		RequestID: payload.RequestID,
+		Status:    models.StatusFailed,
+	})
+}
 
+func (h *ECGWorker) processEKG(ctx context.Context, j *job.Job, payload *job.ECGJobPayload) error {
 	slog.InfoContext(ctx, "Starting EKG analysis",
 		"job_id", j.ID,
 		"user_id", payload.UserID,
-		"mode", ekgJobMode(payload))
+		"mode", ecgJobMode(payload))
 
 	// Apply defaults
 	if payload.PaperSpeedMMS <= 0 {
@@ -167,14 +170,14 @@ func (h *EKGWorker) processEKG(ctx context.Context, j *job.Job, payload *job.EKG
 	)
 
 	// Build response content
-	ekgContent := &models.EKGResponseContent{
-		AnalysisType:     models.EKGModelStructured,
+	ecgContent := &models.ECGResponseContent{
+		AnalysisType:     models.ECGModelStructured,
 		Notes:            payload.Notes,
 		Timestamp:        timestamp,
 		JobID:            j.ID.String(),
 		StructuredResult: structured,
 	}
-	responseJSON, err := ekgContent.Marshal()
+	responseJSON, err := ecgContent.Marshal()
 	if err != nil {
 		return fmt.Errorf("failed to marshal response: %w", err)
 	}
@@ -206,7 +209,7 @@ func (h *EKGWorker) processEKG(ctx context.Context, j *job.Job, payload *job.EKG
 			ID:               uuid.New(),
 			RequestID:        requestID,
 			Content:          responseJSON,
-			Model:            models.EKGModelStructured,
+			Model:            models.ECGModelStructured,
 			TokensUsed:       gptResult.TokensUsed,
 			ProcessingTimeMs: gptResult.ProcessingTimeMs,
 		}
@@ -253,7 +256,7 @@ func (h *EKGWorker) processEKG(ctx context.Context, j *job.Job, payload *job.EKG
 }
 
 // Close cleans up resources used by the EKG worker.
-func (*EKGWorker) Close() {
+func (*ECGWorker) Close() {
 	slog.Debug("EKG worker closed")
 }
 
@@ -307,7 +310,7 @@ func newSSRFSafeTransport() *http.Transport {
 	}
 }
 
-func (*EKGWorker) downloadImage(ctx context.Context, imageURL string) ([]byte, error) {
+func (*ECGWorker) downloadImage(ctx context.Context, imageURL string) ([]byte, error) {
 	if err := validateImageURL(imageURL); err != nil {
 		return nil, fmt.Errorf("url validation failed: %w", err)
 	}
@@ -364,7 +367,7 @@ func isValidImageContentType(contentType string) bool {
 	return validation.IsImageType(contentType) || contentType == "application/pdf"
 }
 
-func ekgJobMode(p *job.EKGJobPayload) string {
+func ecgJobMode(p *job.ECGJobPayload) string {
 	if p.ImageFileKey != "" {
 		return "file"
 	}
@@ -373,7 +376,7 @@ func ekgJobMode(p *job.EKGJobPayload) string {
 
 const maxImageSize = 10 * 1024 * 1024
 
-func (h *EKGWorker) readFromStorage(ctx context.Context, key string) ([]byte, error) {
+func (h *ECGWorker) readFromStorage(ctx context.Context, key string) ([]byte, error) {
 	reader, _, err := h.storage.GetFile(ctx, key)
 	if err != nil {
 		return nil, fmt.Errorf("get file from storage: %w", err)

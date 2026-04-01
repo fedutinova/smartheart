@@ -12,8 +12,8 @@ import (
 	"github.com/fedutinova/smartheart/back-api/job"
 )
 
-func TestEKGJobPayload_MarshalUnmarshal(t *testing.T) {
-	original := job.EKGJobPayload{
+func TestECGJobPayload_MarshalUnmarshal(t *testing.T) {
+	original := job.ECGJobPayload{
 		ImageTempURL: "http://example.com/test.jpg",
 		Notes:        "Test EKG analysis",
 		UserID:       uuid.New(),
@@ -26,7 +26,7 @@ func TestEKGJobPayload_MarshalUnmarshal(t *testing.T) {
 	}
 
 	// Unmarshal from JSON
-	var unmarshaled job.EKGJobPayload
+	var unmarshaled job.ECGJobPayload
 	err = json.Unmarshal(jsonData, &unmarshaled)
 	if err != nil {
 		t.Fatalf("Failed to unmarshal payload: %v", err)
@@ -76,7 +76,7 @@ func TestCreateMockEKGJob(t *testing.T) {
 	userID := uuid.New()
 	imageURL := "http://example.com/test.jpg"
 
-	payload := job.EKGJobPayload{
+	payload := job.ECGJobPayload{
 		ImageTempURL: imageURL,
 		Notes:        "Test EKG analysis",
 		UserID:       userID,
@@ -103,7 +103,7 @@ func TestCreateMockEKGJob(t *testing.T) {
 		t.Errorf("Expected job type 'ekg_analyze', got %s", testJob.Type)
 	}
 
-	var unmarshaledPayload job.EKGJobPayload
+	var unmarshaledPayload job.ECGJobPayload
 	err = json.Unmarshal(testJob.Payload, &unmarshaledPayload)
 	if err != nil {
 		t.Fatalf("Failed to unmarshal job payload: %v", err)
@@ -115,8 +115,8 @@ func TestCreateMockEKGJob(t *testing.T) {
 }
 
 // Benchmark tests
-func BenchmarkEKGJobPayload_Marshal(b *testing.B) {
-	payload := job.EKGJobPayload{
+func BenchmarkECGJobPayload_Marshal(b *testing.B) {
+	payload := job.ECGJobPayload{
 		ImageTempURL: "http://example.com/test.jpg",
 		Notes:        "Test EKG analysis with some notes",
 		UserID:       uuid.New(),
@@ -128,8 +128,8 @@ func BenchmarkEKGJobPayload_Marshal(b *testing.B) {
 	}
 }
 
-func BenchmarkEKGJobPayload_Unmarshal(b *testing.B) {
-	payload := job.EKGJobPayload{
+func BenchmarkECGJobPayload_Unmarshal(b *testing.B) {
+	payload := job.ECGJobPayload{
 		ImageTempURL: "http://example.com/test.jpg",
 		Notes:        "Test EKG analysis with some notes",
 		UserID:       uuid.New(),
@@ -139,7 +139,7 @@ func BenchmarkEKGJobPayload_Unmarshal(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		var unmarshaled job.EKGJobPayload
+		var unmarshaled job.ECGJobPayload
 		_ = json.Unmarshal(jsonData, &unmarshaled)
 	}
 }

@@ -4,7 +4,7 @@ import "sync"
 
 // Permission constants matching the DB seeds in migrations/002_auth_system.sql.
 const (
-	PermEKGSubmit  = "ekg:submit"
+	PermECGSubmit  = "ekg:submit"
 	PermJobRead    = "job:read"
 	PermJobReadOwn = "job:read_own"
 	PermJobReadAll = "job:read_all"
@@ -20,8 +20,8 @@ const (
 var (
 	permsMu     sync.RWMutex
 	roleToPerms = map[string][]string{
-		RoleUser:  {PermEKGSubmit, PermJobReadOwn},
-		RoleAdmin: {PermEKGSubmit, PermJobReadAll, PermAdminAll},
+		RoleUser:  {PermECGSubmit, PermJobReadOwn},
+		RoleAdmin: {PermECGSubmit, PermJobReadAll, PermAdminAll},
 	}
 )
 

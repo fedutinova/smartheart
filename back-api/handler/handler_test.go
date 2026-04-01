@@ -57,7 +57,7 @@ func newTestDeps(t testing.TB) *testDeps {
 }
 
 func (d *testDeps) handler() *Handler {
-	return NewHandler(d.authSvc, d.submissionSvc, d.requestSvc, d.paymentSvc, d.queue, d.repo, d.sessions, d.storage, notify.NewHub(), d.config)
+	return NewHandler(d.authSvc, d.submissionSvc, d.requestSvc, d.paymentSvc, d.queue, d.repo, d.sessions, d.storage, notify.NewHub(), d.config, Middlewares{})
 }
 
 func withAuthContext(r *http.Request, userID uuid.UUID, roles []string) *http.Request {
@@ -102,12 +102,12 @@ func TestHealth_ReturnsOK(t *testing.T) {
 
 // --- EKG handler tests ---
 
-func TestSubmitEKGAnalyze_Success(t *testing.T) {
+func TestSubmitECGAnalyze_Success(t *testing.T) {
 	d := newTestDeps(t)
 	userID := uuid.New()
 
 	d.submissionSvc.EXPECT().
-		SubmitEKG(mock.Anything, mock.Anything, "http://example.com/ekg.jpg", mock.Anything).
+		SubmitECG(mock.Anything, mock.Anything, "http://example.com/ekg.jpg", mock.Anything).
 		Return(&service.SubmittedJob{JobID: uuid.New(), RequestID: uuid.New(), Status: "queued"}, nil)
 
 	h := d.handler()
@@ -115,17 +115,17 @@ func TestSubmitEKGAnalyze_Success(t *testing.T) {
 	body, _ := json.Marshal(map[string]string{
 		"image_temp_url": "http://example.com/ekg.jpg",
 	})
-	req := httptest.NewRequest("POST", "/v1/ekg/analyze", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/v1/ecg/analyze", bytes.NewReader(body))
 	req = withAuthContext(req, userID, []string{"user"})
 	w := httptest.NewRecorder()
 
-	h.EKG.SubmitEKGAnalyze(w, req)
+	h.EKG.SubmitECGAnalyze(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
 
-	var resp SubmitEKGResponse
+	var resp SubmitECGResponse
 	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
@@ -140,87 +140,87 @@ func TestSubmitEKGAnalyze_Success(t *testing.T) {
 	}
 }
 
-func TestSubmitEKGAnalyze_EmptyBody(t *testing.T) {
+func TestSubmitECGAnalyze_EmptyBody(t *testing.T) {
 	d := newTestDeps(t)
 	h := d.handler()
 	userID := uuid.New()
 
-	req := httptest.NewRequest("POST", "/v1/ekg/analyze", strings.NewReader(""))
+	req := httptest.NewRequest("POST", "/v1/ecg/analyze", strings.NewReader(""))
 	req = withAuthContext(req, userID, []string{"user"})
 	w := httptest.NewRecorder()
 
-	h.EKG.SubmitEKGAnalyze(w, req)
+	h.EKG.SubmitECGAnalyze(w, req)
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", w.Code)
 	}
 }
 
-func TestSubmitEKGAnalyze_InvalidJSON(t *testing.T) {
+func TestSubmitECGAnalyze_InvalidJSON(t *testing.T) {
 	d := newTestDeps(t)
 	h := d.handler()
 	userID := uuid.New()
 
-	req := httptest.NewRequest("POST", "/v1/ekg/analyze", strings.NewReader("{invalid"))
+	req := httptest.NewRequest("POST", "/v1/ecg/analyze", strings.NewReader("{invalid"))
 	req = withAuthContext(req, userID, []string{"user"})
 	w := httptest.NewRecorder()
 
-	h.EKG.SubmitEKGAnalyze(w, req)
+	h.EKG.SubmitECGAnalyze(w, req)
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", w.Code)
 	}
 }
 
-func TestSubmitEKGAnalyze_MissingImageURL(t *testing.T) {
+func TestSubmitECGAnalyze_MissingImageURL(t *testing.T) {
 	d := newTestDeps(t)
 	h := d.handler()
 	userID := uuid.New()
 
 	// Missing image_temp_url is caught by struct tag validation (required)
 	body, _ := json.Marshal(make(map[string]string))
-	req := httptest.NewRequest("POST", "/v1/ekg/analyze", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/v1/ecg/analyze", bytes.NewReader(body))
 	req = withAuthContext(req, userID, []string{"user"})
 	w := httptest.NewRecorder()
 
-	h.EKG.SubmitEKGAnalyze(w, req)
+	h.EKG.SubmitECGAnalyze(w, req)
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", w.Code)
 	}
 }
 
-func TestSubmitEKGAnalyze_NoAuthContext(t *testing.T) {
+func TestSubmitECGAnalyze_NoAuthContext(t *testing.T) {
 	d := newTestDeps(t)
 	h := d.handler()
 
 	body, _ := json.Marshal(map[string]string{"image_temp_url": "http://example.com/ekg.jpg"})
-	req := httptest.NewRequest("POST", "/v1/ekg/analyze", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/v1/ecg/analyze", bytes.NewReader(body))
 	w := httptest.NewRecorder()
 
-	h.EKG.SubmitEKGAnalyze(w, req)
+	h.EKG.SubmitECGAnalyze(w, req)
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", w.Code)
 	}
 }
 
-func TestSubmitEKGAnalyze_ServiceError(t *testing.T) {
+func TestSubmitECGAnalyze_ServiceError(t *testing.T) {
 	d := newTestDeps(t)
 
 	d.submissionSvc.EXPECT().
-		SubmitEKG(mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		SubmitECG(mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 		Return(nil, apperr.ErrInternal)
 
 	h := d.handler()
 	userID := uuid.New()
 
 	body, _ := json.Marshal(map[string]string{"image_temp_url": "http://example.com/ekg.jpg"})
-	req := httptest.NewRequest("POST", "/v1/ekg/analyze", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/v1/ecg/analyze", bytes.NewReader(body))
 	req = withAuthContext(req, userID, []string{"user"})
 	w := httptest.NewRecorder()
 
-	h.EKG.SubmitEKGAnalyze(w, req)
+	h.EKG.SubmitECGAnalyze(w, req)
 
 	if w.Code != http.StatusInternalServerError {
 		t.Fatalf("expected 500, got %d", w.Code)
@@ -276,7 +276,7 @@ func TestGetJob_Success(t *testing.T) {
 
 	testJob := &job.Job{
 		ID:     jobID,
-		Type:   job.TypeEKGAnalyze,
+		Type:   job.TypeECGAnalyze,
 		Status: job.StatusRunning,
 	}
 
@@ -301,7 +301,7 @@ func TestGetJob_Success(t *testing.T) {
 // --- Serialization tests ---
 
 func TestEKGPayload_Roundtrip(t *testing.T) {
-	original := job.EKGJobPayload{
+	original := job.ECGJobPayload{
 		ImageTempURL: "http://example.com/test.jpg",
 		Notes:        "Test EKG analysis",
 		UserID:       uuid.New(),
@@ -313,7 +313,7 @@ func TestEKGPayload_Roundtrip(t *testing.T) {
 		t.Fatalf("marshal: %v", err)
 	}
 
-	var decoded job.EKGJobPayload
+	var decoded job.ECGJobPayload
 	if err := json.Unmarshal(data, &decoded); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
@@ -329,8 +329,8 @@ func TestEKGPayload_Roundtrip(t *testing.T) {
 	}
 }
 
-func TestSubmitEKGResponse_Roundtrip(t *testing.T) {
-	resp := SubmitEKGResponse{
+func TestSubmitECGResponse_Roundtrip(t *testing.T) {
+	resp := SubmitECGResponse{
 		JobID:     uuid.New(),
 		RequestID: uuid.New(),
 		Status:    "queued",
@@ -342,7 +342,7 @@ func TestSubmitEKGResponse_Roundtrip(t *testing.T) {
 		t.Fatalf("marshal: %v", err)
 	}
 
-	var decoded SubmitEKGResponse
+	var decoded SubmitECGResponse
 	if err := json.Unmarshal(data, &decoded); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
@@ -628,7 +628,7 @@ func TestLogout_EmptyBody(t *testing.T) {
 // --- Benchmarks ---
 
 func BenchmarkHandlers_RequestMarshaling(b *testing.B) {
-	payload := job.EKGJobPayload{
+	payload := job.ECGJobPayload{
 		ImageTempURL: "http://example.com/test.jpg",
 		Notes:        "Test EKG analysis",
 		UserID:       uuid.New(),
@@ -642,7 +642,7 @@ func BenchmarkHandlers_RequestMarshaling(b *testing.B) {
 }
 
 func BenchmarkHandlers_RequestUnmarshaling(b *testing.B) {
-	payload := job.EKGJobPayload{
+	payload := job.ECGJobPayload{
 		ImageTempURL: "http://example.com/test.jpg",
 		Notes:        "Test EKG analysis",
 		UserID:       uuid.New(),
@@ -653,7 +653,7 @@ func BenchmarkHandlers_RequestUnmarshaling(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		var decoded job.EKGJobPayload
+		var decoded job.ECGJobPayload
 		_ = json.Unmarshal(reqBody, &decoded)
 	}
 }

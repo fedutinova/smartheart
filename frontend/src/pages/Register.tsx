@@ -3,6 +3,7 @@ import { useNavigate, Navigate, Link } from 'react-router-dom';
 import { authAPI } from '@/services/api';
 import { useAuthStore } from '@/store/auth';
 import { ROUTES } from '@/config';
+import { getApiError } from '@/utils/apiError';
 import { Layout } from '@/components/Layout';
 
 export function Register() {
@@ -27,16 +28,16 @@ export function Register() {
     try {
       await authAPI.register({ username, email, password });
       navigate(ROUTES.LOGIN);
-    } catch (err: any) {
-      const serverMsg = err.response?.data?.error;
-      if (err.response?.status === 409) {
+    } catch (err: unknown) {
+      const { status, message } = getApiError(err);
+      if (status === 409) {
         setError('Неверный email или пароль');
-      } else if (err.response?.status === 429) {
+      } else if (status === 429) {
         setError('Слишком много попыток. Попробуйте позже');
-      } else if (!err.response) {
+      } else if (!status) {
         setError('Не удалось связаться с сервером. Проверьте подключение к интернету');
       } else {
-        setError(serverMsg || 'Ошибка регистрации');
+        setError(message || 'Ошибка регистрации');
       }
     } finally {
       setLoading(false);

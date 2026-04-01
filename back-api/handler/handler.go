@@ -19,8 +19,8 @@ type AuthHandler struct {
 	Service service.AuthService
 }
 
-// EKGHandler handles EKG submission endpoints.
-type EKGHandler struct {
+// ECGHandler handles EKG submission endpoints.
+type ECGHandler struct {
 	Service service.SubmissionService
 }
 
@@ -47,10 +47,20 @@ type HealthHandler struct {
 // Middleware is an HTTP middleware function.
 type Middleware = func(http.Handler) http.Handler
 
+// Middlewares holds per-endpoint middleware injected at construction time.
+type Middlewares struct {
+	// WebhookIP restricts webhook access to trusted IPs.
+	WebhookIP Middleware
+	// AnalyzeRateLimit is a stricter per-endpoint rate limit for analysis submission.
+	AnalyzeRateLimit Middleware
+	// SubscriptionRateLimit is a stricter per-endpoint rate limit for subscription creation.
+	SubscriptionRateLimit Middleware
+}
+
 // Handler composes all focused handlers and registers routes.
 type Handler struct {
 	Auth    *AuthHandler
-	EKG     *EKGHandler
+	EKG     *ECGHandler
 	GPT     *GPTHandler
 	Request *RequestHandler
 	Healthz *HealthHandler
@@ -59,13 +69,7 @@ type Handler struct {
 	Payment *PaymentHandler
 	Profile *ProfileHandler
 	Config  config.Config
-
-	// WebhookIPMiddleware restricts webhook access to trusted IPs.
-	WebhookIPMiddleware Middleware
-	// AnalyzeRateLimit is a stricter per-endpoint rate limit for analysis submission.
-	AnalyzeRateLimit Middleware
-	// SubscriptionRateLimit is a stricter per-endpoint rate limit for subscription creation.
-	SubscriptionRateLimit Middleware
+	MW      Middlewares
 }
 
 // NewHandler creates a Handler with all sub-handlers wired to shared dependencies.
@@ -80,10 +84,11 @@ func NewHandler(
 	storageService storage.Storage,
 	hub *notify.Hub,
 	cfg config.Config,
+	mw Middlewares,
 ) *Handler {
 	return &Handler{
 		Auth:    &AuthHandler{Service: authSvc},
-		EKG:     &EKGHandler{Service: submissionSvc},
+		EKG:     &ECGHandler{Service: submissionSvc},
 		GPT:     &GPTHandler{Service: submissionSvc},
 		Request: &RequestHandler{Service: requestSvc, Config: cfg, Storage: storageService},
 		Healthz: &HealthHandler{Queue: queue, Repo: repo, Sessions: sessions, Storage: storageService},
@@ -92,6 +97,7 @@ func NewHandler(
 		Payment: &PaymentHandler{Service: paymentSvc},
 		Profile: &ProfileHandler{Repo: repo},
 		Config:  cfg,
+		MW:      mw,
 	}
 }
 
@@ -111,8 +117,8 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 	})
 
 	// YooKassa webhook (public — called by YooKassa servers, no JWT)
-	if h.WebhookIPMiddleware != nil {
-		r.With(h.WebhookIPMiddleware).Post("/v1/payments/webhook", h.Payment.Webhook)
+	if h.MW.WebhookIP != nil {
+		r.With(h.MW.WebhookIP).Post("/v1/payments/webhook", h.Payment.Webhook)
 	} else {
 		r.Post("/v1/payments/webhook", h.Payment.Webhook)
 	}
@@ -128,11 +134,11 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 
 		r.Post("/v1/auth/logout", h.Auth.Logout)
 
-		ekgMiddleware := []func(http.Handler) http.Handler{auth.RequirePerm(auth.PermEKGSubmit)}
-		if h.AnalyzeRateLimit != nil {
-			ekgMiddleware = append(ekgMiddleware, h.AnalyzeRateLimit)
+		ekgMiddleware := []func(http.Handler) http.Handler{auth.RequirePerm(auth.PermECGSubmit)}
+		if h.MW.AnalyzeRateLimit != nil {
+			ekgMiddleware = append(ekgMiddleware, h.MW.AnalyzeRateLimit)
 		}
-		r.With(ekgMiddleware...).Post("/v1/ekg/analyze", h.EKG.SubmitEKGAnalyze)
+		r.With(ekgMiddleware...).Post("/v1/ecg/analyze", h.EKG.SubmitECGAnalyze)
 		r.With(ekgMiddleware...).Post("/v1/gpt/process", h.GPT.SubmitGPTRequest)
 
 		r.With(auth.RequirePerm(auth.PermJobReadOwn)).Get("/v1/jobs/{id}", h.Request.GetJob)
@@ -153,8 +159,8 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		// Payments & quota
 		r.Get("/v1/quota", h.Payment.GetQuota)
 		r.Post("/v1/payments", h.Payment.CreatePayment)
-		if h.SubscriptionRateLimit != nil {
-			r.With(h.SubscriptionRateLimit).Post("/v1/subscriptions", h.Payment.CreateSubscription)
+		if h.MW.SubscriptionRateLimit != nil {
+			r.With(h.MW.SubscriptionRateLimit).Post("/v1/subscriptions", h.Payment.CreateSubscription)
 		} else {
 			r.Post("/v1/subscriptions", h.Payment.CreateSubscription)
 		}

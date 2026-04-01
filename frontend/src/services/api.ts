@@ -4,7 +4,7 @@ import type {
   LoginRequest,
   RegisterRequest,
   TokenPair,
-  EKGAnalysisRequest,
+  ECGAnalysisRequest,
   ECGCalibrationParams,
   Job,
   Request,
@@ -12,7 +12,7 @@ import type {
   QuotaInfo,
   PaymentResult,
 } from '@/types';
-import { API_BASE_URL, API_TIMEOUT, API_TIMEOUT_UPLOAD, API_TIMEOUT_RAG, JWT_STORAGE_KEY, REFRESH_TOKEN_KEY, AUTH_ERROR_KEY } from '@/config';
+import { API_BASE_URL, API_TIMEOUT, API_TIMEOUT_UPLOAD, API_TIMEOUT_RAG, REFRESH_TOKEN_KEY, AUTH_ERROR_KEY } from '@/config';
 import { useAuthStore } from '@/store/auth';
 
 const api = axios.create({
@@ -51,7 +51,7 @@ const processQueue = (error: unknown, token: string | null = null) => {
 // Request interceptor для добавления токена
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem(JWT_STORAGE_KEY);
+    const token = useAuthStore.getState().accessToken;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -168,17 +168,17 @@ export const profileAPI = {
   },
 };
 
-type EKGSubmitResponse = { job_id: string; request_id: string; status: string; message: string };
+type ECGSubmitResponse = { job_id: string; request_id: string; status: string; message: string };
 
-export const ekgAPI = {
-  submitAnalysis: async (data: EKGAnalysisRequest & Partial<ECGCalibrationParams>) => {
-    const response = await api.post<EKGSubmitResponse>('/v1/ekg/analyze', data);
+export const ecgAPI = {
+  submitAnalysis: async (data: ECGAnalysisRequest & Partial<ECGCalibrationParams>) => {
+    const response = await api.post<ECGSubmitResponse>('/v1/ecg/analyze', data);
     return response.data;
   },
 
   submitAnalysisFile: async (imageBlob: Blob, notes?: string, params?: ECGCalibrationParams) => {
     const formData = new FormData();
-    formData.append('image', imageBlob, 'ekg-image.jpg');
+    formData.append('image', imageBlob, 'ecg-image.jpg');
     if (notes) {
       formData.append('notes', notes);
     }
@@ -189,7 +189,7 @@ export const ekgAPI = {
       formData.append('mm_per_mv_limb', String(params.mm_per_mv_limb));
       formData.append('mm_per_mv_chest', String(params.mm_per_mv_chest));
     }
-    const response = await api.post<EKGSubmitResponse>('/v1/ekg/analyze', formData, {
+    const response = await api.post<ECGSubmitResponse>('/v1/ecg/analyze', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
       timeout: API_TIMEOUT_UPLOAD,
     });

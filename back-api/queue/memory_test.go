@@ -11,7 +11,7 @@ import (
 
 func TestEnqueue_SetsDefaults(t *testing.T) {
 	q := NewMemoryQueue(10, 50*time.Millisecond)
-	j := &job.Job{Type: job.TypeEKGAnalyze, Payload: []byte(`{}`)}
+	j := &job.Job{Type: job.TypeECGAnalyze, Payload: []byte(`{}`)}
 
 	id, err := q.Enqueue(context.Background(), j)
 	if err != nil {
@@ -47,7 +47,7 @@ func TestStartConsumers_SucceedsAndUpdatesStatus(t *testing.T) {
 		return nil
 	})
 
-	j := &job.Job{Type: job.TypeEKGAnalyze, Payload: []byte(`{}`)}
+	j := &job.Job{Type: job.TypeECGAnalyze, Payload: []byte(`{}`)}
 	id, err := q.Enqueue(context.Background(), j)
 	if err != nil {
 		t.Fatalf("Enqueue error: %v", err)
@@ -83,7 +83,7 @@ func TestStartConsumers_TimeoutMarksFailed(t *testing.T) {
 		return errors.New("handler timed out")
 	})
 
-	j := &job.Job{Type: job.TypeEKGAnalyze, Payload: []byte(`{}`)}
+	j := &job.Job{Type: job.TypeECGAnalyze, Payload: []byte(`{}`)}
 	id, err := q.Enqueue(context.Background(), j)
 	if err != nil {
 		t.Fatalf("Enqueue error: %v", err)

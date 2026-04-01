@@ -80,7 +80,7 @@ func TestRedisQueue_EnqueueAndConsume(t *testing.T) {
 
 	// Enqueue jobs
 	job1 := &job.Job{
-		Type:    job.TypeEKGAnalyze,
+		Type:    job.TypeECGAnalyze,
 		Payload: []byte(`{"test": "data1"}`),
 	}
 	job2 := &job.Job{
@@ -178,7 +178,7 @@ func TestRedisQueue_JobFailure(t *testing.T) {
 
 	// Enqueue job
 	testJob := &job.Job{
-		Type:    job.TypeEKGAnalyze,
+		Type:    job.TypeECGAnalyze,
 		Payload: []byte(`{"test": "will fail"}`),
 	}
 
@@ -247,7 +247,7 @@ func TestRedisQueue_Persistence(t *testing.T) {
 	}
 
 	testJob := &job.Job{
-		Type:    job.TypeEKGAnalyze,
+		Type:    job.TypeECGAnalyze,
 		Payload: []byte(`{"test": "persistent"}`),
 	}
 
@@ -335,7 +335,7 @@ func TestRedisQueue_Len(t *testing.T) {
 	// Enqueue several jobs without consumers
 	for i := 0; i < 5; i++ {
 		_, err := q.Enqueue(ctx, &job.Job{
-			Type:    job.TypeEKGAnalyze,
+			Type:    job.TypeECGAnalyze,
 			Payload: []byte(`{}`),
 		})
 		if err != nil {

@@ -25,7 +25,7 @@ func TestHandleGPTJob_WrongJobType(t *testing.T) {
 
 	j := &job.Job{
 		ID:   uuid.New(),
-		Type: job.TypeEKGAnalyze,
+		Type: job.TypeECGAnalyze,
 	}
 
 	err := h.HandleGPTJob(context.Background(), j)
@@ -83,15 +83,15 @@ func TestHandleGPTJob_UpdateStatusFails(t *testing.T) {
 	}
 }
 
-// --- formatEKGFallback tests ---
+// --- formatECGFallback tests ---
 
 func TestFormatEKGFallback_WithNotesAndQuery(t *testing.T) {
-	ekg := &models.EKGResponseContent{
+	ekg := &models.ECGResponseContent{
 		Timestamp: "2026-01-01T00:00:00Z",
 		Notes:     "patient notes",
 	}
 
-	result := formatEKGFallback(ekg, "query text")
+	result := formatECGFallback(ekg, "query text")
 
 	if !strings.Contains(result, "Автоматический анализ ЭКГ") {
 		t.Error("expected Russian header")
@@ -108,12 +108,12 @@ func TestFormatEKGFallback_WithNotesAndQuery(t *testing.T) {
 }
 
 func TestFormatEKGFallback_SameNotesAndQuery(t *testing.T) {
-	ekg := &models.EKGResponseContent{
+	ekg := &models.ECGResponseContent{
 		Timestamp: "2026-01-01T00:00:00Z",
 		Notes:     "same text",
 	}
 
-	result := formatEKGFallback(ekg, "same text")
+	result := formatECGFallback(ekg, "same text")
 
 	// When notes == textQuery, the query should NOT be duplicated
 	count := strings.Count(result, "same text")
@@ -123,12 +123,12 @@ func TestFormatEKGFallback_SameNotesAndQuery(t *testing.T) {
 }
 
 func TestFormatEKGFallback_EmptyNotes(t *testing.T) {
-	ekg := &models.EKGResponseContent{
+	ekg := &models.ECGResponseContent{
 		Timestamp: "2026-01-01T00:00:00Z",
 		Notes:     "",
 	}
 
-	result := formatEKGFallback(ekg, "")
+	result := formatECGFallback(ekg, "")
 
 	if !strings.Contains(result, "2026-01-01T00:00:00Z") {
 		t.Error("expected timestamp")
@@ -205,13 +205,13 @@ func TestCreateFallbackResponse_WithEKGResponse(t *testing.T) {
 	userID := uuid.New()
 	ekgRequestID := uuid.New()
 
-	ekgContent := &models.EKGResponseContent{
-		AnalysisType: models.EKGModelDirect,
+	ecgContent := &models.ECGResponseContent{
+		AnalysisType: models.ECGModelDirect,
 		Notes:        "patient notes",
 		Timestamp:    "2026-01-01T00:00:00Z",
 		GPTRequestID: requestID.String(),
 	}
-	ekgJSON, _ := ekgContent.Marshal()
+	ekgJSON, _ := ecgContent.Marshal()
 
 	repo := repomocks.NewMockRequestRepo(t)
 	repo.EXPECT().

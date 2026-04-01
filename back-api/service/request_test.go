@@ -198,12 +198,12 @@ func TestGetRequest_WithEKGEnrichment(t *testing.T) {
 	requestID := uuid.New()
 	gptRequestID := uuid.New()
 
-	ekgContent := &models.EKGResponseContent{
-		AnalysisType: models.EKGModelDirect,
+	ecgContent := &models.ECGResponseContent{
+		AnalysisType: models.ECGModelDirect,
 		Timestamp:    "2026-01-01T00:00:00Z",
 		GPTRequestID: gptRequestID.String(),
 	}
-	ekgJSON, _ := ekgContent.Marshal()
+	ekgJSON, _ := ecgContent.Marshal()
 
 	repo.EXPECT().
 		GetRequestByID(mock.Anything, requestID).
@@ -211,7 +211,7 @@ func TestGetRequest_WithEKGEnrichment(t *testing.T) {
 			ID:     requestID,
 			UserID: userID,
 			Response: &models.Response{
-				Model:   models.EKGModelDirect,
+				Model:   models.ECGModelDirect,
 				Content: ekgJSON,
 			},
 		}, nil)
@@ -232,7 +232,7 @@ func TestGetRequest_WithEKGEnrichment(t *testing.T) {
 	require.NoError(t, err)
 
 	// Parse enriched content
-	var enriched models.EKGResponseContent
+	var enriched models.ECGResponseContent
 	require.NoError(t, json.Unmarshal([]byte(req.Response.Content), &enriched))
 	assert.Equal(t, models.StatusCompleted, enriched.GPTInterpretationStatus)
 	assert.NotNil(t, enriched.GPTInterpretation)
@@ -253,7 +253,7 @@ func TestGetJobStatus_Success(t *testing.T) {
 		Status(mock.Anything, jobID).
 		Return(&job.Job{
 			ID:      jobID,
-			Type:    job.TypeEKGAnalyze,
+			Type:    job.TypeECGAnalyze,
 			Status:  job.StatusQueued,
 			Payload: payload,
 		}, true)

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { paymentAPI } from '@/services/api';
 import { formatPrice } from '@/utils/format';
+import { getApiError } from '@/utils/apiError';
 import type { QuotaInfo } from '@/types';
 
 interface PaymentModalProps {
@@ -22,8 +23,8 @@ export function PaymentModal({ quota, onClose }: PaymentModalProps) {
     try {
       const result = await paymentAPI.createSubscription();
       window.location.href = result.confirmation_url;
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Ошибка при создании платежа');
+    } catch (err: unknown) {
+      setError(getApiError(err).message || 'Ошибка при создании платежа');
       setIsLoading(false);
     }
   };

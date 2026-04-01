@@ -53,8 +53,8 @@ type ECGParams struct {
 
 // SubmissionService handles EKG and GPT job submission business logic.
 type SubmissionService interface {
-	SubmitEKG(ctx context.Context, userID uuid.UUID, imageURL string, params ECGParams) (*SubmittedJob, error)
-	SubmitEKGFile(ctx context.Context, userID uuid.UUID, file UploadedFile, params ECGParams) (*SubmittedJob, error)
+	SubmitECG(ctx context.Context, userID uuid.UUID, imageURL string, params ECGParams) (*SubmittedJob, error)
+	SubmitECGFile(ctx context.Context, userID uuid.UUID, file UploadedFile, params ECGParams) (*SubmittedJob, error)
 	SubmitGPT(ctx context.Context, userID uuid.UUID, textQuery string, files []UploadedFile) (*GPTSubmitResult, error)
 }
 
@@ -155,7 +155,7 @@ func (s *submissionService) checkQuota(ctx context.Context, userID uuid.UUID) er
 	return nil
 }
 
-func (s *submissionService) SubmitEKG(ctx context.Context, userID uuid.UUID, imageURL string, params ECGParams) (*SubmittedJob, error) {
+func (s *submissionService) SubmitECG(ctx context.Context, userID uuid.UUID, imageURL string, params ECGParams) (*SubmittedJob, error) {
 	if imageURL == "" {
 		return nil, fmt.Errorf("image_temp_url is required: %w", apperr.ErrValidation)
 	}
@@ -169,7 +169,7 @@ func (s *submissionService) SubmitEKG(ctx context.Context, userID uuid.UUID, ima
 		return nil, apperr.WrapInternal("create request", err)
 	}
 
-	payload, err := json.Marshal(job.EKGJobPayload{
+	payload, err := json.Marshal(job.ECGJobPayload{
 		ImageTempURL:  imageURL,
 		UserID:        userID,
 		RequestID:     requestID,
@@ -183,7 +183,7 @@ func (s *submissionService) SubmitEKG(ctx context.Context, userID uuid.UUID, ima
 		return nil, apperr.WrapInternal("marshal EKG payload", err)
 	}
 
-	j := &job.Job{Type: job.TypeEKGAnalyze, Payload: payload}
+	j := &job.Job{Type: job.TypeECGAnalyze, Payload: payload}
 	jobID, err := s.queue.Enqueue(ctx, j)
 	if err != nil {
 		return nil, apperr.WrapInternal("enqueue EKG job", err)
@@ -198,7 +198,7 @@ func (s *submissionService) SubmitEKG(ctx context.Context, userID uuid.UUID, ima
 	}, nil
 }
 
-func (s *submissionService) SubmitEKGFile(ctx context.Context, userID uuid.UUID, file UploadedFile, params ECGParams) (*SubmittedJob, error) {
+func (s *submissionService) SubmitECGFile(ctx context.Context, userID uuid.UUID, file UploadedFile, params ECGParams) (*SubmittedJob, error) {
 	if err := s.checkQuota(ctx, userID); err != nil {
 		return nil, err
 	}
@@ -233,7 +233,7 @@ func (s *submissionService) SubmitEKGFile(ctx context.Context, userID uuid.UUID,
 		return nil, apperr.WrapInternal("create file record", err)
 	}
 
-	payload, err := json.Marshal(job.EKGJobPayload{
+	payload, err := json.Marshal(job.ECGJobPayload{
 		ImageFileKey:  uploadResult.Key,
 		UserID:        userID,
 		RequestID:     requestID,
@@ -247,7 +247,7 @@ func (s *submissionService) SubmitEKGFile(ctx context.Context, userID uuid.UUID,
 		return nil, apperr.WrapInternal("marshal EKG payload", err)
 	}
 
-	j := &job.Job{Type: job.TypeEKGAnalyze, Payload: payload}
+	j := &job.Job{Type: job.TypeECGAnalyze, Payload: payload}
 	jobID, err := s.queue.Enqueue(ctx, j)
 	if err != nil {
 		return nil, apperr.WrapInternal("enqueue EKG job", err)

@@ -203,6 +203,18 @@ def health():
     raise HTTPException(status_code=503, detail="warming up")
 
 
+def _build_sources(items: list[dict], limit: int = 6) -> list[Source]:
+    return [
+        Source(
+            doc_name=it["meta"].get("doc_name", "unknown"),
+            chunk_index=it["meta"].get("chunk_index", 0),
+            score=round(it["combined"], 4),
+            preview=it["doc"][:200].replace("\n", " ").strip(),
+        )
+        for it in items[:limit]
+    ]
+
+
 class SearchResponse(BaseModel):
     sources: list[Source]
     elapsed_ms: int
@@ -222,18 +234,8 @@ def search(req: QueryRequest):
 
     _, items = retrieve_context(engine, req.question, n_results=req.n_results)
 
-    sources = []
-    for it in items[:6]:
-        meta = it["meta"]
-        sources.append(Source(
-            doc_name=meta.get("doc_name", "unknown"),
-            chunk_index=meta.get("chunk_index", 0),
-            score=round(it["combined"], 4),
-            preview=it["doc"][:200].replace("\n", " ").strip(),
-        ))
-
     elapsed_ms = int((time.monotonic() - start) * 1000)
-    return SearchResponse(sources=sources, elapsed_ms=elapsed_ms)
+    return SearchResponse(sources=_build_sources(items), elapsed_ms=elapsed_ms)
 
 
 @app.post("/query", response_model=QueryResponse)
@@ -256,22 +258,12 @@ def query(req: QueryRequest):
         logger.error("LLM call failed: %s", exc)
         raise HTTPException(status_code=502, detail="LLM service error")
 
-    sources = []
-    for it in items[:6]:
-        meta = it["meta"]
-        sources.append(Source(
-            doc_name=meta.get("doc_name", "unknown"),
-            chunk_index=meta.get("chunk_index", 0),
-            score=round(it["combined"], 4),
-            preview=it["doc"][:200].replace("\n", " ").strip(),
-        ))
-
     elapsed_ms = int((time.monotonic() - start) * 1000)
     logger.info("query answered in %dms: %s", elapsed_ms, req.question[:80])
 
     return QueryResponse(
         answer=answer,
-        sources=sources,
+        sources=_build_sources(items),
         elapsed_ms=elapsed_ms,
         meta=QueryMeta(model=_llm_model, temperature=_llm_temperature, n_results=req.n_results),
     )
