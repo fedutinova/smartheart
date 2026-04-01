@@ -59,7 +59,7 @@ export function Terms() {
             <h2 className="text-lg font-semibold text-gray-900">4. Порядок возврата</h2>
             <p>
               Возврат средств возможен в случае, если оплаченные анализы не были использованы.
-              Для оформления возврата направьте запрос на email: <strong>support@smartheart.cloud</strong>
+              Для оформления возврата направьте запрос на email: <strong>support@smartheart.online</strong>
               с указанием ID платежа. Срок рассмотрения: до 10 рабочих дней.
             </p>
           </section>
@@ -104,7 +104,7 @@ export function Terms() {
               <li><strong>ФИО:</strong> Федутинова Анна Александровна</li>
               <li><strong>Статус:</strong> Самозанятый, плательщик НПД (422-ФЗ)</li>
               <li><strong>ИНН:</strong> 575212369164</li>
-              <li><strong>Email:</strong> support@smartheart.cloud</li>
+              <li><strong>Email:</strong> support@smartheart.online</li>
             </ul>
           </section>
 
@@ -114,7 +114,7 @@ export function Terms() {
               Исполнитель вправе в одностороннем порядке изменять условия Оферты. Актуальная
               версия доступна по адресу{' '}
               <Link to={ROUTES.TERMS} className="text-rose-600 hover:text-rose-500">
-                smartheart.cloud/terms
+                smartheart.online/terms
               </Link>.
               Продолжение использования Сервиса после изменений означает согласие с новой
               редакцией Оферты.

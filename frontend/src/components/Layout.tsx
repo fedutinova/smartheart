@@ -190,7 +190,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex gap-4">
             <Link to={ROUTES.TERMS} className="hover:text-gray-600 transition-colors">Оферта</Link>
             <Link to={ROUTES.PRIVACY} className="hover:text-gray-600 transition-colors">Конфиденциальность</Link>
-            <a href="mailto:support@smartheart.cloud" className="hover:text-gray-600 transition-colors">support@smartheart.cloud</a>
+            <a href="mailto:support@smartheart.online" className="hover:text-gray-600 transition-colors">support@smartheart.online</a>
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-3 text-center text-[11px] text-gray-300">

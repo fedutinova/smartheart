@@ -348,7 +348,7 @@ export function Landing() {
             <Link to={ROUTES.CONTACTS} className="hover:text-gray-600 transition-colors">О нас</Link>
             <Link to={ROUTES.TERMS} className="hover:text-gray-600 transition-colors">Оферта</Link>
             <Link to={ROUTES.PRIVACY} className="hover:text-gray-600 transition-colors">Конфиденциальность</Link>
-            <a href="mailto:support@smartheart.cloud" className="hover:text-gray-600 transition-colors">Поддержка</a>
+            <a href="mailto:support@smartheart.online" className="hover:text-gray-600 transition-colors">Поддержка</a>
           </div>
         </div>
         <p className="max-w-6xl mx-auto mt-4 text-center text-[11px] text-gray-300 leading-relaxed">

@@ -85,7 +85,7 @@ export function Privacy() {
               <li>Отозвать согласие на обработку персональных данных</li>
             </ul>
             <p>
-              Для реализации прав направьте запрос на email: <strong>support@smartheart.cloud</strong>
+              Для реализации прав направьте запрос на email: <strong>support@smartheart.online</strong>
             </p>
           </section>
 
@@ -103,7 +103,7 @@ export function Privacy() {
               Оператор оставляет за собой право вносить изменения в Политику. Актуальная версия
               всегда доступна по адресу{' '}
               <Link to={ROUTES.PRIVACY} className="text-rose-600 hover:text-rose-500">
-                smartheart.cloud/privacy
+                smartheart.online/privacy
               </Link>.
             </p>
           </section>
