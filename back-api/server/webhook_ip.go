@@ -46,7 +46,7 @@ func WebhookIPWhitelist(shopID string) func(http.Handler) http.Handler {
 			ipStr := extractIP(r)
 			ip := net.ParseIP(ipStr)
 			if ip == nil {
-				slog.Warn("webhook rejected: invalid IP", "ip", ipStr)
+				slog.Warn("Webhook rejected: invalid IP", "ip", ipStr)
 				http.Error(w, "forbidden", http.StatusForbidden)
 				return
 			}
@@ -58,7 +58,7 @@ func WebhookIPWhitelist(shopID string) func(http.Handler) http.Handler {
 				}
 			}
 
-			slog.Warn("webhook rejected: IP not in YooKassa whitelist", "ip", ipStr)
+			slog.Warn("Webhook rejected: IP not in YooKassa whitelist", "ip", ipStr)
 			http.Error(w, "forbidden", http.StatusForbidden)
 		})
 	}

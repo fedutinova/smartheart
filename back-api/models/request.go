@@ -28,7 +28,7 @@ func ValidRequestStatus(s RequestStatus) bool {
 	}
 }
 
-// Request represents an EKG or GPT analysis request
+// Request represents an EKG or GPT analysis request.
 type Request struct {
 	ID        uuid.UUID     `json:"id"`
 	UserID    uuid.UUID     `json:"user_id,omitempty"`

@@ -78,9 +78,9 @@ func StartStalePaymentCleaner(ctx context.Context, repo repository.Store, interv
 			case <-ticker.C:
 				canceled, err := repo.CancelStalePayments(ctx, maxAge)
 				if err != nil {
-					slog.Warn("failed to cancel stale payments", "error", err)
+					slog.WarnContext(ctx, "Failed to cancel stale payments", "error", err)
 				} else if canceled > 0 {
-					slog.Info("canceled stale payments", "count", canceled)
+					slog.InfoContext(ctx, "Canceled stale payments", "count", canceled)
 				}
 			}
 		}
@@ -168,8 +168,8 @@ func (s *paymentService) createYooKassaPayment(ctx context.Context, payment *mod
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		slog.Error("YooKassa API error", "status", resp.StatusCode, "body", string(respBody))
-		return nil, fmt.Errorf("YooKassa returned %d: %w", resp.StatusCode, apperr.ErrInternal)
+		slog.ErrorContext(ctx, "YooKassa API error", "status", resp.StatusCode, "body", string(respBody))
+		return nil, fmt.Errorf("yookassa returned %d: %w", resp.StatusCode, apperr.ErrInternal)
 	}
 
 	var ykResp yooKassaPaymentResponse
@@ -187,7 +187,7 @@ func (s *paymentService) createYooKassaPayment(ctx context.Context, payment *mod
 		return nil, apperr.WrapInternal("save payment record", err)
 	}
 
-	slog.Info("payment created", "payment_id", payment.ID, "yookassa_id", ykResp.ID, "user_id", payment.UserID, "type", payment.PaymentType, "amount", amountRub)
+	slog.InfoContext(ctx, "Payment created", "payment_id", payment.ID, "yookassa_id", ykResp.ID, "user_id", payment.UserID, "type", payment.PaymentType, "amount", amountRub)
 
 	return &PaymentResult{
 		PaymentID:       payment.ID,
@@ -258,20 +258,20 @@ func (s *paymentService) HandleWebhook(ctx context.Context, body []byte) error {
 	switch webhook.Event {
 	case "payment.succeeded":
 		if err := s.repo.ConfirmPayment(ctx, yookassaID); err != nil {
-			slog.Error("failed to confirm payment", "yookassa_id", yookassaID, "error", err)
+			slog.ErrorContext(ctx, "Failed to confirm payment", "yookassa_id", yookassaID, "error", err)
 			return apperr.WrapInternal("confirm payment", err)
 		}
-		slog.Info("payment confirmed", "yookassa_id", yookassaID)
+		slog.InfoContext(ctx, "Payment confirmed", "yookassa_id", yookassaID)
 
 	case "payment.canceled":
 		if err := s.repo.CancelPayment(ctx, yookassaID); err != nil {
-			slog.Error("failed to cancel payment", "yookassa_id", yookassaID, "error", err)
+			slog.ErrorContext(ctx, "Failed to cancel payment", "yookassa_id", yookassaID, "error", err)
 			return apperr.WrapInternal("cancel payment", err)
 		}
-		slog.Info("payment canceled", "yookassa_id", yookassaID)
+		slog.InfoContext(ctx, "Payment canceled", "yookassa_id", yookassaID)
 
 	default:
-		slog.Debug("ignoring webhook event", "event", webhook.Event)
+		slog.DebugContext(ctx, "Ignoring webhook event", "event", webhook.Event)
 	}
 
 	return nil
@@ -280,27 +280,24 @@ func (s *paymentService) HandleWebhook(ctx context.Context, body []byte) error {
 func (s *paymentService) GetQuotaInfo(ctx context.Context, userID uuid.UUID) (*QuotaInfo, error) {
 	usedToday, err := s.repo.GetDailyUsage(ctx, userID)
 	if err != nil {
-		slog.Error("failed to get daily usage", "user_id", userID, "error", err)
+		slog.ErrorContext(ctx, "Failed to get daily usage", "user_id", userID, "error", err)
 		usedToday = 0
 	}
 
 	paidRemaining, err := s.repo.GetPaidAnalysesRemaining(ctx, userID)
 	if err != nil {
-		slog.Warn("failed to get paid analyses", "user_id", userID, "error", err)
+		slog.WarnContext(ctx, "Failed to get paid analyses", "user_id", userID, "error", err)
 		paidRemaining = 0
 	}
 
 	subExpiresAt, err := s.repo.GetSubscriptionExpiresAt(ctx, userID)
 	if err != nil {
-		slog.Warn("failed to get subscription", "user_id", userID, "error", err)
+		slog.WarnContext(ctx, "Failed to get subscription", "user_id", userID, "error", err)
 	}
 
 	hasActiveSubscription := subExpiresAt != nil && subExpiresAt.After(time.Now())
 
-	freeRemaining := s.freeLimit - usedToday
-	if freeRemaining < 0 {
-		freeRemaining = 0
-	}
+	freeRemaining := max(s.freeLimit-usedToday, 0)
 
 	needsPayment := !hasActiveSubscription && freeRemaining == 0 && paidRemaining == 0
 

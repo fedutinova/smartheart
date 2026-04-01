@@ -13,7 +13,7 @@ import (
 	"github.com/fedutinova/smartheart/back-api/models"
 )
 
-// CreateUser creates a new user
+// CreateUser creates a new user.
 func (r *Repository) CreateUser(ctx context.Context, user *models.User) error {
 	if user.ID == uuid.Nil {
 		user.ID = uuid.New()

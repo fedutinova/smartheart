@@ -73,7 +73,7 @@ func (c *Cache) CleanupOlderThan(maxAge time.Duration) {
 		}
 	}
 	if removed > 0 {
-		slog.Debug("cleaned up finished jobs from cache", "removed", removed, "remaining", len(c.jobs))
+		slog.Debug("Cleaned up finished jobs from cache", "removed", removed, "remaining", len(c.jobs))
 	}
 }
 

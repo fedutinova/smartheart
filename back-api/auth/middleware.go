@@ -69,7 +69,7 @@ func JWTMiddleware(secret, issuer string, opts ...func(*jwtMWConfig)) func(http.
 				return []byte(secret), nil
 			})
 			if err != nil {
-				slog.Warn("jwt parse failed", "error", err)
+				slog.Warn("Jwt parse failed", "error", err)
 				writeJSONError(w, http.StatusUnauthorized, "invalid token")
 				return
 			}
@@ -90,7 +90,7 @@ func JWTMiddleware(secret, issuer string, opts ...func(*jwtMWConfig)) func(http.
 				tokenHash := HashToken(tokenStr)
 				blacklisted, err := cfg.blacklist.IsTokenBlacklisted(r.Context(), tokenHash)
 				if err != nil {
-					slog.Error("failed to check token blacklist, allowing request", "error", err)
+					slog.Error("Failed to check token blacklist, allowing request", "error", err)
 				} else if blacklisted {
 					writeJSONError(w, http.StatusUnauthorized, "token has been revoked")
 					return

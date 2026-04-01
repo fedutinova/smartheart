@@ -12,7 +12,7 @@ import (
 )
 
 // GetUserRequests returns requests for the authenticated user with pagination.
-// Query params: ?limit=N&offset=N (defaults: limit=50, offset=0)
+// Query params: ?limit=N&offset=N (defaults: limit=50, offset=0).
 func (h *RequestHandler) GetUserRequests(w http.ResponseWriter, r *http.Request) {
 	userID, _, ok := extractUserID(r)
 	if !ok {
@@ -47,7 +47,7 @@ func (h *RequestHandler) GetUserRequests(w http.ResponseWriter, r *http.Request)
 	})
 }
 
-// GetRequest returns a specific request by ID
+// GetRequest returns a specific request by ID.
 func (h *RequestHandler) GetRequest(w http.ResponseWriter, r *http.Request) {
 	raw := chi.URLParam(r, "id")
 	id, err := parseUUID(raw)
@@ -78,7 +78,7 @@ func (h *RequestHandler) GetRequest(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, request)
 }
 
-// GetJob returns the status of a job by ID
+// GetJob returns the status of a job by ID.
 func (h *RequestHandler) GetJob(w http.ResponseWriter, r *http.Request) {
 	raw := chi.URLParam(r, "id")
 	id, err := parseUUID(raw)
@@ -157,7 +157,7 @@ func (h *RequestHandler) GetRequestFile(w http.ResponseWriter, r *http.Request) 
 	_, _ = io.Copy(w, rc)
 }
 
-// ServeFiles serves static files from local storage
+// ServeFiles serves static files from local storage.
 func (h *RequestHandler) ServeFiles(w http.ResponseWriter, r *http.Request) {
 	filePath := strings.TrimPrefix(r.URL.Path, "/files/")
 	if filePath == "" {

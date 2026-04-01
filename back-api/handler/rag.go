@@ -85,7 +85,7 @@ func (h *RAGHandler) Query(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if _, err := io.Copy(w, io.LimitReader(resp.Body, 1<<20)); err != nil {
-		slog.Warn("failed to write RAG response", "error", err)
+		slog.Warn("Failed to write RAG response", "error", err)
 	}
 }
 
@@ -125,7 +125,7 @@ func (h *RAGHandler) Feedback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.repo.CreateRAGFeedback(r.Context(), feedback); err != nil {
-		slog.Error("failed to save RAG feedback", "error", err)
+		slog.Error("Failed to save RAG feedback", "error", err)
 		writeError(w, http.StatusInternalServerError, "failed to save feedback")
 		return
 	}

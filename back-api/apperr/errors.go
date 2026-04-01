@@ -34,37 +34,37 @@ var (
 	ErrQuotaExceeded   = errors.New("quota exceeded")
 )
 
-// WrapNotFound wraps an error as a not found error with context
+// WrapNotFound wraps an error as a not found error with context.
 func WrapNotFound(resource string, err error) error {
 	return fmt.Errorf("%s: %w", resource, errors.Join(ErrNotFound, err))
 }
 
-// WrapInternal wraps an error as an internal error with context
+// WrapInternal wraps an error as an internal error with context.
 func WrapInternal(operation string, err error) error {
 	return fmt.Errorf("%s: %w", operation, errors.Join(ErrInternal, err))
 }
 
-// IsNotFound checks if error is a not found error
+// IsNotFound checks if error is a not found error.
 func IsNotFound(err error) bool {
 	return errors.Is(err, ErrNotFound)
 }
 
-// IsConflict checks if error is a conflict error
+// IsConflict checks if error is a conflict error.
 func IsConflict(err error) bool {
 	return errors.Is(err, ErrConflict)
 }
 
-// IsUnauthorized checks if error is an unauthorized error
+// IsUnauthorized checks if error is an unauthorized error.
 func IsUnauthorized(err error) bool {
 	return errors.Is(err, ErrUnauthorized)
 }
 
-// IsForbidden checks if error is a forbidden error
+// IsForbidden checks if error is a forbidden error.
 func IsForbidden(err error) bool {
 	return errors.Is(err, ErrForbidden)
 }
 
-// IsValidation checks if error is a validation error
+// IsValidation checks if error is a validation error.
 func IsValidation(err error) bool {
 	return errors.Is(err, ErrValidation)
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/fedutinova/smartheart/back-api/models"
 )
 
-// CreateFile creates a new file record
+// CreateFile creates a new file record.
 func (r *Repository) CreateFile(ctx context.Context, file *models.File) error {
 	if file.ID == uuid.Nil {
 		file.ID = uuid.New()
@@ -36,7 +36,7 @@ func (r *Repository) CreateFile(ctx context.Context, file *models.File) error {
 	return nil
 }
 
-// GetFilesByRequestID retrieves all files for a request
+// GetFilesByRequestID retrieves all files for a request.
 func (r *Repository) GetFilesByRequestID(ctx context.Context, requestID uuid.UUID) ([]models.File, error) {
 	query := `
 		SELECT id, request_id, original_filename, file_type, file_size, s3_bucket, s3_key, s3_url, created_at

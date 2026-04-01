@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// File represents an uploaded file associated with a request
+// File represents an uploaded file associated with a request.
 type File struct {
 	ID               uuid.UUID `json:"id"`
 	RequestID        uuid.UUID `json:"request_id"`

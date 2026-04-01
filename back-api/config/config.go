@@ -139,7 +139,7 @@ func envInt(key string, def int) int {
 		if err == nil {
 			return i
 		}
-		slog.Warn("bad int env, using default", "key", key, "value", v)
+		slog.Warn("Bad int env, using default", "key", key, "value", v)
 	}
 	return def
 }
@@ -152,7 +152,7 @@ func envBool(key string, def bool) bool {
 		if v == "false" || v == "0" {
 			return false
 		}
-		slog.Warn("bad bool env, using default", "key", key, "value", v)
+		slog.Warn("Bad bool env, using default", "key", key, "value", v)
 	}
 	return def
 }
@@ -163,7 +163,7 @@ func envDuration(key string, def time.Duration) time.Duration {
 		if err == nil {
 			return d
 		}
-		slog.Warn("bad duration env, using default", "key", key, "value", v)
+		slog.Warn("Bad duration env, using default", "key", key, "value", v)
 	}
 	return def
 }
@@ -194,7 +194,7 @@ func loadEnvFiles() {
 	// try to find .env files starting from current directory and going up
 	currentDir, err := os.Getwd()
 	if err != nil {
-		slog.Debug("failed to get current directory", "error", err)
+		slog.Debug("Failed to get current directory", "error", err)
 		return
 	}
 
@@ -215,10 +215,10 @@ func loadEnvFiles() {
 			envPath := filepath.Join(dir, envFile)
 			if _, err := os.Stat(envPath); err == nil {
 				if err := godotenv.Load(envPath); err == nil {
-					slog.Debug("loaded environment file", "path", envPath)
+					slog.Debug("Loaded environment file", "path", envPath)
 					loadedAny = true
 				} else {
-					slog.Debug("failed to load environment file", "path", envPath, "error", err)
+					slog.Debug("Failed to load environment file", "path", envPath, "error", err)
 				}
 			}
 		}
@@ -228,7 +228,7 @@ func loadEnvFiles() {
 	}
 
 	if !loadedAny {
-		slog.Debug("no .env files found, using system environment variables only")
+		slog.Debug("No .env files found, using system environment variables only")
 	}
 }
 

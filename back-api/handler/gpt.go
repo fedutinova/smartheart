@@ -9,7 +9,7 @@ import (
 	"github.com/fedutinova/smartheart/back-api/validation"
 )
 
-// SubmitGPTRequest handles GPT processing request with file uploads
+// SubmitGPTRequest handles GPT processing request with file uploads.
 func (h *GPTHandler) SubmitGPTRequest(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
 		writeError(w, http.StatusBadRequest, "failed to parse form")

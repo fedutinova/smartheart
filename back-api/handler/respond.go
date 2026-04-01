@@ -20,7 +20,7 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	if err := json.NewEncoder(w).Encode(v); err != nil {
-		slog.Warn("failed to encode response", "err", err)
+		slog.Warn("Failed to encode response", "err", err)
 	}
 }
 

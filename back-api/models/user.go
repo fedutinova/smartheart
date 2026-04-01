@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// User represents a user in the system
+// User represents a user in the system.
 type User struct {
 	ID                    uuid.UUID  `json:"id"                                db:"id"`
 	Username              string     `json:"username"                          db:"username"`
@@ -18,7 +18,7 @@ type User struct {
 	SubscriptionExpiresAt *time.Time `json:"subscription_expires_at,omitempty" db:"subscription_expires_at"`
 }
 
-// Role represents a user role
+// Role represents a user role.
 type Role struct {
 	ID          int          `json:"id"                    db:"id"`
 	Name        string       `json:"name"                  db:"name"`
@@ -27,7 +27,7 @@ type Role struct {
 	Permissions []Permission `json:"permissions,omitempty"`
 }
 
-// Permission represents a permission in the RBAC system
+// Permission represents a permission in the RBAC system.
 type Permission struct {
 	ID          int       `json:"id"                    db:"id"`
 	Name        string    `json:"name"                  db:"name"`
@@ -37,7 +37,7 @@ type Permission struct {
 	CreatedAt   time.Time `json:"created_at"            db:"created_at"`
 }
 
-// RefreshToken represents a refresh token for JWT authentication
+// RefreshToken represents a refresh token for JWT authentication.
 type RefreshToken struct {
 	ID        uuid.UUID  `json:"id"                   db:"id"`
 	UserID    uuid.UUID  `json:"user_id"              db:"user_id"`

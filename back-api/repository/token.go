@@ -12,7 +12,7 @@ import (
 	"github.com/fedutinova/smartheart/back-api/models"
 )
 
-// CreateRefreshToken creates a new refresh token record
+// CreateRefreshToken creates a new refresh token record.
 func (r *Repository) CreateRefreshToken(ctx context.Context, token *models.RefreshToken) error {
 	if token.ID == uuid.Nil {
 		token.ID = uuid.New()
@@ -30,7 +30,7 @@ func (r *Repository) CreateRefreshToken(ctx context.Context, token *models.Refre
 	return nil
 }
 
-// GetRefreshToken retrieves a valid refresh token by hash
+// GetRefreshToken retrieves a valid refresh token by hash.
 func (r *Repository) GetRefreshToken(ctx context.Context, tokenHash string) (*models.RefreshToken, error) {
 	query := `
 		SELECT id, user_id, token_hash, expires_at, created_at, revoked_at
@@ -57,7 +57,7 @@ func (r *Repository) GetRefreshToken(ctx context.Context, tokenHash string) (*mo
 	return &token, nil
 }
 
-// RevokeRefreshToken revokes a refresh token by hash
+// RevokeRefreshToken revokes a refresh token by hash.
 func (r *Repository) RevokeRefreshToken(ctx context.Context, tokenHash string) error {
 	query := `
 		UPDATE refresh_tokens

@@ -53,15 +53,15 @@ func (h *GPTWorker) HandleGPTJob(ctx context.Context, j *job.Job) error {
 	result, err := h.processWithFallback(ctx, payload)
 	if err != nil {
 		if updateErr := h.repo.UpdateRequestStatus(ctx, payload.RequestID, models.StatusFailed); updateErr != nil {
-			slog.Error("failed to update request status to failed", "request_id", payload.RequestID, "error", updateErr)
+			slog.ErrorContext(ctx, "Failed to update request status to failed", "request_id", payload.RequestID, "error", updateErr)
 		}
 		h.notifyUser(payload.UserID, payload.RequestID, models.StatusFailed)
-		return fmt.Errorf("GPT processing failed: %w", err)
+		return fmt.Errorf("gpt processing failed: %w", err)
 	}
 
 	if txErr := h.saveGPTResult(ctx, payload, result); txErr != nil {
 		if updateErr := h.repo.UpdateRequestStatus(ctx, payload.RequestID, models.StatusFailed); updateErr != nil {
-			slog.Error("failed to update request status to failed after tx error",
+			slog.ErrorContext(ctx, "Failed to update request status to failed after tx error",
 				"request_id", payload.RequestID, "error", updateErr)
 		}
 		h.notifyUser(payload.UserID, payload.RequestID, models.StatusFailed)
@@ -92,7 +92,7 @@ func (h *GPTWorker) saveGPTResult(ctx context.Context, payload gpt.JobPayload, r
 			return fmt.Errorf("failed to update request status: %w", err)
 		}
 
-		slog.Info("gpt job completed successfully",
+		slog.InfoContext(ctx, "GPT job completed successfully",
 			"request_id", payload.RequestID,
 			"response_id", response.ID,
 			"tokens_used", result.TokensUsed,
@@ -125,7 +125,7 @@ func (h *GPTWorker) processWithFallback(ctx context.Context, payload gpt.JobPayl
 
 	// Guard against nil result with nil error (shouldn't happen but prevents panic)
 	if gptErr == nil && result == nil {
-		gptErr = errors.New("GPT returned nil result without error")
+		gptErr = errors.New("gpt returned nil result without error")
 	}
 
 	// Only attempt EKG fallback for EKG-originated GPT requests.
@@ -138,9 +138,9 @@ func (h *GPTWorker) processWithFallback(ctx context.Context, payload gpt.JobPayl
 
 	// Try fallback
 	if gptErr != nil {
-		slog.Warn("gpt failed, attempting EKG fallback", "request_id", payload.RequestID, "error", gptErr)
+		slog.WarnContext(ctx, "GPT failed, attempting EKG fallback", "request_id", payload.RequestID, "error", gptErr)
 	} else {
-		slog.Warn("gpt returned refusal, attempting EKG fallback",
+		slog.WarnContext(ctx, "GPT returned refusal, attempting EKG fallback",
 			"request_id", payload.RequestID,
 			"response_preview", truncate(result.Content, 200))
 	}
@@ -163,7 +163,7 @@ func (h *GPTWorker) processWithFallback(ctx context.Context, payload gpt.JobPayl
 	}
 
 	// Refusal — replace content but keep metadata
-	slog.Info("replaced GPT refusal with fallback response",
+	slog.InfoContext(ctx, "Replaced GPT refusal with fallback response",
 		"request_id", payload.RequestID,
 		"fallback_length", len(fallbackContent))
 	result.Content = fallbackContent

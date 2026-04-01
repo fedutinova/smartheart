@@ -42,9 +42,7 @@ func (s *requestService) GetUserRequests(ctx context.Context, userID uuid.UUID, 
 	if limit <= 0 || limit > 200 {
 		limit = 50
 	}
-	if offset < 0 {
-		offset = 0
-	}
+	offset = max(offset, 0)
 
 	requests, err := s.repo.GetRequestsByUserID(ctx, userID, limit, offset)
 	if err != nil {
@@ -113,7 +111,7 @@ func (s *requestService) GetJobStatus(ctx context.Context, jobID uuid.UUID, clai
 func enrichEKGResponse(ctx context.Context, repo repository.RequestRepo, request *models.Request, claims *auth.Claims) {
 	ekg, err := models.ParseEKGContent(request.Response.Content)
 	if err != nil {
-		slog.Debug("failed to parse EKG content for enrichment", "request_id", request.ID, "error", err)
+		slog.DebugContext(ctx, "Failed to parse EKG content for enrichment", "request_id", request.ID, "error", err)
 		return
 	}
 	if ekg == nil || ekg.GPTRequestID == "" {
@@ -122,13 +120,13 @@ func enrichEKGResponse(ctx context.Context, repo repository.RequestRepo, request
 
 	gptRequestID, err := uuid.Parse(ekg.GPTRequestID)
 	if err != nil {
-		slog.Warn("invalid GPT request ID in EKG content", "request_id", request.ID, "gpt_request_id", ekg.GPTRequestID, "error", err)
+		slog.WarnContext(ctx, "Invalid GPT request ID in EKG content", "request_id", request.ID, "gpt_request_id", ekg.GPTRequestID, "error", err)
 		return
 	}
 
 	gptRequest, err := repo.GetRequestByID(ctx, gptRequestID)
 	if err != nil {
-		slog.Warn("failed to get GPT request for EKG enrichment", "request_id", request.ID, "gpt_request_id", gptRequestID, "error", err)
+		slog.WarnContext(ctx, "Failed to get GPT request for EKG enrichment", "request_id", request.ID, "gpt_request_id", gptRequestID, "error", err)
 		return
 	}
 

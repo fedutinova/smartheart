@@ -54,7 +54,7 @@ func (s *LocalStorage) UploadFile(_ context.Context, filename string, content io
 
 	url := fmt.Sprintf("%s/%s", s.baseURL, key)
 
-	slog.Info("file uploaded to local storage", "key", key, "path", filePath, "size", written)
+	slog.Info("File uploaded to local storage", "key", key, "path", filePath, "size", written)
 
 	return &UploadResult{
 		Key: key,
@@ -98,7 +98,7 @@ func (s *LocalStorage) DeleteFile(_ context.Context, key string) error {
 		return fmt.Errorf("failed to delete file: %w", err)
 	}
 
-	slog.Info("file deleted from local storage", "key", key, "path", filePath)
+	slog.Info("File deleted from local storage", "key", key, "path", filePath)
 	return nil
 }
 
@@ -112,7 +112,7 @@ func (s *LocalStorage) GetFile(_ context.Context, key string) (io.ReadCloser, st
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			slog.Error("file not found in local storage", "key", key, "path", filePath)
+			slog.Error("File not found in local storage", "key", key, "path", filePath)
 			return nil, "", fmt.Errorf("file not found: %s (path: %s)", key, filePath)
 		}
 		return nil, "", fmt.Errorf("failed to stat file: %w", err)
@@ -145,7 +145,7 @@ func (s *LocalStorage) GetFile(_ context.Context, key string) (io.ReadCloser, st
 		contentType = "image/tiff"
 	}
 
-	slog.Debug("file opened from local storage",
+	slog.Debug("File opened from local storage",
 		"key", key,
 		"path", filePath,
 		"size", fileInfo.Size(),

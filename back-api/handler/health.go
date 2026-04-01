@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// HealthStatus represents the health check response
+// HealthStatus represents the health check response.
 type HealthStatus struct {
 	Status    string           `json:"status"`
 	Timestamp string           `json:"timestamp"`
@@ -17,14 +17,14 @@ type HealthStatus struct {
 	System    *SystemInfo      `json:"system,omitempty"`
 }
 
-// Check represents a single health check result
+// Check represents a single health check result.
 type Check struct {
 	Status   string `json:"status"`
 	Message  string `json:"message,omitempty"`
 	Duration string `json:"duration,omitempty"`
 }
 
-// SystemInfo contains system information
+// SystemInfo contains system information.
 type SystemInfo struct {
 	GoVersion    string `json:"go_version"`
 	NumGoroutine int    `json:"num_goroutine"`
@@ -40,7 +40,7 @@ const (
 	queueBacklogThreshold = 500 // warn when queue has more pending jobs
 )
 
-// Health returns basic health status (for load balancer)
+// Health returns basic health status (for load balancer).
 func (*HealthHandler) Health(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, HealthStatus{
 		Status:    StatusHealthy,
@@ -48,7 +48,7 @@ func (*HealthHandler) Health(w http.ResponseWriter, _ *http.Request) {
 	})
 }
 
-// Ready performs full readiness check including dependencies
+// Ready performs full readiness check including dependencies.
 func (h *HealthHandler) Ready(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()

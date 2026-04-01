@@ -29,14 +29,14 @@ func NewS3Storage(ctx context.Context, cfg appconfig.Config) (*S3Storage, error)
 	var awsCfg aws.Config
 	var err error
 
-	slog.Info("initializing S3 storage",
+	slog.InfoContext(ctx, "Initializing S3 storage",
 		"endpoint", cfg.S3.Endpoint,
 		"bucket", cfg.S3.Bucket,
 		"region", cfg.S3.Region,
 		"force_path_style", cfg.S3.ForcePathStyle)
 
 	if cfg.S3.Endpoint != "" && (strings.Contains(cfg.S3.Endpoint, "localstack") || strings.Contains(cfg.S3.Endpoint, "localhost:4566") || strings.Contains(cfg.S3.Endpoint, "4566")) {
-		slog.Info("using LocalStack configuration")
+		slog.InfoContext(ctx, "Using LocalStack configuration")
 		awsCfg, err = config.LoadDefaultConfig(ctx,
 			config.WithRegion(cfg.S3.Region),
 			config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
@@ -109,7 +109,7 @@ func (s *S3Storage) UploadFile(ctx context.Context, filename string, content io.
 		url = fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", s.bucket, s.region, key)
 	}
 
-	slog.Info("file uploaded to S3", "key", key, "bucket", s.bucket)
+	slog.InfoContext(ctx, "File uploaded to S3", "key", key, "bucket", s.bucket)
 
 	return &UploadResult{
 		Key: key,
@@ -142,7 +142,7 @@ func (s *S3Storage) DeleteFile(ctx context.Context, key string) error {
 		return fmt.Errorf("failed to delete file from S3: %w", err)
 	}
 
-	slog.Info("file deleted from S3", "key", key, "bucket", s.bucket)
+	slog.InfoContext(ctx, "File deleted from S3", "key", key, "bucket", s.bucket)
 	return nil
 }
 

@@ -36,6 +36,7 @@ type RequestRepo interface {
 // QuotaRepo provides daily usage quota data access.
 type QuotaRepo interface {
 	IncrementDailyUsage(ctx context.Context, userID uuid.UUID) (int, error)
+	DecrementDailyUsage(ctx context.Context, userID uuid.UUID) error
 	GetDailyUsage(ctx context.Context, userID uuid.UUID) (int, error)
 }
 

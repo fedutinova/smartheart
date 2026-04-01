@@ -61,9 +61,9 @@ func (q *memQueue) StartConsumers(ctx context.Context, n int, handler job.Handle
 					j.SetFinished(err)
 
 					if err != nil {
-						slog.Error("job failed", "id", j.ID, "type", j.Type, "err", err, "worker", workerID)
+						slog.ErrorContext(ctx, "Job failed", "id", j.ID, "type", j.Type, "err", err, "worker", workerID)
 					} else {
-						slog.Info("job done", "id", j.ID, "type", j.Type, "worker", workerID)
+						slog.InfoContext(ctx, "Job done", "id", j.ID, "type", j.Type, "worker", workerID)
 					}
 				}
 			}

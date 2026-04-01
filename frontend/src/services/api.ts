@@ -72,7 +72,6 @@ api.interceptors.response.use(
       const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
 
       if (!refreshToken) {
-        sessionStorage.setItem(AUTH_ERROR_KEY, 'Сессия не найдена. Пожалуйста, войдите снова.');
         useAuthStore.getState().logout();
         window.location.href = '/login';
         return Promise.reject(error);
@@ -114,7 +113,7 @@ api.interceptors.response.use(
         const isNetwork = refreshError instanceof AxiosError && !refreshError.response;
         const reason = isNetwork
           ? 'Не удалось связаться с сервером. Проверьте подключение к интернету.'
-          : 'Сессия истекла. Пожалуйста, войдите снова.';
+          : 'Время сессии истекло — войдите снова';
         sessionStorage.setItem(AUTH_ERROR_KEY, reason);
 
         useAuthStore.getState().logout();

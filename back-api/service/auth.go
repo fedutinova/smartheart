@@ -96,7 +96,7 @@ func (s *authService) Login(ctx context.Context, email, password string) (*auth.
 	// Brute-force protection
 	attempts, err := s.sessions.IncrLoginAttempts(ctx, email, loginLockoutWindow)
 	if err != nil {
-		slog.Warn("failed to check login attempts, allowing request", "email", email, "error", err)
+		slog.WarnContext(ctx, "Failed to check login attempts, allowing request", "email", email, "error", err)
 	} else if attempts > maxLoginAttempts {
 		return nil, ErrTooManyAttempts
 	}
@@ -115,7 +115,7 @@ func (s *authService) Login(ctx context.Context, email, password string) (*auth.
 
 	// Successful login — reset counter
 	if err := s.sessions.ResetLoginAttempts(ctx, email); err != nil {
-		slog.Warn("failed to reset login attempts", "email", email, "error", err)
+		slog.WarnContext(ctx, "Failed to reset login attempts", "email", email, "error", err)
 	}
 
 	return s.issueTokenPair(ctx, user)
@@ -132,7 +132,7 @@ func (s *authService) Refresh(ctx context.Context, refreshToken string) (*auth.T
 	refreshKey := "refresh:" + tokenHash
 	attempts, err := s.sessions.IncrLoginAttempts(ctx, refreshKey, refreshWindow)
 	if err != nil {
-		slog.Warn("failed to check refresh attempts, allowing request", "error", err)
+		slog.WarnContext(ctx, "Failed to check refresh attempts, allowing request", "error", err)
 	} else if attempts > maxRefreshAttempts {
 		return nil, ErrTooManyAttempts
 	}
@@ -159,7 +159,7 @@ func (s *authService) Refresh(ctx context.Context, refreshToken string) (*auth.T
 	}
 
 	if err := s.sessions.RevokeRefreshToken(ctx, tokenHash); err != nil {
-		slog.Error("failed to revoke old refresh token", "error", err)
+		slog.ErrorContext(ctx, "Failed to revoke old refresh token", "error", err)
 	}
 
 	return tokens, nil
@@ -169,10 +169,10 @@ func (s *authService) Logout(ctx context.Context, refreshToken, accessToken stri
 	if refreshToken != "" {
 		tokenHash := auth.HashToken(refreshToken)
 		if err := s.sessions.RevokeRefreshToken(ctx, tokenHash); err != nil {
-			slog.Error("failed to revoke refresh token", "error", err)
+			slog.ErrorContext(ctx, "Failed to revoke refresh token", "error", err)
 		}
 		if err := s.repo.RevokeRefreshToken(ctx, tokenHash); err != nil {
-			slog.Error("failed to revoke refresh token in db", "error", err)
+			slog.ErrorContext(ctx, "Failed to revoke refresh token in db", "error", err)
 		}
 	}
 
@@ -181,7 +181,7 @@ func (s *authService) Logout(ctx context.Context, refreshToken, accessToken stri
 		ttl := time.Until(claims.ExpiresAt.Time)
 		if ttl > 0 {
 			if err := s.sessions.StoreBlacklistedToken(ctx, tokenHash, ttl); err != nil {
-				slog.Error("failed to blacklist access token", "error", err)
+				slog.ErrorContext(ctx, "Failed to blacklist access token", "error", err)
 			}
 		}
 	}
@@ -218,7 +218,7 @@ func (s *authService) issueTokenPair(ctx context.Context, user *models.User) (*a
 		TokenHash: tokenHash,
 		ExpiresAt: time.Now().Add(s.cfg.TTLRefresh),
 	}); err != nil {
-		slog.Error("failed to persist refresh token to DB", "error", err)
+		slog.ErrorContext(ctx, "Failed to persist refresh token to DB", "error", err)
 	}
 
 	return tokens, nil

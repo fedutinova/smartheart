@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// Response represents an AI response to a request
+// Response represents an AI response to a request.
 type Response struct {
 	ID               uuid.UUID `json:"id"`
 	RequestID        uuid.UUID `json:"request_id"`

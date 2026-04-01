@@ -128,14 +128,14 @@ func (s *submissionService) checkQuota(ctx context.Context, userID uuid.UUID) er
 	// Always increment usage counter for accurate "used today" display.
 	count, err := s.repo.IncrementDailyUsage(ctx, userID)
 	if err != nil {
-		slog.Warn("failed to check quota, allowing request", "user_id", userID, "error", err)
+		slog.WarnContext(ctx, "Failed to check quota, allowing request", "user_id", userID, "error", err)
 		return nil // fail-open
 	}
 
 	// Active subscription — unlimited, but usage is tracked above.
 	subExpires, err := s.repo.GetSubscriptionExpiresAt(ctx, userID)
 	if err != nil {
-		slog.Warn("failed to check subscription, continuing with quota", "user_id", userID, "error", err)
+		slog.WarnContext(ctx, "Failed to check subscription, continuing with quota", "user_id", userID, "error", err)
 	} else if subExpires != nil && subExpires.After(time.Now()) {
 		return nil
 	}
@@ -147,11 +147,11 @@ func (s *submissionService) checkQuota(ctx context.Context, userID uuid.UUID) er
 	// Free quota exceeded — try to use a paid analysis
 	remaining, err := s.repo.DecrementPaidAnalyses(ctx, userID)
 	if err != nil {
-		slog.Info("quota exceeded, no paid analyses", "user_id", userID, "daily_count", count)
+		slog.InfoContext(ctx, "Quota exceeded, no paid analyses", "user_id", userID, "daily_count", count)
 		return fmt.Errorf("daily free limit (%d) exceeded, purchase more analyses: %w", s.dailyLimit, apperr.ErrPaymentRequired)
 	}
 
-	slog.Info("used paid analysis", "user_id", userID, "remaining", remaining)
+	slog.InfoContext(ctx, "Used paid analysis", "user_id", userID, "remaining", remaining)
 	return nil
 }
 
@@ -189,7 +189,7 @@ func (s *submissionService) SubmitEKG(ctx context.Context, userID uuid.UUID, ima
 		return nil, apperr.WrapInternal("enqueue EKG job", err)
 	}
 
-	slog.Info("ekg analysis job enqueued", "job_id", jobID, "request_id", requestID, "user_id", userID)
+	slog.InfoContext(ctx, "EKG analysis job enqueued", "job_id", jobID, "request_id", requestID, "user_id", userID)
 
 	return &SubmittedJob{
 		JobID:     jobID,
@@ -253,7 +253,7 @@ func (s *submissionService) SubmitEKGFile(ctx context.Context, userID uuid.UUID,
 		return nil, apperr.WrapInternal("enqueue EKG job", err)
 	}
 
-	slog.Info("ekg file analysis job enqueued", "job_id", jobID, "request_id", requestID, "user_id", userID, "file_key", uploadResult.Key)
+	slog.InfoContext(ctx, "EKG file analysis job enqueued", "job_id", jobID, "request_id", requestID, "user_id", userID, "file_key", uploadResult.Key)
 
 	return &SubmittedJob{
 		JobID:     jobID,
@@ -285,7 +285,7 @@ func (s *submissionService) SubmitGPT(ctx context.Context, userID uuid.UUID, tex
 	for _, f := range files {
 		key, err := s.processFile(ctx, request.ID, f)
 		if err != nil {
-			slog.Error("failed to process file", "filename", f.Filename, "error", err)
+			slog.ErrorContext(ctx, "Failed to process file", "filename", f.Filename, "error", err)
 			uploadErrors = append(uploadErrors, fmt.Sprintf("%s: %s", f.Filename, err.Error()))
 			continue
 		}
@@ -294,7 +294,7 @@ func (s *submissionService) SubmitGPT(ctx context.Context, userID uuid.UUID, tex
 
 	if len(fileKeys) == 0 {
 		if err := s.repo.UpdateRequestStatus(ctx, request.ID, models.StatusFailed); err != nil {
-			slog.Error("failed to mark request as failed", "request_id", request.ID, "error", err)
+			slog.ErrorContext(ctx, "Failed to mark request as failed", "request_id", request.ID, "error", err)
 		}
 		return &GPTSubmitResult{ //nolint:nilnil // intentionally returning partial result with upload errors alongside error
 			UploadErrors: uploadErrors,

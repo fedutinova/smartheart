@@ -25,6 +25,19 @@ func (r *Repository) IncrementDailyUsage(ctx context.Context, userID uuid.UUID) 
 	return count, nil
 }
 
+// DecrementDailyUsage decreases the user's daily submission count by 1 (min 0).
+// Used to "refund" a count when an analysis fails.
+func (r *Repository) DecrementDailyUsage(ctx context.Context, userID uuid.UUID) error {
+	_, err := r.querier.Exec(ctx, `
+		UPDATE user_daily_usage SET count = GREATEST(count - 1, 0)
+		WHERE user_id = $1 AND usage_date = CURRENT_DATE
+	`, userID)
+	if err != nil {
+		return fmt.Errorf("decrement daily usage: %w", err)
+	}
+	return nil
+}
+
 // GetDailyUsage returns the current daily submission count for a user.
 func (r *Repository) GetDailyUsage(ctx context.Context, userID uuid.UUID) (int, error) {
 	var count int

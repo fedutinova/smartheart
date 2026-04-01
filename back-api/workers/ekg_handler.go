@@ -31,6 +31,7 @@ type EKGWorker struct {
 	queue     job.Queue
 	storage   storage.Storage
 	repo      repository.RequestRepo
+	quotaRepo repository.QuotaRepo
 	gptClient gpt.Processor
 	hub       *notify.Hub
 }
@@ -39,7 +40,7 @@ func NewEKGWorker(
 	txb database.TxBeginner,
 	queue job.Queue,
 	storageService storage.Storage,
-	repo repository.RequestRepo,
+	repo repository.Store,
 	gptClient gpt.Processor,
 	hub *notify.Hub,
 ) *EKGWorker {
@@ -48,6 +49,7 @@ func NewEKGWorker(
 		queue:     queue,
 		storage:   storageService,
 		repo:      repo,
+		quotaRepo: repo,
 		gptClient: gptClient,
 		hub:       hub,
 	}
@@ -64,7 +66,30 @@ func (h *EKGWorker) HandleEKGJob(ctx context.Context, j *job.Job) error {
 		return fmt.Errorf("failed to unmarshal EKG job payload: %w", err)
 	}
 
-	slog.Info("starting EKG analysis",
+	err := h.processEKG(ctx, j, &payload)
+	if err != nil {
+		// Refund the daily usage counter so failed analyses don't count
+		if decErr := h.quotaRepo.DecrementDailyUsage(ctx, payload.UserID); decErr != nil {
+			slog.WarnContext(ctx, "Failed to decrement daily usage after EKG failure", "user_id", payload.UserID, "error", decErr)
+		}
+		// Mark request as failed and notify user
+		if payload.RequestID != uuid.Nil {
+			if updErr := h.repo.UpdateRequestStatus(ctx, payload.RequestID, models.StatusFailed); updErr != nil {
+				slog.ErrorContext(ctx, "Failed to update request status to failed", "request_id", payload.RequestID, "error", updErr)
+			}
+			h.hub.Notify(payload.UserID, notify.Event{
+				Type:      "request_completed",
+				RequestID: payload.RequestID,
+				Status:    models.StatusFailed,
+			})
+		}
+	}
+	return err
+}
+
+func (h *EKGWorker) processEKG(ctx context.Context, j *job.Job, payload *job.EKGJobPayload) error {
+
+	slog.InfoContext(ctx, "Starting EKG analysis",
 		"job_id", j.ID,
 		"user_id", payload.UserID,
 		"mode", ekgJobMode(payload))
@@ -89,7 +114,7 @@ func (h *EKGWorker) HandleEKGJob(ctx context.Context, j *job.Job) error {
 		imageData, err = h.downloadImage(ctx, payload.ImageTempURL)
 	}
 	if err != nil {
-		slog.Error("failed to get EKG image", "job_id", j.ID, "error", err)
+		slog.ErrorContext(ctx, "Failed to get EKG image", "job_id", j.ID, "error", err)
 		return fmt.Errorf("failed to get image: %w", err)
 	}
 
@@ -110,14 +135,14 @@ func (h *EKGWorker) HandleEKGJob(ctx context.Context, j *job.Job) error {
 	systemPrompt, userPrompt := gpt.BuildECGMeasurementPrompt(payload.PaperSpeedMMS)
 	gptResult, err := h.gptClient.ProcessStructuredECG(ctx, []string{imageKey}, systemPrompt, userPrompt)
 	if err != nil {
-		slog.Error("GPT structured ECG call failed", "job_id", j.ID, "error", err)
-		return fmt.Errorf("GPT analysis failed: %w", err)
+		slog.ErrorContext(ctx, "GPT structured ECG call failed", "job_id", j.ID, "error", err)
+		return fmt.Errorf("gpt analysis failed: %w", err)
 	}
 
 	// Parse GPT JSON response
 	rawMeasurements, err := gpt.ParseECGMeasurementJSON(gptResult.Content)
 	if err != nil {
-		slog.Error("failed to parse GPT ECG JSON", "job_id", j.ID, "error", err)
+		slog.ErrorContext(ctx, "Failed to parse GPT ECG JSON", "job_id", j.ID, "error", err)
 		return fmt.Errorf("parse GPT response: %w", err)
 	}
 
@@ -207,7 +232,7 @@ func (h *EKGWorker) HandleEKGJob(ctx context.Context, j *job.Job) error {
 			return fmt.Errorf("update request status: %w", err)
 		}
 
-		slog.Info("saved structured EKG results",
+		slog.InfoContext(ctx, "Saved structured EKG results",
 			"job_id", j.ID, "request_id", requestID)
 		return nil
 	}); err != nil {
@@ -223,13 +248,13 @@ func (h *EKGWorker) HandleEKGJob(ctx context.Context, j *job.Job) error {
 		})
 	}
 
-	slog.Info("EKG structured analysis completed", "job_id", j.ID)
+	slog.InfoContext(ctx, "EKG structured analysis completed", "job_id", j.ID)
 	return nil
 }
 
 // Close cleans up resources used by the EKG worker.
 func (*EKGWorker) Close() {
-	slog.Debug("ekg worker closed")
+	slog.Debug("EKG worker closed")
 }
 
 // --- Image download/read helpers (unchanged) ---
@@ -284,7 +309,7 @@ func newSSRFSafeTransport() *http.Transport {
 
 func (*EKGWorker) downloadImage(ctx context.Context, imageURL string) ([]byte, error) {
 	if err := validateImageURL(imageURL); err != nil {
-		return nil, fmt.Errorf("URL validation failed: %w", err)
+		return nil, fmt.Errorf("url validation failed: %w", err)
 	}
 
 	client := &http.Client{
@@ -339,7 +364,7 @@ func isValidImageContentType(contentType string) bool {
 	return validation.IsImageType(contentType) || contentType == "application/pdf"
 }
 
-func ekgJobMode(p job.EKGJobPayload) string {
+func ekgJobMode(p *job.EKGJobPayload) string {
 	if p.ImageFileKey != "" {
 		return "file"
 	}

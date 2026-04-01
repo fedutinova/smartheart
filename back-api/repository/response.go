@@ -11,7 +11,7 @@ import (
 	"github.com/fedutinova/smartheart/back-api/models"
 )
 
-// CreateResponse creates a new response record
+// CreateResponse creates a new response record.
 func (r *Repository) CreateResponse(ctx context.Context, resp *models.Response) error {
 	if resp.ID == uuid.Nil {
 		resp.ID = uuid.New()
@@ -36,7 +36,7 @@ func (r *Repository) CreateResponse(ctx context.Context, resp *models.Response) 
 	return nil
 }
 
-// GetResponseByRequestID retrieves the latest response for a request
+// GetResponseByRequestID retrieves the latest response for a request.
 func (r *Repository) GetResponseByRequestID(ctx context.Context, requestID uuid.UUID) (*models.Response, error) {
 	query := `
 		SELECT id, request_id, content, model, tokens_used, processing_time_ms, created_at

@@ -64,7 +64,7 @@ func (db *DB) Migrate(ctx context.Context, migrationsDir string) error {
 			return fmt.Errorf("read migration %s: %w", filename, err)
 		}
 
-		slog.Info("applying migration", "file", filename)
+		slog.InfoContext(ctx, "Applying migration", "file", filename)
 
 		tx, err := db.pool.Begin(ctx)
 		if err != nil {
@@ -85,7 +85,7 @@ func (db *DB) Migrate(ctx context.Context, migrationsDir string) error {
 			return fmt.Errorf("commit migration %s: %w", filename, err)
 		}
 
-		slog.Info("migration applied", "file", filename)
+		slog.InfoContext(ctx, "Migration applied", "file", filename)
 	}
 
 	return nil

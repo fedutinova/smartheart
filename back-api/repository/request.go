@@ -13,7 +13,7 @@ import (
 	"github.com/fedutinova/smartheart/back-api/models"
 )
 
-// CreateRequest creates a new request
+// CreateRequest creates a new request.
 func (r *Repository) CreateRequest(ctx context.Context, req *models.Request) error {
 	if req.ID == uuid.Nil {
 		req.ID = uuid.New()

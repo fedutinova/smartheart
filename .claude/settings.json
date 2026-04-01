@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -sSL \"https://raw.githubusercontent.com/powerman/golangci-lint-strict/main/2.10.1/.golangci.yml\")",
+      "Bash(golangci-lint help:*)",
+      "Bash(GOTELEMETRY=off go vet ./back-api/...)",
+      "Bash(grep -v '\\\\.$')",
+      "Bash(grep -v ':$')"
+    ]
+  }
+}

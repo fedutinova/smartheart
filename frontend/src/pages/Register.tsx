@@ -28,7 +28,16 @@ export function Register() {
       await authAPI.register({ username, email, password });
       navigate(ROUTES.LOGIN);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Ошибка регистрации');
+      const serverMsg = err.response?.data?.error;
+      if (err.response?.status === 409) {
+        setError('Неверный email или пароль');
+      } else if (err.response?.status === 429) {
+        setError('Слишком много попыток. Попробуйте позже');
+      } else if (!err.response) {
+        setError('Не удалось связаться с сервером. Проверьте подключение к интернету');
+      } else {
+        setError(serverMsg || 'Ошибка регистрации');
+      }
     } finally {
       setLoading(false);
     }

@@ -38,7 +38,16 @@ export function Login() {
       login(tokens);
       navigate(ROUTES.DASHBOARD);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Ошибка входа');
+      const serverMsg = err.response?.data?.error;
+      if (err.response?.status === 401) {
+        setError('Неверный email или пароль');
+      } else if (err.response?.status === 429) {
+        setError('Слишком много попыток. Попробуйте позже');
+      } else if (!err.response) {
+        setError('Не удалось связаться с сервером. Проверьте подключение к интернету');
+      } else {
+        setError(serverMsg || 'Ошибка входа');
+      }
     } finally {
       setLoading(false);
     }

@@ -22,7 +22,7 @@ const (
 	consumerBlockTime = 5 * time.Second
 )
 
-// RedisQueue implements JobQueue using Redis Streams
+// RedisQueue implements JobQueue using Redis Streams.
 type RedisQueue struct {
 	client        *redis.Client
 	stream        string
@@ -36,7 +36,7 @@ type RedisQueue struct {
 	closing chan struct{}
 }
 
-// RedisQueueConfig holds configuration for RedisQueue
+// RedisQueueConfig holds configuration for RedisQueue.
 type RedisQueueConfig struct {
 	Stream        string
 	Group         string
@@ -45,7 +45,7 @@ type RedisQueueConfig struct {
 	ClaimTimeout  time.Duration
 }
 
-// DefaultConfig returns default queue configuration
+// DefaultConfig returns default queue configuration.
 func DefaultConfig() RedisQueueConfig {
 	return RedisQueueConfig{
 		Stream:        "smartheart:jobs",
@@ -56,7 +56,7 @@ func DefaultConfig() RedisQueueConfig {
 	}
 }
 
-// NewRedisQueue creates a new Redis Streams based queue
+// NewRedisQueue creates a new Redis Streams based queue.
 func NewRedisQueue(client *redis.Client, cfg RedisQueueConfig) (*RedisQueue, error) {
 	q := &RedisQueue{
 		client:        client,
@@ -76,7 +76,7 @@ func NewRedisQueue(client *redis.Client, cfg RedisQueueConfig) (*RedisQueue, err
 		return nil, fmt.Errorf("failed to create consumer group: %w", err)
 	}
 
-	slog.Info("redis queue initialized",
+	slog.Info("Redis queue initialized",
 		"stream", q.stream,
 		"group", q.group,
 		"max_job_time", q.maxWait,
@@ -85,7 +85,7 @@ func NewRedisQueue(client *redis.Client, cfg RedisQueueConfig) (*RedisQueue, err
 	return q, nil
 }
 
-// Enqueue adds a job to the queue
+// Enqueue adds a job to the queue.
 func (q *RedisQueue) Enqueue(ctx context.Context, j *job.Job) (uuid.UUID, error) {
 	if j.ID == uuid.Nil {
 		j.ID = uuid.New()
@@ -115,16 +115,16 @@ func (q *RedisQueue) Enqueue(ctx context.Context, j *job.Job) (uuid.UUID, error)
 		return uuid.Nil, fmt.Errorf("failed to add job to stream: %w", err)
 	}
 
-	slog.Debug("job enqueued", "job_id", j.ID, "type", j.Type)
+	slog.DebugContext(ctx, "Job enqueued", "job_id", j.ID, "type", j.Type)
 	return j.ID, nil
 }
 
-// Status returns the current status of a job
+// Status returns the current status of a job.
 func (q *RedisQueue) Status(_ context.Context, id uuid.UUID) (*job.Job, bool) {
 	return q.cache.Get(id)
 }
 
-// Len returns approximate number of pending jobs
+// Len returns approximate number of pending jobs.
 func (q *RedisQueue) Len() int {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -140,7 +140,7 @@ func (q *RedisQueue) Len() int {
 	return 0
 }
 
-// StartConsumers starts n consumer goroutines
+// StartConsumers starts n consumer goroutines.
 func (q *RedisQueue) StartConsumers(ctx context.Context, n int, handler job.Handler) {
 	// Start consumers
 	for i := 0; i < n; i++ {
@@ -170,7 +170,7 @@ func (q *RedisQueue) StartConsumers(ctx context.Context, n int, handler job.Hand
 		}
 	}()
 
-	slog.Info("started queue consumers", "count", n)
+	slog.InfoContext(ctx, "Started queue consumers", "count", n)
 }
 
 // consumer processes jobs from the stream
@@ -181,10 +181,10 @@ func (q *RedisQueue) consumer(ctx context.Context, workerID int, handler job.Han
 	for {
 		select {
 		case <-ctx.Done():
-			slog.Info("consumer shutting down", "worker", workerID)
+			slog.InfoContext(ctx, "Consumer shutting down", "worker", workerID)
 			return
 		case <-q.closing:
-			slog.Info("consumer received close signal", "worker", workerID)
+			slog.InfoContext(ctx, "Consumer received close signal", "worker", workerID)
 			return
 		default:
 		}
@@ -201,7 +201,7 @@ func (q *RedisQueue) consumer(ctx context.Context, workerID int, handler job.Han
 			if errors.Is(err, redis.Nil) || errors.Is(err, context.Canceled) {
 				continue
 			}
-			slog.Error("failed to read from stream", "error", err, "worker", workerID)
+			slog.ErrorContext(ctx, "Failed to read from stream", "error", err, "worker", workerID)
 			time.Sleep(time.Second) // backoff on error
 			continue
 		}
@@ -244,7 +244,7 @@ func (q *RedisQueue) claimStuckJobs(ctx context.Context, handler job.Handler) {
 	}).Result()
 	if err != nil {
 		if !errors.Is(err, redis.Nil) {
-			slog.Error("failed to get pending entries", "error", err)
+			slog.ErrorContext(ctx, "Failed to get pending entries", "error", err)
 		}
 		return
 	}
@@ -263,12 +263,12 @@ func (q *RedisQueue) claimStuckJobs(ctx context.Context, handler job.Handler) {
 			Messages: []string{p.ID},
 		}).Result()
 		if err != nil {
-			slog.Error("failed to claim stuck job", "message_id", p.ID, "error", err)
+			slog.ErrorContext(ctx, "Failed to claim stuck job", "message_id", p.ID, "error", err)
 			continue
 		}
 
 		for _, msg := range msgs {
-			slog.Warn("reclaimed stuck job",
+			slog.WarnContext(ctx, "Reclaimed stuck job",
 				"message_id", msg.ID,
 				"idle_time", p.Idle,
 				"retry_count", p.RetryCount)
@@ -294,14 +294,14 @@ func (q *RedisQueue) processMessage(ctx context.Context, msg redis.XMessage, han
 	// Parse job data
 	data, ok := msg.Values["data"].(string)
 	if !ok {
-		slog.Error("invalid message format", "message_id", msg.ID)
+		slog.ErrorContext(ctx, "Invalid message format", "message_id", msg.ID)
 		q.ackMessage(ctx, msg.ID)
 		return
 	}
 
 	var j job.Job
 	if err := json.Unmarshal([]byte(data), &j); err != nil {
-		slog.Error("failed to unmarshal job", "message_id", msg.ID, "error", err)
+		slog.ErrorContext(ctx, "Failed to unmarshal job", "message_id", msg.ID, "error", err)
 		q.ackMessage(ctx, msg.ID)
 		return
 	}
@@ -309,7 +309,7 @@ func (q *RedisQueue) processMessage(ctx context.Context, msg redis.XMessage, han
 	j.SetRunning()
 	q.cache.Put(&j)
 
-	slog.Info("processing job", "job_id", j.ID, "type", j.Type, "worker", workerID)
+	slog.InfoContext(ctx, "Processing job", "job_id", j.ID, "type", j.Type, "worker", workerID)
 
 	// Execute with timeout
 	runCtx, cancel := context.WithTimeout(ctx, q.maxWait)
@@ -319,9 +319,9 @@ func (q *RedisQueue) processMessage(ctx context.Context, msg redis.XMessage, han
 	j.SetFinished(err)
 
 	if err != nil {
-		slog.Error("job failed", "job_id", j.ID, "type", j.Type, "error", err, "worker", workerID)
+		slog.ErrorContext(ctx, "Job failed", "job_id", j.ID, "type", j.Type, "error", err, "worker", workerID)
 	} else {
-		slog.Info("job completed", "job_id", j.ID, "type", j.Type, "worker", workerID)
+		slog.InfoContext(ctx, "Job completed", "job_id", j.ID, "type", j.Type, "worker", workerID)
 	}
 
 	// Update cache with final status
@@ -345,12 +345,12 @@ func (q *RedisQueue) moveToDeadLetter(ctx context.Context, msg redis.XMessage, r
 		},
 	}).Result()
 	if err != nil {
-		slog.Error("failed to move to dead letter, not acking original message",
+		slog.ErrorContext(ctx, "Failed to move to dead letter, not acking original message",
 			"message_id", msg.ID, "error", err)
 		return // Don't ACK — message stays pending so claimer can retry
 	}
 
-	slog.Warn("moved job to dead letter queue", "message_id", msg.ID, "reason", reason)
+	slog.WarnContext(ctx, "Moved job to dead letter queue", "message_id", msg.ID, "reason", reason)
 
 	// Only ACK after successful DL insert to avoid message loss
 	q.ackMessage(ctx, msg.ID)
@@ -360,15 +360,15 @@ func (q *RedisQueue) moveToDeadLetter(ctx context.Context, msg redis.XMessage, r
 func (q *RedisQueue) ackMessage(ctx context.Context, messageID string) {
 	err := q.client.XAck(ctx, q.stream, q.group, messageID).Err()
 	if err != nil {
-		slog.Error("failed to ack message", "message_id", messageID, "error", err)
+		slog.ErrorContext(ctx, "Failed to ack message", "message_id", messageID, "error", err)
 	}
 }
 
-// Close gracefully shuts down the queue
+// Close gracefully shuts down the queue.
 func (q *RedisQueue) Close() error {
 	close(q.closing)
 	q.wg.Wait()
-	slog.Info("queue closed gracefully")
+	slog.Info("Queue closed gracefully")
 	return nil
 }
 
@@ -377,13 +377,13 @@ func isGroupExistsError(err error) bool {
 	return err != nil && err.Error() == "BUSYGROUP Consumer Group name already exists"
 }
 
-// GetDeadLetterCount returns count of jobs in dead letter queue
+// GetDeadLetterCount returns count of jobs in dead letter queue.
 func (q *RedisQueue) GetDeadLetterCount(ctx context.Context) (int64, error) {
 	dlStream := q.stream + ":deadletter"
 	return q.client.XLen(ctx, dlStream).Result()
 }
 
-// RetryDeadLetterJob moves a job from dead letter back to main queue
+// RetryDeadLetterJob moves a job from dead letter back to main queue.
 func (q *RedisQueue) RetryDeadLetterJob(ctx context.Context, messageID string) error {
 	dlStream := q.stream + ":deadletter"
 
@@ -417,7 +417,7 @@ func (q *RedisQueue) RetryDeadLetterJob(ctx context.Context, messageID string) e
 	// Delete from dead letter
 	_, err = q.client.XDel(ctx, dlStream, messageID).Result()
 	if err != nil {
-		slog.Warn("failed to delete from dead letter", "message_id", messageID, "error", err)
+		slog.WarnContext(ctx, "Failed to delete from dead letter", "message_id", messageID, "error", err)
 	}
 
 	return nil

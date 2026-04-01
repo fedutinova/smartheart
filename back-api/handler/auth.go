@@ -32,7 +32,7 @@ type logoutRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
-// Register handles user registration
+// Register handles user registration.
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
@@ -53,7 +53,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Login handles user authentication
+// Login handles user authentication.
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
@@ -71,7 +71,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, tokens)
 }
 
-// Refresh handles token refresh
+// Refresh handles token refresh.
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
@@ -89,7 +89,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, tokens)
 }
 
-// Logout handles user logout
+// Logout handles user logout.
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
@@ -130,7 +130,7 @@ func handleServiceError(w http.ResponseWriter, err error) {
 	case apperr.IsForbidden(err):
 		writeError(w, http.StatusForbidden, "forbidden")
 	default:
-		slog.Error("unhandled service error", "error", err)
+		slog.Error("Unhandled service error", "error", err)
 		writeError(w, http.StatusInternalServerError, "internal error")
 	}
 }

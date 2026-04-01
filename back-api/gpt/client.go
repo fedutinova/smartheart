@@ -31,24 +31,24 @@ type Client struct {
 	timeout     time.Duration         // Request timeout
 }
 
-// ClientOption configures GPT client
+// ClientOption configures GPT client.
 type ClientOption func(*Client)
 
-// WithImageDetail sets image detail level
+// WithImageDetail sets image detail level.
 func WithImageDetail(detail openai.ImageURLDetail) ClientOption {
 	return func(c *Client) {
 		c.imageDetail = detail
 	}
 }
 
-// WithTimeout sets request timeout
+// WithTimeout sets request timeout.
 func WithTimeout(timeout time.Duration) ClientOption {
 	return func(c *Client) {
 		c.timeout = timeout
 	}
 }
 
-// WithModel sets the GPT model name
+// WithModel sets the GPT model name.
 func WithModel(model string) ClientOption {
 	return func(c *Client) {
 		if model != "" {
@@ -108,7 +108,7 @@ func (c *Client) ProcessRequest(ctx context.Context, textQuery string, fileKeys 
 	for _, key := range fileKeys {
 		filePart, err := c.createMessagePartFromFile(reqCtx, key)
 		if err != nil {
-			slog.Error("failed to process file", "key", key, "error", err)
+			slog.ErrorContext(ctx, "Failed to process file", "key", key, "error", err)
 			continue
 		}
 		if filePart != nil {
@@ -132,7 +132,7 @@ func (c *Client) ProcessRequest(ctx context.Context, textQuery string, fileKeys 
 		MultiContent: content,
 	})
 
-	slog.Info("sending request to OpenAI",
+	slog.InfoContext(ctx, "Sending request to OpenAI",
 		"model", c.model,
 		"files", len(fileKeys),
 		"content_parts", len(content))
@@ -147,7 +147,7 @@ func (c *Client) ProcessRequest(ctx context.Context, textQuery string, fileKeys 
 	}
 
 	if len(resp.Choices) == 0 {
-		slog.Error("openai API returned empty choices",
+		slog.ErrorContext(ctx, "OpenAI API returned empty choices",
 			"model", resp.Model,
 			"tokens_used", resp.Usage.TotalTokens,
 			"response_id", resp.ID)
@@ -157,10 +157,10 @@ func (c *Client) ProcessRequest(ctx context.Context, textQuery string, fileKeys 
 	responseContent := resp.Choices[0].Message.Content
 
 	if IsRefusal(responseContent) {
-		slog.Warn("openai returned refusal", "tokens", resp.Usage.TotalTokens, "finish_reason", resp.Choices[0].FinishReason)
+		slog.WarnContext(ctx, "OpenAI returned refusal", "tokens", resp.Usage.TotalTokens, "finish_reason", resp.Choices[0].FinishReason)
 	}
 
-	slog.Info("openai response received",
+	slog.InfoContext(ctx, "OpenAI response received",
 		"model", resp.Model,
 		"tokens", resp.Usage.TotalTokens,
 		"response_len", len(responseContent))
@@ -200,7 +200,7 @@ func (c *Client) createMessagePartFromFile(ctx context.Context, key string) (*op
 		detected := http.DetectContentType(data[:sniffLen])
 		if detected != "application/octet-stream" {
 			contentType = detected
-			slog.Debug("detected content type", "key", key, "detected_type", contentType)
+			slog.DebugContext(ctx, "Detected content type", "key", key, "detected_type", contentType)
 		}
 	}
 
@@ -226,7 +226,7 @@ func (c *Client) buildImagePart(ctx context.Context, key string, data []byte, co
 	// Try presigned URL first — avoids base64 overhead
 	presignedURL, err := c.storage.GetPresignedURL(ctx, key, 10*time.Minute)
 	if err == nil && !isLocalhostURL(presignedURL) {
-		slog.Info("using presigned URL for image", "key", key, "content_type", contentType, "detail", c.imageDetail)
+		slog.InfoContext(ctx, "Using presigned URL for image", "key", key, "content_type", contentType, "detail", c.imageDetail)
 		return &openai.ChatMessagePart{
 			Type: openai.ChatMessagePartTypeImageURL,
 			ImageURL: &openai.ChatMessageImageURL{
@@ -246,7 +246,7 @@ func (c *Client) buildImagePart(ctx context.Context, key string, data []byte, co
 	encodedData := base64.StdEncoding.EncodeToString(data)
 	imageURL := fmt.Sprintf("data:%s;base64,%s", contentType, encodedData)
 
-	slog.Info("using base64 encoding for image",
+	slog.InfoContext(ctx, "Using base64 encoding for image",
 		"key", key,
 		"content_type", contentType,
 		"original_size", len(data),
@@ -276,7 +276,7 @@ func (c *Client) ProcessStructuredECG(ctx context.Context, fileKeys []string, sy
 	for _, key := range fileKeys {
 		filePart, err := c.createMessagePartFromFile(reqCtx, key)
 		if err != nil {
-			slog.Error("failed to process file for structured ECG", "key", key, "error", err)
+			slog.ErrorContext(ctx, "Failed to process file for structured ECG", "key", key, "error", err)
 			continue
 		}
 		if filePart != nil {
@@ -294,7 +294,7 @@ func (c *Client) ProcessStructuredECG(ctx context.Context, fileKeys []string, sy
 		MultiContent: content,
 	})
 
-	slog.Info("sending structured ECG request to OpenAI",
+	slog.InfoContext(ctx, "Sending structured ECG request to OpenAI",
 		"model", c.model, "files", len(fileKeys))
 
 	temp := float32(0.0)
@@ -317,10 +317,10 @@ func (c *Client) ProcessStructuredECG(ctx context.Context, fileKeys []string, sy
 
 	responseContent := resp.Choices[0].Message.Content
 	if IsRefusal(responseContent) {
-		slog.Warn("openai returned refusal for structured ECG", "tokens", resp.Usage.TotalTokens)
+		slog.WarnContext(ctx, "OpenAI returned refusal for structured ECG", "tokens", resp.Usage.TotalTokens)
 	}
 
-	slog.Info("structured ECG response received",
+	slog.InfoContext(ctx, "Structured ECG response received",
 		"model", resp.Model, "tokens", resp.Usage.TotalTokens, "response_len", len(responseContent))
 
 	return &ProcessResult{
@@ -362,13 +362,13 @@ func classifyOpenAIError(reqCtx context.Context, err error, timeout time.Duratio
 		}
 	}
 
-	if reqCtx.Err() == context.DeadlineExceeded {
-		slog.Error("openai API request timeout", "error", err, "timeout", timeout)
-		return fmt.Errorf("OpenAI API request timeout: %w", err)
+	if errors.Is(reqCtx.Err(), context.DeadlineExceeded) {
+		slog.Error("OpenAI API request timeout", "error", err, "timeout", timeout)
+		return fmt.Errorf("openai API request timeout: %w", err)
 	}
 
-	slog.Error("openai API error", "error", err)
-	return fmt.Errorf("OpenAI API error: %w", err)
+	slog.Error("OpenAI API error", "error", err)
+	return fmt.Errorf("openai API error: %w", err)
 }
 
 func isImageType(contentType string) bool {

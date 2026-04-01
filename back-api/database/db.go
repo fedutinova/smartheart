@@ -11,14 +11,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Querier is an interface that can execute queries (pool or transaction)
+// Querier is an interface that can execute queries (pool or transaction).
 type Querier interface {
 	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
-// Tx is an alias for pgx.Tx for convenience
+// Tx is an alias for pgx.Tx for convenience.
 type Tx = pgx.Tx
 
 // TxBeginner abstracts transaction support so callers don't depend on *DB directly.
@@ -70,7 +70,7 @@ func NewDB(ctx context.Context, databaseURL string, opts ...func(*PoolConfig)) (
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	slog.Info("database connection established",
+	slog.InfoContext(ctx, "Database connection established",
 		"max_conns", cfg.MaxConns,
 		"min_conns", cfg.MinConns)
 	return &DB{pool: pool}, nil
@@ -102,7 +102,7 @@ func (db *DB) WithTx(ctx context.Context, fn func(tx pgx.Tx) error) error {
 
 	if err := fn(tx); err != nil {
 		if rbErr := tx.Rollback(ctx); rbErr != nil {
-			slog.Error("failed to rollback transaction", "error", rbErr)
+			slog.ErrorContext(ctx, "Failed to rollback transaction", "error", rbErr)
 		}
 		return err
 	}
