@@ -12,6 +12,67 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+let isRefreshing = false;
+let failedQueue: Array<{ resolve: (t: string) => void; reject: (e: unknown) => void }> = [];
+
+const processQueue = (error: unknown, token: string | null = null) => {
+  failedQueue.forEach((p) => (token ? p.resolve(token) : p.reject(error)));
+  failedQueue = [];
+};
+
+api.interceptors.response.use(
+  (res) => res,
+  async (error) => {
+    const original = error.config;
+    if (error.response?.status !== 401 || original?._retry) {
+      return Promise.reject(error);
+    }
+
+    if (original.url?.includes('/v1/auth/')) {
+      return Promise.reject(error);
+    }
+
+    const refreshToken = localStorage.getItem(REFRESH_KEY);
+    if (!refreshToken) {
+      clearTokens();
+      window.location.href = '/login';
+      return Promise.reject(error);
+    }
+
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        failedQueue.push({
+          resolve: (token: string) => {
+            original.headers.Authorization = `Bearer ${token}`;
+            resolve(api(original));
+          },
+          reject,
+        });
+      });
+    }
+
+    isRefreshing = true;
+    original._retry = true;
+
+    try {
+      const { data } = await axios.post<LoginResponse>(`${API_BASE}/v1/auth/refresh`, {
+        refresh_token: refreshToken,
+      });
+      saveTokens(data.access_token, data.refresh_token);
+      processQueue(null, data.access_token);
+      original.headers.Authorization = `Bearer ${data.access_token}`;
+      return api(original);
+    } catch (refreshError) {
+      processQueue(refreshError, null);
+      clearTokens();
+      window.location.href = '/login';
+      return Promise.reject(refreshError);
+    } finally {
+      isRefreshing = false;
+    }
+  },
+);
+
 export function getToken() { return localStorage.getItem(TOKEN_KEY); }
 
 export function saveTokens(access: string, refresh: string) {
