@@ -1,31 +1,33 @@
 from dataclasses import dataclass
-from typing import List, Dict, Any, Optional
+from typing import Any
+
 from sentence_transformers import SentenceTransformer
 
+
 def rrf_fusion(
-    ranked_lists: List[List[str]],
+    ranked_lists: list[list[str]],
     k: float = 60.0,
-    weights: Optional[List[float]] = None,
-) -> Dict[str, float]:
+    weights: list[float] | None = None,
+) -> dict[str, float]:
     if weights is None:
         weights = [1.0] * len(ranked_lists)
     if len(weights) != len(ranked_lists):
         raise ValueError("weights length must match ranked_lists length")
 
-    scores: Dict[str, float] = {}
-    for lst, w in zip(ranked_lists, weights):
+    scores: dict[str, float] = {}
+    for lst, w in zip(ranked_lists, weights, strict=True):
         for rank, doc_id in enumerate(lst, start=1):
             scores[doc_id] = scores.get(doc_id, 0.0) + (w / (k + rank))
     return scores
 
 @dataclass
 class HybridSearchResult:
-    ids: List[str]
-    combined_scores: List[float]
-    vector_scores: Dict[str, float]
-    bm25_scores: Dict[str, float]
-    documents: List[str]
-    metadatas: List[Dict[str, Any]]
+    ids: list[str]
+    combined_scores: list[float]
+    vector_scores: dict[str, float]
+    bm25_scores: dict[str, float]
+    documents: list[str]
+    metadatas: list[dict[str, Any]]
 
 class HybridSearchEngine:
     def __init__(
@@ -44,7 +46,7 @@ class HybridSearchEngine:
         self.w_vector = w_vector
         self.w_bm25 = w_bm25
 
-    def _embed_query(self, query: str) -> List[float]:
+    def _embed_query(self, query: str) -> list[float]:
         q = f"query: {query}"
         emb = self.embed_model.encode([q], normalize_embeddings=True)[0]
         return emb.tolist()
@@ -66,7 +68,7 @@ class HybridSearchEngine:
         vec_ids = vec["ids"][0]
         vec_dist = vec.get("distances", [[None] * len(vec_ids)])[0]
 
-        vec_scores: Dict[str, float] = {}
+        vec_scores: dict[str, float] = {}
         for i, doc_id in enumerate(vec_ids):
             d = vec_dist[i]
             if d is None:
@@ -76,7 +78,7 @@ class HybridSearchEngine:
         # BM25 search
         bm = self.bm25.search(query, top_k=bm25_k)
         bm_ids = [doc_id for doc_id, _ in bm]
-        bm_scores = {doc_id: score for doc_id, score in bm}
+        bm_scores = dict(bm)
 
         # RRF fuse
         fused = rrf_fusion(
@@ -84,7 +86,8 @@ class HybridSearchEngine:
             k=self.rrf_k,
             weights=[self.w_vector, self.w_bm25],
         )
-        fused_sorted = sorted(fused.items(), key=lambda x: x[1], reverse=True)[:n_results]
+        top = sorted(fused.items(), key=lambda x: x[1], reverse=True)
+        fused_sorted = top[:n_results]
         final_ids = [doc_id for doc_id, _ in fused_sorted]
         final_scores = [score for _, score in fused_sorted]
 
@@ -92,8 +95,8 @@ class HybridSearchEngine:
             ids=final_ids,
             include=["documents", "metadatas"],
         )
-        id_to_doc = {i: d for i, d in zip(got["ids"], got["documents"])}
-        id_to_meta = {i: m for i, m in zip(got["ids"], got["metadatas"])}
+        id_to_doc = dict(zip(got["ids"], got["documents"], strict=True))
+        id_to_meta = dict(zip(got["ids"], got["metadatas"], strict=True))
 
         documents = [id_to_doc[i] for i in final_ids]
         metadatas = [id_to_meta[i] for i in final_ids]

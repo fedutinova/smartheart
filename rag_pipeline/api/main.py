@@ -1,5 +1,7 @@
 """FastAPI server for the SmartHeart RAG pipeline."""
 
+import asyncio
+import contextlib
 import hmac
 import logging
 import os
@@ -11,8 +13,13 @@ from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, Field
 from sentence_transformers import SentenceTransformer
 
+from rag_pipeline.config import env_int
+
 logger = logging.getLogger("rag_api")
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 
 app = FastAPI(title="SmartHeart RAG API", version="1.0.0")
 
@@ -68,15 +75,30 @@ def _get_engine(force_rebuild: bool = False):
         if _engine is not None and not force_rebuild:
             return _engine
 
-        from rag_pipeline.config import (
-            SOURCE_DIR, CHUNK_TARGET_CHARS, CHUNK_MIN_CHARS,
-            CHUNK_MAX_CHARS, CHUNK_OVERLAP_CHARS, EMBED_MODEL_NAME,
-            CHROMA_PATH, COLLECTION_NAME, HNSW_SPACE,
-        )
-        from rag_pipeline.ingestion import discover_files, load_and_clean, chunk_documents, embed_passages
-        from rag_pipeline.tokenization import medical_ru_tokenizer
         from rag_pipeline.bm25 import BM25Index
+        from rag_pipeline.config import (
+            CHROMA_PATH,
+            CHUNK_MAX_CHARS,
+            CHUNK_MIN_CHARS,
+            CHUNK_OVERLAP_CHARS,
+            CHUNK_TARGET_CHARS,
+            COLLECTION_NAME,
+            EMBED_BATCH_SIZE,
+            EMBED_MODEL_NAME,
+            HNSW_SPACE,
+            RRF_K,
+            RRF_W_BM25,
+            RRF_W_VECTOR,
+            SOURCE_DIR,
+        )
         from rag_pipeline.hybrid import HybridSearchEngine
+        from rag_pipeline.ingestion import (
+            chunk_documents,
+            discover_files,
+            embed_passages,
+            load_and_clean,
+        )
+        from rag_pipeline.tokenization import medical_ru_tokenizer
 
         logger.info("Initializing RAG engine...")
 
@@ -92,7 +114,9 @@ def _get_engine(force_rebuild: bool = False):
                 )
                 count = collection.count()
                 if count > 0:
-                    logger.info("Reusing existing ChromaDB collection (%d chunks)", count)
+                    logger.info(
+                        "Reusing existing ChromaDB collection (%d chunks)", count,
+                    )
                 else:
                     collection = None  # empty — rebuild
             except Exception as exc:
@@ -114,19 +138,16 @@ def _get_engine(force_rebuild: bool = False):
                 overlap_chars=CHUNK_OVERLAP_CHARS,
             )
 
-            try:
+            with contextlib.suppress(Exception):
                 client.delete_collection(COLLECTION_NAME)
-            except Exception:
-                pass
 
             collection = client.get_or_create_collection(
                 name=COLLECTION_NAME,
                 metadata={"hnsw:space": HNSW_SPACE},
             )
 
-            BATCH = 64
-            for start in range(0, len(all_chunk_texts), BATCH):
-                end = min(start + BATCH, len(all_chunk_texts))
+            for start in range(0, len(all_chunk_texts), EMBED_BATCH_SIZE):
+                end = min(start + EMBED_BATCH_SIZE, len(all_chunk_texts))
                 batch_emb = embed_passages(embed_model, all_chunk_texts[start:end])
                 collection.add(
                     ids=all_chunk_ids[start:end],
@@ -149,6 +170,9 @@ def _get_engine(force_rebuild: bool = False):
             collection=collection,
             embed_model=embed_model,
             bm25=bm25,
+            rrf_k=RRF_K,
+            w_vector=RRF_W_VECTOR,
+            w_bm25=RRF_W_BM25,
         )
         logger.info("RAG engine ready (%d chunks)", len(all_chunk_ids))
         return _engine
@@ -164,7 +188,7 @@ def _get_chain():
         if _chain is not None:
             return _chain
 
-        from rag_pipeline.generation import build_prompt, build_llm
+        from rag_pipeline.generation import build_llm, build_prompt
 
         base_url = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1")
         api_key = os.getenv("LLM_API_KEY", "")
@@ -172,10 +196,17 @@ def _get_chain():
             raise RuntimeError("LLM_API_KEY environment variable is required")
 
         _llm_model = os.getenv("LLM_MODEL", "gpt-4o")
-        _llm_temperature = float(os.getenv("LLM_TEMPERATURE", "0.2"))
+        try:
+            _llm_temperature = float(os.getenv("LLM_TEMPERATURE", "0.2"))
+        except ValueError as err:
+            raw = os.getenv("LLM_TEMPERATURE")
+            raise RuntimeError(f"Invalid LLM_TEMPERATURE: {raw!r}") from err
 
         prompt = build_prompt()
-        llm = build_llm(base_url=base_url, api_key=api_key, model=_llm_model, temperature=_llm_temperature)
+        llm = build_llm(
+            base_url=base_url, api_key=api_key,
+            model=_llm_model, temperature=_llm_temperature,
+        )
         _chain = prompt | llm
         logger.info("LLM chain ready (model=%s, base_url=%s)", _llm_model, base_url)
         return _chain
@@ -187,8 +218,11 @@ def _warmup():
         _get_engine()
         _ready.set()
         logger.info("Warmup complete — engine ready")
-    except Exception as exc:
-        logger.error("Warmup failed: %s", exc)
+    except Exception:
+        logger.exception("Warmup failed")
+
+
+_shutting_down = threading.Event()
 
 
 @app.on_event("startup")
@@ -196,11 +230,26 @@ def startup():
     threading.Thread(target=_warmup, daemon=True).start()
 
 
+@app.on_event("shutdown")
+def shutdown():
+    _shutting_down.set()
+    logger.info("Shutdown signal received")
+
+
 @app.get("/health")
 def health():
-    if _ready.is_set():
-        return {"status": "ok"}
-    raise HTTPException(status_code=503, detail="warming up")
+    """Liveness probe — is the process alive?"""
+    if _shutting_down.is_set():
+        raise HTTPException(status_code=503, detail="shutting down")
+    return {"status": "ok"}
+
+
+@app.get("/ready")
+def ready():
+    """Readiness probe — is the engine loaded and ready to serve?"""
+    if not _ready.is_set():
+        raise HTTPException(status_code=503, detail="warming up")
+    return {"status": "ready"}
 
 
 def _build_sources(items: list[dict], limit: int = 6) -> list[Source]:
@@ -220,52 +269,95 @@ class SearchResponse(BaseModel):
     elapsed_ms: int
 
 
-@app.post("/search", response_model=SearchResponse)
-def search(req: QueryRequest):
-    """Retrieval only — no LLM call. Useful for testing search quality."""
+def _search_sync(question: str, n_results: int) -> tuple[list[dict], float]:
     start = time.monotonic()
-
-    try:
-        engine = _get_engine()
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc))
-
+    engine = _get_engine()
     from rag_pipeline.generation import retrieve_context
+    _, items = retrieve_context(engine, question, n_results=n_results)
+    elapsed_ms = (time.monotonic() - start) * 1000
+    return items, elapsed_ms
 
-    _, items = retrieve_context(engine, req.question, n_results=req.n_results)
 
-    elapsed_ms = int((time.monotonic() - start) * 1000)
-    return SearchResponse(sources=_build_sources(items), elapsed_ms=elapsed_ms)
+@app.post("/search", response_model=SearchResponse)
+async def search(req: QueryRequest):
+    """Retrieval only — no LLM call. Useful for testing search quality."""
+    try:
+        items, elapsed_ms = await asyncio.to_thread(
+            _search_sync, req.question, req.n_results,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from None
+
+    return SearchResponse(
+        sources=_build_sources(items), elapsed_ms=int(elapsed_ms),
+    )
+
+
+def _query_sync(question: str, n_results: int) -> tuple[str, list[dict], float]:
+    """Run retrieval + LLM in a thread (blocking I/O)."""
+    start = time.monotonic()
+    engine = _get_engine()
+    chain = _get_chain()
+
+    from rag_pipeline.generation import get_llm_answer, retrieve_context
+
+    context, items = retrieve_context(engine, question, n_results=n_results)
+
+    last_exc = None
+    for attempt in range(3):
+        try:
+            answer = get_llm_answer(chain, question, context)
+            break
+        except Exception as exc:
+            last_exc = exc
+            logger.warning("LLM call attempt %d failed: %s", attempt + 1, exc)
+            max_retries = 2
+            if attempt < max_retries:
+                time.sleep(1.0 * (attempt + 1))
+    else:
+        raise RuntimeError(f"LLM call failed after 3 attempts: {last_exc}")
+
+    elapsed_ms = (time.monotonic() - start) * 1000
+    return answer, items, elapsed_ms
+
+
+QUERY_TIMEOUT_S = env_int("RAG_QUERY_TIMEOUT", 90)
 
 
 @app.post("/query", response_model=QueryResponse)
-def query(req: QueryRequest):
-    start = time.monotonic()
-
+async def query(req: QueryRequest):
     try:
-        engine = _get_engine()
-        chain = _get_chain()
+        answer, items, elapsed_ms = await asyncio.wait_for(
+            asyncio.to_thread(_query_sync, req.question, req.n_results),
+            timeout=QUERY_TIMEOUT_S,
+        )
+    except asyncio.TimeoutError:
+        logger.exception(
+            "Query timed out after %ds: %s", QUERY_TIMEOUT_S, req.question[:80],
+        )
+        raise HTTPException(
+            status_code=504, detail="query timed out",
+        ) from None
     except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc))
+        detail = str(exc)
+        if "LLM call failed" in detail:
+            raise HTTPException(
+                status_code=502, detail="LLM service error",
+            ) from None
+        raise HTTPException(status_code=503, detail=detail) from None
 
-    from rag_pipeline.generation import retrieve_context, get_llm_answer
-
-    context, items = retrieve_context(engine, req.question, n_results=req.n_results)
-
-    try:
-        answer = get_llm_answer(chain, req.question, context)
-    except Exception as exc:
-        logger.error("LLM call failed: %s", exc)
-        raise HTTPException(status_code=502, detail="LLM service error")
-
-    elapsed_ms = int((time.monotonic() - start) * 1000)
-    logger.info("query answered in %dms: %s", elapsed_ms, req.question[:80])
+    elapsed = int(elapsed_ms)
+    logger.info("query answered in %dms: %s", elapsed, req.question[:80])
 
     return QueryResponse(
         answer=answer,
         sources=_build_sources(items),
-        elapsed_ms=elapsed_ms,
-        meta=QueryMeta(model=_llm_model, temperature=_llm_temperature, n_results=req.n_results),
+        elapsed_ms=elapsed,
+        meta=QueryMeta(
+            model=_llm_model,
+            temperature=_llm_temperature,
+            n_results=req.n_results,
+        ),
     )
 
 
@@ -279,7 +371,8 @@ class ReindexResponse(BaseModel):
 def reindex(req: Request):
     """Force-rebuild the search index from source documents."""
     admin_key = os.getenv("ADMIN_API_KEY", "")
-    if not admin_key or not hmac.compare_digest(req.headers.get("X-Admin-Key", ""), admin_key):
+    provided = req.headers.get("X-Admin-Key", "")
+    if not admin_key or not hmac.compare_digest(provided, admin_key):
         raise HTTPException(status_code=403, detail="forbidden")
 
     start = time.monotonic()
@@ -287,7 +380,7 @@ def reindex(req: Request):
     try:
         engine = _get_engine(force_rebuild=True)
     except RuntimeError as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc)) from None
 
     chunk_count = engine.collection.count()
     elapsed_ms = int((time.monotonic() - start) * 1000)

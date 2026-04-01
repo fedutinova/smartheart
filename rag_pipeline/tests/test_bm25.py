@@ -1,4 +1,5 @@
 import pytest
+
 from rag_pipeline.bm25 import BM25Index
 from rag_pipeline.tokenization import medical_ru_tokenizer
 

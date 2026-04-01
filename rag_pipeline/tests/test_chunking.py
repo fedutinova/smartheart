@@ -1,9 +1,8 @@
-import pytest
 from rag_pipeline.chunking import (
+    _tail_units_for_overlap,
+    chunk_units_semantic,
     is_heading,
     split_to_units,
-    chunk_units_semantic,
-    _tail_units_for_overlap,
 )
 
 
@@ -84,81 +83,75 @@ class TestTailUnitsForOverlap:
         assert result[0] == "c" * 50
 
 
+def _chunk(units, target=250, mn=200, mx=400, overlap=0):
+    """Helper to reduce line length in tests."""
+    return chunk_units_semantic(
+        units, target_chars=target, min_chars=mn,
+        max_chars=mx, overlap_chars=overlap,
+    )
+
+
 class TestChunkUnitsSemantic:
     def test_basic_chunking(self):
         units = [f"paragraph {i} " + "x" * 100 for i in range(10)]
-        chunks = chunk_units_semantic(units, target_chars=250, min_chars=200, max_chars=400, overlap_chars=0)
+        chunks = _chunk(units)
         assert len(chunks) > 1
-        # Post-merge may combine sub-min trailing chunks, so last chunk can exceed max.
-        # Pre-merge chunks respect max_chars; here we just verify we got multiple chunks.
-        total = sum(len(c) for c in chunks)
-        assert total > 0
+        # Post-merge may combine sub-min trailing chunks.
+        assert sum(len(c) for c in chunks) > 0
 
     def test_heading_breaks_chunk(self):
-        units = [
-            "x" * 200,
-            "1.1 Новый раздел",  # heading
-            "y" * 200,
-        ]
-        chunks = chunk_units_semantic(units, target_chars=500, min_chars=150, max_chars=600, overlap_chars=0)
-        # Heading should force a break after first unit reaches min_chars
+        units = ["x" * 200, "1.1 Новый раздел", "y" * 200]
+        chunks = _chunk(units, target=500, mn=150, mx=600)
         assert len(chunks) >= 2
 
     def test_small_chunks_merged(self):
-        units = ["tiny"]  # way below min_chars
-        chunks = chunk_units_semantic(units, target_chars=100, min_chars=50, max_chars=200, overlap_chars=0)
+        chunks = _chunk(["tiny"], target=100, mn=50, mx=200)
         assert len(chunks) == 1
         assert chunks[0] == "tiny"
 
     def test_oversized_unit_split_by_sentence(self):
-        long_unit = "Первое предложение. " * 50  # ~1000 chars
-        units = [long_unit]
-        chunks = chunk_units_semantic(units, target_chars=200, min_chars=100, max_chars=300, overlap_chars=0)
+        long_unit = "Первое предложение. " * 50
+        chunks = _chunk([long_unit], target=200, mn=100, mx=300)
         assert len(chunks) >= 2
-        # Post-merge may combine sub-min trailing chunks; check pre-merge logic
-        # worked by verifying we got multiple chunks from a single oversized unit.
-        for ch in chunks[:-1]:  # all but last (last may be merged)
+        for ch in chunks[:-1]:
             assert len(ch) <= 300
 
     def test_empty_units_skipped(self):
-        units = ["", "  ", "text"]
-        chunks = chunk_units_semantic(units, target_chars=100, min_chars=50, max_chars=200, overlap_chars=0)
+        chunks = _chunk(["", "  ", "text"], target=100, mn=50, mx=200)
         assert len(chunks) == 1
         assert "text" in chunks[0]
 
     def test_respects_max_chars(self):
         units = ["a" * 100 for _ in range(20)]
-        chunks = chunk_units_semantic(units, target_chars=300, min_chars=200, max_chars=400, overlap_chars=0)
+        chunks = _chunk(units, target=300, mn=200, mx=400)
         for ch in chunks:
             assert len(ch) <= 400
 
     def test_overlap_carries_context(self):
         units = [f"unit_{i}_" + "x" * 80 for i in range(10)]
-        chunks_no_overlap = chunk_units_semantic(units, target_chars=200, min_chars=150, max_chars=300, overlap_chars=0)
-        chunks_with_overlap = chunk_units_semantic(units, target_chars=200, min_chars=150, max_chars=300, overlap_chars=80)
-        # With overlap, later chunks should contain text from previous chunks
-        if len(chunks_with_overlap) > 1:
-            # The overlap makes chunks slightly larger on average
-            total_with = sum(len(c) for c in chunks_with_overlap)
-            total_without = sum(len(c) for c in chunks_no_overlap)
-            assert total_with >= total_without
+        no_ov = _chunk(units, target=200, mn=150, mx=300)
+        with_ov = _chunk(units, target=200, mn=150, mx=300, overlap=80)
+        if len(with_ov) > 1:
+            assert sum(len(c) for c in with_ov) >= sum(len(c) for c in no_ov)
 
     def test_real_world_medical_text(self):
-        text = """1.1 Фибрилляция предсердий
-
-Фибрилляция предсердий (ФП) — наиболее часто встречающаяся аритмия в клинической практике. Распространённость ФП увеличивается с возрастом.
-
-ЭКГ-признаки:
-- Отсутствие зубцов P
-- Нерегулярные интервалы R-R
-- Волны f (мелковолновые осцилляции изолинии)
-
-1.2 Трепетание предсердий
-
-Трепетание предсердий характеризуется регулярной предсердной активностью с частотой 250-350 в минуту."""
-
+        # fmt: off
+        text = (
+            "1.1 Фибрилляция предсердий\n\n"
+            "Фибрилляция предсердий (ФП) — наиболее часто "
+            "встречающаяся аритмия в клинической практике. "
+            "Распространённость ФП увеличивается с возрастом."
+            "\n\nЭКГ-признаки:\n"
+            "- Отсутствие зубцов P\n"
+            "- Нерегулярные интервалы R-R\n"
+            "- Волны f (мелковолновые осцилляции изолинии)"
+            "\n\n1.2 Трепетание предсердий\n\n"
+            "Трепетание предсердий характеризуется регулярной "
+            "предсердной активностью с частотой 250-350 в минуту."
+        )
+        # fmt: on
         units = split_to_units(text)
-        chunks = chunk_units_semantic(units, target_chars=300, min_chars=200, max_chars=500, overlap_chars=50)
+        chunks = _chunk(units, target=300, mn=200, mx=500, overlap=50)
         assert len(chunks) >= 1
         full = "\n\n".join(chunks)
         assert "Фибрилляция" in full

@@ -38,7 +38,8 @@ class TestCleanText:
         text = "A\n\n\n\n\nB"
         result = clean_text(text)
         assert "\n\n\n" not in result
-        assert "A" in result and "B" in result
+        assert "A" in result
+        assert "B" in result
 
     def test_collapses_multiple_spaces(self):
         text = "a    b\tc"

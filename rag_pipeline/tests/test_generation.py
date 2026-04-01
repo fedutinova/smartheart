@@ -1,7 +1,7 @@
 import pytest
 
 langchain = pytest.importorskip("langchain_core", reason="langchain_core not installed")
-from rag_pipeline.generation import build_prompt, retrieve_context, format_response
+from rag_pipeline.generation import build_prompt, format_response  # noqa: E402
 
 
 class TestBuildPrompt:
@@ -34,7 +34,9 @@ class TestFormatResponse:
                 "meta": {"doc_name": "cardio.pdf", "chunk_index": 5},
             },
         ]
-        result = format_response("Что такое ФП?", "Фибрилляция предсердий — это...", items)
+        result = format_response(
+            "Что такое ФП?", "Фибрилляция предсердий — это...", items,
+        )
         assert "Что такое ФП?" in result
         assert "Фибрилляция предсердий" in result
         assert "cardio.pdf#5" in result

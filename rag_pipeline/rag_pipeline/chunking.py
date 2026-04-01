@@ -1,24 +1,24 @@
 import re
-from typing import List
 
 _HEADING_RE_1 = re.compile(r"^\s*\d+(?:\.\d+)*[).]?\s+\S+")
 _HEADING_RE_2 = re.compile(r"^\s*[A-ZА-ЯЁ0-9][A-ZА-ЯЁ0-9\s()№-]+$")
-_HEADING_RE_3 = re.compile(r"^\s*(глава|раздел|приложение|таблица|рисунок)\b", re.IGNORECASE)
+_HEADING_RE_3 = re.compile(
+    r"^\s*(глава|раздел|приложение|таблица|рисунок)\b", re.IGNORECASE,
+)
 
 def is_heading(paragraph: str) -> bool:
     p = paragraph.strip()
     if len(p) < 4:
         return False
-    if len(p) <= 90 and (p.endswith(":") or _HEADING_RE_1.match(p) or _HEADING_RE_3.match(p)):
+    is_pattern = _HEADING_RE_1.match(p) or _HEADING_RE_3.match(p)
+    if len(p) <= 90 and (p.endswith(":") or is_pattern):
         return True
-    if len(p) <= 120 and _HEADING_RE_2.match(p):
-        return True
-    return False
+    return bool(len(p) <= 120 and _HEADING_RE_2.match(p))
 
-def split_to_units(text: str) -> List[str]:
+def split_to_units(text: str) -> list[str]:
     return [p.strip() for p in text.split("\n\n") if p.strip()]
 
-def _tail_units_for_overlap(units: List[str], overlap_chars: int) -> List[str]:
+def _tail_units_for_overlap(units: list[str], overlap_chars: int) -> list[str]:
     if overlap_chars <= 0 or not units:
         return []
     tail = []
@@ -32,14 +32,14 @@ def _tail_units_for_overlap(units: List[str], overlap_chars: int) -> List[str]:
     return list(reversed(tail))
 
 def chunk_units_semantic(
-    units: List[str],
+    units: list[str],
     target_chars: int,
     min_chars: int,
     max_chars: int,
     overlap_chars: int,
-) -> List[str]:
-    chunks: List[str] = []
-    cur_units: List[str] = []
+) -> list[str]:
+    chunks: list[str] = []
+    cur_units: list[str] = []
     cur_len = 0
 
     def flush():
@@ -93,20 +93,19 @@ def chunk_units_semantic(
                     chunks.append(buf)
                 cur_units = []
                 cur_len = 0
+            elif cur_units:
+                cur_units.append(u)
+                cur_len = len("\n\n".join(cur_units))
             else:
-                if cur_units:
-                    cur_units.append(u)
-                    cur_len = len("\n\n".join(cur_units))
-                else:
-                    cur_units = [u]
-                    cur_len = len(u)
+                cur_units = [u]
+                cur_len = len(u)
 
         if cur_len >= target_chars:
             flush()
 
     flush()
 
-    merged: List[str] = []
+    merged: list[str] = []
     for ch in chunks:
         if merged and len(ch) < min_chars:
             merged[-1] = (merged[-1] + "\n\n" + ch).strip()

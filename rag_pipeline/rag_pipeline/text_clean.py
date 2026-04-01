@@ -1,5 +1,6 @@
 import re
 
+
 def _join_soft_wrapped_lines(text: str) -> str:
     text = text.replace("\r\n", "\n").replace("\r", "\n")
     # Склейка переносов по дефису: воз-\nникает -> возникает

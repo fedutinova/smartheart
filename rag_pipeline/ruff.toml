@@ -1,0 +1,46 @@
+line-length = 88
+
+[lint]
+select = ["ALL"]
+ignore = [
+    "D",       # docstrings — not enforced
+    "ANN",     # type annotations — not enforced
+    "S",       # bandit security — handled separately
+    "T201",    # print() — used in demo script
+    "ERA",     # commented-out code
+    "INP001",  # implicit namespace package
+    "FA100",   # future annotations
+    "FBT",     # boolean positional args
+    "PLW0603", # global statement — used for lazy init
+    "PLC0415", # import not at top level — lazy imports by design
+    "TRY003",  # long exception messages
+    "EM101",   # string literal in exception
+    "EM102",   # f-string in exception
+    "COM812",  # trailing comma — handled by formatter
+    "RUF012",  # mutable class variable
+    "C901",    # complexity
+    "PLR0912", # too many branches
+    "PLR0915", # too many statements
+    "PLR2004", # magic values in comparisons
+    "PERF203", # try-except in loop
+    "BLE001",  # blind except
+    "PTH",     # pathlib preference
+    "SIM108",  # ternary
+    "RET505",  # unnecessary else after return
+    "PLW2901", # loop variable overwrite — common pattern
+    "RUF001",  # ambiguous unicode — false positive for Cyrillic
+    "RUF002",  # ambiguous unicode in docstring — false positive for Russian
+    "RUF003",  # ambiguous unicode in comment — false positive for Russian
+    "PT011",   # pytest.raises too broad — acceptable in unit tests
+    "PT018",   # compound assertion — acceptable in unit tests
+    "PERF401", # list.extend — readability over micro-perf
+    "C416",    # dict comprehension — readability
+    "PT009",   # pytest parametrize
+    "PT027",   # pytest parametrize
+    "PLR0913", # too many arguments
+]
+
+[lint.per-file-ignores]
+"tests/*" = ["E501"]
+"handover_demo.py" = ["E501"]
+"rag_pipeline/generation.py" = ["E501"]  # prompt template strings
