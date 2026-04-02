@@ -103,7 +103,7 @@ func (s *LocalStorage) DeleteFile(_ context.Context, key string) error {
 }
 
 func (s *LocalStorage) GetFile(_ context.Context, key string) (io.ReadCloser, string, error) {
-	filePath, err := s.safePath(key)
+	filePath, err := s.resolveExistingPath(key)
 	if err != nil {
 		return nil, "", fmt.Errorf("invalid key: %w", err)
 	}
@@ -152,6 +152,65 @@ func (s *LocalStorage) GetFile(_ context.Context, key string) (io.ReadCloser, st
 		"content_type", contentType)
 
 	return file, contentType, nil
+}
+
+func (s *LocalStorage) resolveExistingPath(key string) (string, error) {
+	candidates := make([]string, 0, 4)
+	addCandidate := func(candidate string) {
+		candidate = strings.TrimSpace(candidate)
+		if candidate == "" {
+			return
+		}
+		for _, existing := range candidates {
+			if existing == candidate {
+				return
+			}
+		}
+		candidates = append(candidates, candidate)
+	}
+
+	addCandidate(key)
+
+	trimmedUploads := strings.TrimPrefix(key, "uploads/")
+	if trimmedUploads != key {
+		addCandidate(trimmedUploads)
+	} else {
+		addCandidate("uploads/" + key)
+	}
+
+	for _, candidate := range candidates {
+		path, err := s.safePath(candidate)
+		if err != nil {
+			continue
+		}
+		if _, err := os.Stat(path); err == nil {
+			if candidate != key {
+				slog.Warn("Resolved local storage file via legacy key fallback", "requested_key", key, "resolved_key", candidate, "path", path)
+			}
+			return path, nil
+		}
+	}
+
+	// Legacy fallback: some older records may store only the basename while files
+	// are kept under uploads/YYYY/MM/DD/<name>.
+	base := filepath.Base(key)
+	if base != "" && base != "." {
+		patterns := []string{
+			filepath.Join(s.baseDir, "uploads", "*", "*", "*", base),
+			filepath.Join(s.baseDir, "*", "*", "*", base),
+		}
+		for _, pattern := range patterns {
+			matches, err := filepath.Glob(pattern)
+			if err != nil || len(matches) == 0 {
+				continue
+			}
+			slog.Warn("Resolved local storage file via basename fallback", "requested_key", key, "matched_path", matches[0])
+			return matches[0], nil
+		}
+	}
+
+	// Return the original safePath error shape for consistent caller handling.
+	return s.safePath(key)
 }
 
 func (*LocalStorage) generateKey(filename string) string {

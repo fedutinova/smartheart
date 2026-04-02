@@ -11,6 +11,18 @@ interface CalibrationFormProps {
   onMmPerMvChestChange: (v: number) => void;
 }
 
+const AGE_MAX = 150;
+
+function normalizeAgeInput(value: string): string {
+  const digitsOnly = value.replace(/[^\d]/g, '');
+  if (!digitsOnly) return '';
+
+  const normalized = Number.parseInt(digitsOnly, 10);
+  if (Number.isNaN(normalized)) return '';
+
+  return String(Math.min(normalized, AGE_MAX));
+}
+
 function ToggleGroup({ value, options, onChange }: {
   value: number | string;
   options: { value: number | string; label: string }[];
@@ -45,16 +57,23 @@ export function CalibrationForm({
       <div className="flex items-center gap-4">
         <div className="flex-1 min-w-0">
           <label htmlFor="age" className="block text-[11px] uppercase tracking-wide text-gray-600 font-medium mb-1.5">Возраст</label>
-          <input
-            id="age"
-            type="number"
-            min={1}
-            max={150}
-            placeholder="—"
-            className="w-full bg-white rounded-lg border-0 ring-1 ring-gray-200 focus:ring-2 focus:ring-rose-500 text-sm py-2 px-3"
-            value={age}
-            onChange={(e) => onAgeChange(e.target.value)}
-          />
+          <div className="relative">
+            <input
+              id="age"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={3}
+              placeholder="0–150"
+              aria-describedby="age-hint"
+              className="w-full bg-white rounded-xl border border-gray-200 pl-4 pr-12 py-3 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm transition-all outline-none focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
+              value={age}
+              onChange={(e) => onAgeChange(normalizeAgeInput(e.target.value))}
+            />
+            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-gray-400">
+              лет
+            </span>
+          </div>
         </div>
         <div className="flex-1 min-w-0">
           <label className="block text-[11px] uppercase tracking-wide text-gray-600 font-medium mb-1.5">Пол</label>

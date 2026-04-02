@@ -88,6 +88,7 @@ services:
       MIGRATIONS_DIR: /app/migrations
     volumes:
       - ./migrations:/app/migrations:ro
+      - app_uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -132,3 +133,4 @@ volumes:
   redis_data:
   localstack_data:
   rag_chroma_data:
+  app_uploads:

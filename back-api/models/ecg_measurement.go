@@ -26,8 +26,9 @@ const (
 
 // ECGInterpretation holds the structured conclusion generated from indices.
 type ECGInterpretation struct {
-	Items   []InterpretationItem `json:"items"`
-	Summary []InterpretationItem `json:"summary"`
+	Items       []InterpretationItem `json:"items"`
+	Summary     []InterpretationItem `json:"summary"`
+	TextSummary string               `json:"text_summary"` // human-readable text for copy
 }
 
 // InterpretationItem is a single interpretation line with structured fields.

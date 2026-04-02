@@ -134,7 +134,7 @@ func (h *ECGWorker) processEKG(ctx context.Context, j *job.Job, payload *job.ECG
 		imageURL = uploadResult.URL
 	}
 
-	// Build prompt and call GPT
+	// Build prompt and call GPT.
 	systemPrompt, userPrompt := gpt.BuildECGMeasurementPrompt(payload.PaperSpeedMMS)
 	gptResult, err := h.gptClient.ProcessStructuredECG(ctx, []string{imageKey}, systemPrompt, userPrompt)
 	if err != nil {
@@ -151,7 +151,6 @@ func (h *ECGWorker) processEKG(ctx context.Context, j *job.Job, payload *job.ECG
 
 	// Post-process: convert small squares to mm/ms
 	msPerSq := 1000.0 / payload.PaperSpeedMMS
-	// Adjust if GPT detected different calibration
 	if rawMeasurements.Calibration.PaperSpeed != nil && *rawMeasurements.Calibration.PaperSpeed > 0 {
 		detectedMMS := *rawMeasurements.Calibration.PaperSpeed
 		if detectedMMS > 10 && detectedMMS < 100 {

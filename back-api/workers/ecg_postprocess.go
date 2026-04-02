@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 
 	"github.com/fedutinova/smartheart/back-api/gpt"
 	"github.com/fedutinova/smartheart/back-api/models"
@@ -474,10 +475,100 @@ func buildInterpretation(
 		return nil
 	}
 
+	textSummary := buildTextSummary(summary, items, rhythm)
+
 	return &models.ECGInterpretation{
-		Items:   items,
-		Summary: summary,
+		Items:       items,
+		Summary:     summary,
+		TextSummary: textSummary,
 	}
+}
+
+// buildTextSummary generates a human-readable Russian text from interpretation data.
+func buildTextSummary(
+	summary []models.InterpretationItem,
+	items []models.InterpretationItem,
+	rhythm *models.RhythmTiming,
+) string {
+	var parts []string
+
+	// Rhythm
+	if rhythm != nil && rhythm.HRbpm != nil {
+		hr := *rhythm.HRbpm
+		rhythmType := "Ритм по данным автоматического анализа"
+		if hr < 60 {
+			rhythmType = "Брадикардия по данным автоматического анализа"
+		} else if hr > 100 {
+			rhythmType = "Тахикардия по данным автоматического анализа"
+		}
+		parts = append(parts, fmt.Sprintf("%s, ЧСС %.0f уд/мин.", rhythmType, hr))
+	}
+
+	// QRS
+	for _, it := range items {
+		if it.Group == "rhythm" && it.Label == "QRS" {
+			if it.Status == models.StatusNormal {
+				parts = append(parts, fmt.Sprintf("Длительность QRS %s, в пределах нормы.", it.Value))
+			} else {
+				parts = append(parts, fmt.Sprintf("Длительность QRS %s, расширен.", it.Value))
+			}
+			break
+		}
+	}
+
+	// Axis
+	for _, s := range summary {
+		if s.Label == "ЭОС" {
+			if s.Status == models.StatusNormal {
+				parts = append(parts, fmt.Sprintf("ЭОС %s.", s.Value))
+			} else {
+				parts = append(parts, fmt.Sprintf("ЭОС отклонена: %s.", s.Value))
+			}
+			break
+		}
+	}
+
+	// LVH
+	for _, s := range summary {
+		if s.Label == "Признаки ГЛЖ" {
+			if s.Status == models.StatusPositive {
+				// Collect which criteria are positive
+				var criteria []string
+				for _, it := range items {
+					if it.Group == "lvh" && it.Status == models.StatusPositive {
+						criteria = append(criteria, fmt.Sprintf("%s %s", it.Label, it.Value))
+					}
+				}
+				if len(criteria) > 0 {
+					parts = append(parts, fmt.Sprintf("Признаки ГЛЖ: %s (%s).",
+						s.Value, strings.Join(criteria, ", ")))
+				} else {
+					parts = append(parts, fmt.Sprintf("Признаки ГЛЖ: %s.", s.Value))
+				}
+			} else {
+				parts = append(parts, "Убедительных признаков ГЛЖ не выявлено.")
+			}
+			break
+		}
+	}
+
+	// RVH
+	for _, s := range summary {
+		if s.Label == "Признаки ГПЖ" {
+			if s.Status == models.StatusPositive {
+				parts = append(parts, fmt.Sprintf("Признаки ГПЖ: %s.", s.Value))
+			} else if strings.Contains(s.Value, "требуется проверка") {
+				parts = append(parts, fmt.Sprintf("ГПЖ: %s.", s.Value))
+			} else {
+				parts = append(parts, "Убедительных признаков ГПЖ не выявлено.")
+			}
+			break
+		}
+	}
+
+	parts = append(parts, "Результат автоматической обработки, не является медицинским заключением.")
+
+	return strings.Join(parts, " ")
 }
 
 func qrsNet(r, s *float64) *float64 {

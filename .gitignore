@@ -28,6 +28,8 @@ go.work.sum
 
 bin/
 
+*.ipynb
+
 # Local file uploads
 uploads/
 docs/
@@ -43,8 +45,15 @@ dist/
 .idea/
 .vscode/
 
-# RAG pipeline: medical PDFs and generated indexes
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+
+# RAG pipeline
 rag_pipeline/documents/*.pdf
 rag_pipeline/chroma_data/
 rag_pipeline/processed/
 rag_pipeline/processed_docs/
+rag_pipeline/chroma_db_*/

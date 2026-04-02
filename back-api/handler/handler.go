@@ -145,6 +145,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 
 		r.With(auth.RequirePerm(auth.PermJobReadOwn)).Get("/v1/jobs/{id}", h.Request.GetJob)
 		r.With(auth.RequirePerm(auth.PermJobReadOwn)).Get("/v1/requests/{id}", h.Request.GetRequest)
+		r.With(auth.RequirePerm(auth.PermJobReadOwn)).Get("/v1/requests/{id}/files/{fileId}/url", h.Request.GetRequestFileURL)
 		r.With(auth.RequirePerm(auth.PermJobReadOwn)).Get("/v1/requests/{id}/files/{fileId}", h.Request.GetRequestFile)
 		r.With(auth.RequirePerm(auth.PermJobReadOwn)).Get("/v1/requests", h.Request.GetUserRequests)
 

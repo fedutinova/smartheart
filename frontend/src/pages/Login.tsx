@@ -15,10 +15,6 @@ export function Login() {
   const navigate = useNavigate();
   const { login, isAuthenticated } = useAuthStore();
 
-  if (isAuthenticated) {
-    return <Navigate to={ROUTES.DASHBOARD} replace />;
-  }
-
   // Show auth error from redirect (expired session, network error, etc.)
   useEffect(() => {
     const reason = sessionStorage.getItem(AUTH_ERROR_KEY);
@@ -27,6 +23,10 @@ export function Login() {
       sessionStorage.removeItem(AUTH_ERROR_KEY);
     }
   }, []);
+
+  if (isAuthenticated) {
+    return <Navigate to={ROUTES.DASHBOARD} replace />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

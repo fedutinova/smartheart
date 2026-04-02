@@ -73,7 +73,6 @@ api.interceptors.response.use(
 
       if (!refreshToken) {
         useAuthStore.getState().logout();
-        window.location.href = '/login';
         return Promise.reject(error);
       }
 
@@ -117,7 +116,6 @@ api.interceptors.response.use(
         sessionStorage.setItem(AUTH_ERROR_KEY, reason);
 
         useAuthStore.getState().logout();
-        window.location.href = '/login';
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
@@ -217,6 +215,11 @@ export const requestAPI = {
     return response.data;
   },
 
+  getFileDirectURL: async (requestId: string, fileId: string): Promise<string> => {
+    const response = await api.get<{ url: string }>(`/v1/requests/${requestId}/files/${fileId}/url`);
+    return response.data.url;
+  },
+
   getFileURL: async (requestId: string, fileId: string): Promise<string> => {
     const response = await api.get(`/v1/requests/${requestId}/files/${fileId}`, {
       responseType: 'blob',
@@ -274,4 +277,3 @@ export const paymentAPI = {
 };
 
 export default api;
-

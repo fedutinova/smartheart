@@ -144,6 +144,7 @@ export interface InterpretationItem {
 export interface ECGInterpretation {
   items: InterpretationItem[];
   summary: InterpretationItem[];
+  text_summary?: string;
 }
 
 export interface ECGStructuredResult {

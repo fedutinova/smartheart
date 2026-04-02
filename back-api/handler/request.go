@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -10,6 +12,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 )
+
+type fileURLResponse struct {
+	URL string `json:"url"`
+}
 
 // GetUserRequests returns requests for the authenticated user with pagination.
 // Query params: ?limit=N&offset=N (defaults: limit=50, offset=0).
@@ -105,43 +111,9 @@ func (h *RequestHandler) GetJob(w http.ResponseWriter, r *http.Request) {
 // GetRequestFile serves a file belonging to a request.
 // The caller must own the request. The file is streamed from storage.
 func (h *RequestHandler) GetRequestFile(w http.ResponseWriter, r *http.Request) {
-	requestIDRaw := chi.URLParam(r, "id")
-	requestID, err := parseUUID(requestIDRaw)
+	s3Key, _, err := h.lookupOwnedRequestFile(r)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request ID")
-		return
-	}
-
-	fileIDRaw := chi.URLParam(r, "fileId")
-	fileID, err := parseUUID(fileIDRaw)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid file ID")
-		return
-	}
-
-	_, claims, ok := extractUserID(r)
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "no auth context")
-		return
-	}
-
-	// Verify ownership via the request
-	request, err := h.Service.GetRequest(r.Context(), requestID, claims)
-	if err != nil {
-		handleServiceError(w, err)
-		return
-	}
-
-	// Find the file in the request
-	var s3Key string
-	for i := range request.Files {
-		if request.Files[i].ID == fileID {
-			s3Key = request.Files[i].S3Key
-			break
-		}
-	}
-	if s3Key == "" {
-		writeError(w, http.StatusNotFound, "file not found")
+		writeFileLookupError(w, err)
 		return
 	}
 
@@ -155,6 +127,112 @@ func (h *RequestHandler) GetRequestFile(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Cache-Control", "private, max-age=3600")
 	_, _ = io.Copy(w, rc)
+}
+
+// GetRequestFileURL returns a direct file URL when the storage backend supports it.
+// This avoids proxying image bytes through the API and lets the browser load the file directly.
+func (h *RequestHandler) GetRequestFileURL(w http.ResponseWriter, r *http.Request) {
+	s3Key, file, err := h.lookupOwnedRequestFile(r)
+	if err != nil {
+		writeFileLookupError(w, err)
+		return
+	}
+
+	url, err := h.Storage.GetPresignedURL(r.Context(), s3Key, h.Config.JWT.TTLAccess)
+	if err == nil && url != "" {
+		writeJSON(w, http.StatusOK, fileURLResponse{URL: url})
+		return
+	}
+
+	if file.S3URL != "" {
+		writeJSON(w, http.StatusOK, fileURLResponse{URL: file.S3URL})
+		return
+	}
+
+	if (h.Config.Storage.Mode == "local" || h.Config.Storage.Mode == "filesystem") &&
+		h.Config.Storage.LocalURL != "" && s3Key != "" {
+		writeJSON(w, http.StatusOK, fileURLResponse{
+			URL: fmt.Sprintf("%s/%s", strings.TrimRight(h.Config.Storage.LocalURL, "/"), s3Key),
+		})
+		return
+	}
+
+	writeError(w, http.StatusNotImplemented, "direct file url not supported")
+}
+
+func (h *RequestHandler) lookupOwnedRequestFile(r *http.Request) (string, fileRef, error) {
+	requestIDRaw := chi.URLParam(r, "id")
+	requestID, err := parseUUID(requestIDRaw)
+	if err != nil {
+		return "", fileRef{}, errBadRequest("invalid request ID")
+	}
+
+	fileIDRaw := chi.URLParam(r, "fileId")
+	fileID, err := parseUUID(fileIDRaw)
+	if err != nil {
+		return "", fileRef{}, errBadRequest("invalid file ID")
+	}
+
+	_, claims, ok := extractUserID(r)
+	if !ok {
+		return "", fileRef{}, errUnauthorized("no auth context")
+	}
+
+	request, err := h.Service.GetRequest(r.Context(), requestID, claims)
+	if err != nil {
+		return "", fileRef{}, err
+	}
+
+	for i := range request.Files {
+		if request.Files[i].ID == fileID {
+			if request.Files[i].S3Key == "" {
+				return "", fileRef{}, errNotFound("file not found")
+			}
+			return request.Files[i].S3Key, fileRef{
+				S3URL: request.Files[i].S3URL,
+			}, nil
+		}
+	}
+
+	return "", fileRef{}, errNotFound("file not found")
+}
+
+type fileRef struct {
+	S3URL string
+}
+
+type requestFileLookupError struct {
+	status int
+	msg    string
+	err    error
+}
+
+func (e *requestFileLookupError) Error() string {
+	if e.err != nil {
+		return e.err.Error()
+	}
+	return e.msg
+}
+
+func errBadRequest(msg string) error {
+	return &requestFileLookupError{status: http.StatusBadRequest, msg: msg}
+}
+
+func errUnauthorized(msg string) error {
+	return &requestFileLookupError{status: http.StatusUnauthorized, msg: msg}
+}
+
+func errNotFound(msg string) error {
+	return &requestFileLookupError{status: http.StatusNotFound, msg: msg}
+}
+
+func writeFileLookupError(w http.ResponseWriter, err error) {
+	var lookupErr *requestFileLookupError
+	if errors.As(err, &lookupErr) {
+		writeError(w, lookupErr.status, lookupErr.msg)
+		return
+	}
+	handleServiceError(w, err)
 }
 
 // ServeFiles serves static files from local storage.

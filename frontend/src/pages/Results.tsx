@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
@@ -7,7 +7,7 @@ import { formatDate, formatStatus, getStatusColor, formatECGParams } from '@/uti
 import { Layout } from '@/components/Layout';
 import { useEventSource } from '@/hooks/useEventSource';
 import { usePendingJobs } from '@/hooks/usePendingJobs';
-import type { ECGAnalysisResult, ECGStructuredResult, LVHIndices, InterpretationItem } from '@/types';
+import type { ECGAnalysisResult, ECGStructuredResult, InterpretationItem } from '@/types';
 
 const LEADS_ORDER = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6'];
 
@@ -247,7 +247,12 @@ function StructuredResultView({ result }: { result: ECGStructuredResult }) {
       {/* Interpretation */}
       {result.interpretation && (result.interpretation.items?.length || result.interpretation.summary?.length) ? (
         <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">Интерпретация</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-bold text-gray-900">Интерпретация</h2>
+            {result.interpretation.text_summary && (
+              <CopyButton text={result.interpretation.text_summary} />
+            )}
+          </div>
           <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4 text-xs text-amber-800">
             Результат автоматической обработки. Не является медицинским заключением и не заменяет консультацию врача.
           </div>
@@ -313,75 +318,52 @@ function StructuredResultView({ result }: { result: ECGStructuredResult }) {
         </div>
       )}
 
-      {/* LVH Indices */}
-      {result.indices && Object.values(result.indices).some((v) => v != null) && (
-        <LVHIndicesView indices={result.indices} sex={result.patient?.sex} />
-      )}
-
-      {/* QRS Axis */}
-      {result.axis_qrs && (
-        <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">Электрическая ось сердца</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-center">
-            <MetricCard label="Ось" value={fmt(result.axis_qrs.axis_deg, 0)} unit="°" />
-            <MetricCard label="Классификация" value={result.axis_qrs.classification || '—'} />
-            {result.transition_zone_lead && (
-              <MetricCard label="Переходная зона" value={result.transition_zone_lead} />
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* RVH */}
-      {result.rvh && Object.values(result.rvh).some((v) => v != null) && (
-        <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">Маркеры ГПЖ</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-            <MetricCard label="R V1" value={fmt(result.rvh.RV1_mV)} unit="мВ" />
-            <MetricCard label="R/S V1" value={fmt(result.rvh.R_over_S_V1)} />
-            <MetricCard label="RV1+SV5" value={fmt(result.rvh.RV1_plus_SV5_mV)} unit="мВ" />
-            <MetricCard label="RV1+SV6" value={fmt(result.rvh.RV1_plus_SV6_mV)} unit="мВ" />
-          </div>
-        </div>
-      )}
-
     </>
   );
 }
 
-const LVH_THRESHOLDS: Record<string, { label: string; key: keyof LVHIndices; threshold: number; thresholdF?: number }> = {
-  sokolow: { label: 'Соколов-Лайон', key: 'sokolow_lyon_mV', threshold: 3.5 },
-  cornell: { label: 'Корнелл', key: 'cornell_voltage_mV', threshold: 2.8, thresholdF: 2.0 },
-  peguero: { label: 'Пегуэро', key: 'peguero_lo_presti_mV', threshold: 2.3, thresholdF: 2.3 },
-  gubner: { label: 'Губнер', key: 'gubner_mV', threshold: 2.5 },
-  lewis: { label: 'Льюис', key: 'lewis_mV', threshold: 1.7 },
-};
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
 
-function LVHIndicesView({ indices, sex }: { indices: LVHIndices; sex?: string }) {
-  const entries = Object.values(LVH_THRESHOLDS);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // fallback
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   return (
-    <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
-      <h2 className="text-lg font-bold text-gray-900 mb-3">Индексы ГЛЖ</h2>
-      <div className="space-y-2">
-        {entries.map(({ label, key, threshold, thresholdF }) => {
-          const val = indices[key];
-          if (val == null) return null;
-          const thr = (sex === 'female' && thresholdF != null) ? thresholdF : threshold;
-          const exceeded = val >= thr;
-          return (
-            <div key={key} className="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0">
-              <span className="text-sm text-gray-700">{label}</span>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-mono font-medium text-gray-900">{fmt(val, 2)} мВ</span>
-                <span className={`text-xs px-1.5 py-0.5 rounded ${exceeded ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                  {exceeded ? `≥ ${thr}` : `< ${thr}`}
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+    <button
+      onClick={handleCopy}
+      className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-purple-200 text-purple-700 hover:bg-purple-100 transition-colors"
+    >
+      {copied ? (
+        <>
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+          </svg>
+          Скопировано
+        </>
+      ) : (
+        <>
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9.75a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" />
+          </svg>
+          Скопировать
+        </>
+      )}
+    </button>
   );
 }
 
@@ -463,30 +445,99 @@ function RequestImage({ requestId, fileId }: { requestId: string; fileId: string
   const [src, setSrc] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [scale, setScale] = useState(1);
+  const [blobFallbackTried, setBlobFallbackTried] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const objectUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    let objectUrl: string | null = null;
-    requestAPI.getFileURL(requestId, fileId).then((url) => {
-      if (cancelled) {
-        URL.revokeObjectURL(url);
-        return;
+    setSrc(null);
+    setBlobFallbackTried(false);
+    setLoadFailed(false);
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
+    }
+
+    const loadBlobFallback = async () => {
+      try {
+        const blobURL = await requestAPI.getFileURL(requestId, fileId);
+        if (cancelled) {
+          URL.revokeObjectURL(blobURL);
+          return;
+        }
+        objectUrlRef.current = blobURL;
+        setBlobFallbackTried(true);
+        setLoadFailed(false);
+        setSrc(blobURL);
+      } catch {
+        if (!cancelled) {
+          setLoadFailed(true);
+        }
       }
-      objectUrl = url;
-      setSrc(url);
-    }).catch(() => {});
+    };
+
+    const load = async () => {
+      try {
+        const directURL = await requestAPI.getFileDirectURL(requestId, fileId);
+        if (!cancelled) {
+          setLoadFailed(false);
+          setSrc(directURL);
+        }
+        return;
+      } catch {
+        // Fallback for storage backends that do not support direct URLs.
+      }
+
+      await loadBlobFallback();
+    };
+
+    void load();
+
     return () => {
       cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
+      }
     };
   }, [requestId, fileId]);
 
-  if (!src) return (
+  const handleImageError = useCallback(async () => {
+    if (blobFallbackTried) return;
+
+    try {
+      const blobURL = await requestAPI.getFileURL(requestId, fileId);
+      setBlobFallbackTried(true);
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+      }
+      objectUrlRef.current = blobURL;
+      setLoadFailed(false);
+      setSrc(blobURL);
+    } catch {
+      setBlobFallbackTried(true);
+      setLoadFailed(true);
+    }
+  }, [blobFallbackTried, fileId, requestId]);
+
+  if (!src && !loadFailed) return (
     <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
       <div className="h-6 w-48 bg-gray-200 rounded mb-4 animate-pulse" />
       <div className="h-48 bg-gray-200 rounded animate-pulse" />
     </div>
   );
+
+  if (loadFailed || !src) {
+    return (
+      <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+        <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Исходное изображение</h2>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-6 text-sm text-amber-800">
+          Не удалось загрузить изображение ЭКГ.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -496,7 +547,10 @@ function RequestImage({ requestId, fileId }: { requestId: string; fileId: string
           <img
             src={src}
             alt="Исходное ЭКГ изображение"
+            decoding="async"
             className="max-w-full h-auto rounded-lg shadow-md cursor-pointer hover:opacity-90 transition-opacity"
+            onError={() => { void handleImageError(); }}
+            onLoad={() => setLoadFailed(false)}
             onClick={() => { setScale(1); setShowModal(true); }}
           />
         </div>
@@ -556,8 +610,11 @@ function RequestImage({ requestId, fileId }: { requestId: string; fileId: string
             <img
               src={src}
               alt="ЭКГ"
+              decoding="async"
               style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}
               className="transition-transform duration-200 ease-out select-none"
+              onError={() => { void handleImageError(); }}
+              onLoad={() => setLoadFailed(false)}
               draggable={false}
             />
           </div>
