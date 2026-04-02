@@ -133,6 +133,19 @@ export interface ECGAnalysisResult {
   structured_result?: ECGStructuredResult;
 }
 
+export interface InterpretationItem {
+  label: string;
+  value: string;
+  threshold?: string;
+  status: 'positive' | 'negative' | 'normal' | 'abnormal';
+  group?: 'lvh' | 'rvh' | 'rhythm';
+}
+
+export interface ECGInterpretation {
+  items: InterpretationItem[];
+  summary: InterpretationItem[];
+}
+
 export interface ECGStructuredResult {
   measurements: Record<string, number | null>;
   indices?: LVHIndices;
@@ -140,6 +153,7 @@ export interface ECGStructuredResult {
   axis_qrs?: QRSAxis;
   rhythm?: RhythmTiming;
   transition_zone_lead?: string;
+  interpretation?: ECGInterpretation;
   patient: PatientInfo;
   timestamp: string;
   job_id: string;

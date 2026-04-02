@@ -1,4 +1,5 @@
 import re
+
 import pymorphy3
 
 _TOKEN_RE = re.compile(

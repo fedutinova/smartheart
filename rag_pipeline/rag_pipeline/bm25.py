@@ -42,15 +42,15 @@ class BM25Index:
             return False
         try:
             with open(path, "rb") as f:
-                data = pickle.load(f)  # noqa: S301
+                data = pickle.load(f)
             self._ids = data["ids"]
             self._corpus_tokens = data["corpus_tokens"]
             self._bm25 = BM25Okapi(self._corpus_tokens)
             logger.info("BM25 index loaded from %s (%d docs)", path, len(self._ids))
-            return True
         except Exception:
             logger.warning("Failed to load BM25 index from %s, will rebuild", path)
             return False
+        return True
 
     def search(self, query: str, top_k: int = 20) -> list[tuple[str, float]]:
         if self._bm25 is None:

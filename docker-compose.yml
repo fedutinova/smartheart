@@ -80,11 +80,11 @@ services:
       JOB_MAX_DURATION: 30s
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       RAG_URL: http://rag:8000
-      QUOTA_DAILY_LIMIT: 2
+      QUOTA_DAILY_LIMIT: ${QUOTA_DAILY_LIMIT:-10}
       YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID:-}
       YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY:-}
       YOOKASSA_RETURN_URL: ${YOOKASSA_RETURN_URL:-http://localhost:3000/dashboard}
-      YOOKASSA_PRICE_KOPECKS: ${YOOKASSA_PRICE_KOPECKS:-4900}
+      CORS_ORIGINS: http://localhost:3000,http://localhost:3001
       MIGRATIONS_DIR: /app/migrations
     volumes:
       - ./migrations:/app/migrations:ro

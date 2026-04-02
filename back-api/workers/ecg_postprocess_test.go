@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/fedutinova/smartheart/back-api/gpt"
+	"github.com/fedutinova/smartheart/back-api/models"
 )
 
 func ptr(v float64) *float64 { return &v }
@@ -647,6 +648,89 @@ func TestComputeStructuredResult_TransitionZone(t *testing.T) {
 
 	if result.Transition != "V3" {
 		t.Errorf("expected transition at V3, got %q", result.Transition)
+	}
+}
+
+// --- buildInterpretation ---
+
+func TestBuildInterpretation_NilWhenNoData(t *testing.T) {
+	result := computeStructuredResult(map[string]*float64{}, "", nil, 10, 10, "t", "j")
+	if result.Interpretation != nil {
+		t.Error("expected nil interpretation when no data")
+	}
+}
+
+func TestBuildInterpretation_LVHPositive(t *testing.T) {
+	// Sokolow-Lyon = 2.0 + 2.5 = 4.5 mV >= 3.5 → positive
+	meas := map[string]*float64{
+		"SV1_mm": ptr(-20), "RV5_mm": ptr(25), "RV6_mm": ptr(22),
+	}
+	result := computeStructuredResult(meas, "male", intPtr(50), 10, 10, "t", "j")
+	if result.Interpretation == nil {
+		t.Fatal("interpretation is nil")
+	}
+	// Check summary has LVH positive
+	for _, s := range result.Interpretation.Summary {
+		if s.Label == "Признаки ГЛЖ" {
+			if s.Status != "positive" {
+				t.Errorf("expected LVH positive, got %s", s.Status)
+			}
+			if s.Value != "выявлен отдельный признак" {
+				t.Errorf("expected single sign, got %s", s.Value)
+			}
+			return
+		}
+	}
+	t.Error("LVH summary item not found")
+}
+
+func TestBuildInterpretation_QRSAbnormal(t *testing.T) {
+	meas := map[string]*float64{
+		"QRS_ms": ptr(130),                    // > 100 ms → abnormal
+		"SV1_mm": ptr(-10), "RV5_mm": ptr(10), // need at least one index for items
+	}
+	result := computeStructuredResult(meas, "male", nil, 10, 10, "t", "j")
+	if result.Interpretation == nil {
+		t.Fatal("interpretation is nil")
+	}
+	for _, it := range result.Interpretation.Items {
+		if it.Label == "QRS" {
+			if it.Status != "abnormal" {
+				t.Errorf("expected QRS abnormal, got %s", it.Status)
+			}
+			return
+		}
+	}
+	t.Error("QRS item not found")
+}
+
+func TestBuildInterpretation_FemaleCornellThreshold(t *testing.T) {
+	// Cornell female threshold = 2.0 mV; male = 2.8 mV
+	// RaVL=12mm=1.2mV + SV3=10mm=1.0mV = 2.2 mV
+	// Male: 2.2 < 2.8 → negative. Female: 2.2 > 2.0 → positive.
+	meas := map[string]*float64{
+		"RaVL_mm": ptr(12), "SV3_mm": ptr(-10),
+	}
+	male := computeStructuredResult(meas, "male", nil, 10, 10, "t", "j")
+	female := computeStructuredResult(meas, "female", nil, 10, 10, "t", "j")
+
+	findCornell := func(interp *models.ECGInterpretation) string {
+		if interp == nil {
+			return ""
+		}
+		for _, it := range interp.Items {
+			if it.Label == "Корнелл (RaVL+SV3)" {
+				return string(it.Status)
+			}
+		}
+		return ""
+	}
+
+	if findCornell(male.Interpretation) != "negative" {
+		t.Errorf("male Cornell 2.2mV should be negative (thr 2.8), got %s", findCornell(male.Interpretation))
+	}
+	if findCornell(female.Interpretation) != "positive" {
+		t.Errorf("female Cornell 2.2mV should be positive (thr 2.0), got %s", findCornell(female.Interpretation))
 	}
 }
 

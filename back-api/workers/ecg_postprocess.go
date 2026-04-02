@@ -1,6 +1,7 @@
 package workers
 
 import (
+	"fmt"
 	"math"
 	"sort"
 
@@ -39,7 +40,7 @@ func median(arr []float64) float64 {
 	return s[n/2]
 }
 
-func madFilter(arr []float64, threshold float64) []float64 {
+func madFilter(arr []float64, threshold float64) []float64 { //nolint:unparam // threshold is parameterized for testability
 	if len(arr) < 3 {
 		return arr
 	}
@@ -291,16 +292,191 @@ func computeStructuredResult(
 	// Transition zone
 	transition := findTransitionZone(measMM)
 
+	interp := buildInterpretation(indices, rvh, axis, rhythm, sex)
+
 	return &models.ECGStructuredResult{
-		Measurements: measMM,
-		Indices:      indices,
-		RVH:          rvh,
-		Axis:         axis,
-		Rhythm:       rhythm,
-		Transition:   transition,
-		Patient:      models.PatientInfo{Sex: sex, Age: age},
-		Timestamp:    timestamp,
-		JobID:        jobID,
+		Measurements:   measMM,
+		Indices:        indices,
+		RVH:            rvh,
+		Axis:           axis,
+		Rhythm:         rhythm,
+		Transition:     transition,
+		Interpretation: interp,
+		Patient:        models.PatientInfo{Sex: sex, Age: age},
+		Timestamp:      timestamp,
+		JobID:          jobID,
+	}
+}
+
+// buildInterpretation generates a structured conclusion from computed indices.
+func buildInterpretation(
+	indices *models.LVHIndices,
+	rvh *models.RVHData,
+	axis *models.QRSAxis,
+	rhythm *models.RhythmTiming,
+	sex string,
+) *models.ECGInterpretation {
+	male := sex != "female"
+	thrCornell := 2.8
+	if !male {
+		thrCornell = 2.0
+	}
+	thrPeguero := 2.8
+	if !male {
+		thrPeguero = 2.3
+	}
+	sexLabel := "муж"
+	if !male {
+		sexLabel = "жен"
+	}
+
+	item := func(label, value, threshold string, status models.InterpretationStatus, group string) models.InterpretationItem {
+		return models.InterpretationItem{Label: label, Value: value, Threshold: threshold, Status: status, Group: group}
+	}
+	posStatus := func(exceeded bool) models.InterpretationStatus {
+		if exceeded {
+			return models.StatusPositive
+		}
+		return models.StatusNegative
+	}
+	normStatus := func(ok bool) models.InterpretationStatus {
+		if ok {
+			return models.StatusNormal
+		}
+		return models.StatusAbnormal
+	}
+	fv := func(v float64) string { return fmt.Sprintf("%.2f мВ", v) }
+
+	var items []models.InterpretationItem
+
+	// LVH indices
+	thrSok := 3.5
+	lvhPosCount := 0
+	if indices != nil {
+		if v := indices.SokolowLyon; v != nil {
+			exceeded := *v >= thrSok
+			items = append(items, item("Соколов-Лайон", fv(*v),
+				fmt.Sprintf(">= %.1f мВ", thrSok), posStatus(exceeded), "lvh"))
+			if exceeded {
+				lvhPosCount++
+			}
+		}
+		if v := indices.CornellVoltage; v != nil {
+			exceeded := *v > thrCornell
+			items = append(items, item("Корнелл (RaVL+SV3)", fv(*v),
+				fmt.Sprintf("> %.1f мВ (%s)", thrCornell, sexLabel), posStatus(exceeded), "lvh"))
+			if exceeded {
+				lvhPosCount++
+			}
+		}
+		if v := indices.PegueroLoPresti; v != nil {
+			exceeded := *v >= thrPeguero
+			items = append(items, item("Пегеро-Ло Прести", fv(*v),
+				fmt.Sprintf(">= %.1f мВ (%s)", thrPeguero, sexLabel), posStatus(exceeded), "lvh"))
+			if exceeded {
+				lvhPosCount++
+			}
+		}
+	}
+
+	// RVH markers
+	rvhPosCount := 0
+	if rvh != nil {
+		if v := rvh.RV1mV; v != nil {
+			exceeded := *v >= 0.7
+			items = append(items, item("R в V1", fv(*v),
+				">= 0.70 мВ", posStatus(exceeded), "rvh"))
+			if exceeded {
+				rvhPosCount++
+			}
+		}
+		if v := rvh.ROverSV1; v != nil {
+			exceeded := *v > 1.0
+			items = append(items, item("R/S в V1", fmt.Sprintf("%.2f", *v),
+				"> 1.0", posStatus(exceeded), "rvh"))
+			if exceeded {
+				rvhPosCount++
+			}
+		}
+		if v := rvh.RV1PlusSV5; v != nil {
+			exceeded := *v > 1.05
+			items = append(items, item("RV1+|SV5|", fv(*v),
+				"> 1.05 мВ", posStatus(exceeded), "rvh"))
+			if exceeded {
+				rvhPosCount++
+			}
+		}
+		if v := rvh.RV1PlusSV6; v != nil {
+			exceeded := *v > 1.05
+			items = append(items, item("RV1+|SV6|", fv(*v),
+				"> 1.05 мВ", posStatus(exceeded), "rvh"))
+			if exceeded {
+				rvhPosCount++
+			}
+		}
+	}
+
+	// QRS
+	if rhythm != nil && rhythm.QRSms != nil {
+		items = append(items, item("QRS", fmt.Sprintf("%.0f мс", *rhythm.QRSms),
+			"60-100 мс", normStatus(*rhythm.QRSms >= 60 && *rhythm.QRSms <= 100), "rhythm"))
+	}
+
+	// HR
+	if rhythm != nil && rhythm.HRbpm != nil {
+		items = append(items, item("ЧСС", fmt.Sprintf("%.0f уд/мин", *rhythm.HRbpm),
+			"60-100", normStatus(*rhythm.HRbpm >= 60 && *rhythm.HRbpm <= 100), "rhythm"))
+	}
+
+	// Summary
+	var summary []models.InterpretationItem
+
+	if axis != nil && axis.AxisDeg != nil {
+		axisOk := *axis.AxisDeg >= -30 && *axis.AxisDeg <= 90
+		summary = append(summary, item("ЭОС",
+			fmt.Sprintf("%.0f° (%s)", *axis.AxisDeg, axis.Classification),
+			"-30°...+90°", normStatus(axisOk), ""))
+	}
+
+	// LVH aggregate — cautious wording based on count
+	lvhValue := "не обнаружены"
+	lvhStatus := models.StatusNegative
+	if lvhPosCount >= 2 {
+		lvhValue = "обнаружены"
+		lvhStatus = models.StatusPositive
+	} else if lvhPosCount == 1 {
+		lvhValue = "выявлен отдельный признак"
+		lvhStatus = models.StatusPositive
+	}
+	summary = append(summary, item("Признаки ГЛЖ", lvhValue, "", lvhStatus, ""))
+
+	// RVH aggregate — cautious wording, consider axis context
+	axisRight := axis != nil && axis.AxisDeg != nil && *axis.AxisDeg > 90
+	axisNormal := axis != nil && axis.AxisDeg != nil && *axis.AxisDeg >= -30 && *axis.AxisDeg <= 90
+	rvhValue := "не обнаружены"
+	rvhStatus := models.StatusNegative
+	if rvhPosCount >= 2 && axisRight {
+		rvhValue = "обнаружены"
+		rvhStatus = models.StatusPositive
+	} else if rvhPosCount >= 2 {
+		rvhValue = "выявлены признаки, ось не отклонена вправо"
+		rvhStatus = models.StatusPositive
+	} else if rvhPosCount == 1 && axisNormal {
+		rvhValue = "выявлен отдельный признак при нормальной оси, требуется проверка"
+		rvhStatus = models.StatusNegative
+	} else if rvhPosCount == 1 {
+		rvhValue = "выявлен отдельный признак"
+		rvhStatus = models.StatusPositive
+	}
+	summary = append(summary, item("Признаки ГПЖ", rvhValue, "", rvhStatus, ""))
+
+	if len(items) == 0 {
+		return nil
+	}
+
+	return &models.ECGInterpretation{
+		Items:   items,
+		Summary: summary,
 	}
 }
 

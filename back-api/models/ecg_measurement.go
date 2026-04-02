@@ -2,15 +2,41 @@ package models
 
 // ECGStructuredResult is the top-level structured analysis result.
 type ECGStructuredResult struct {
-	Measurements map[string]*float64 `json:"measurements"`
-	Indices      *LVHIndices         `json:"indices,omitempty"`
-	RVH          *RVHData            `json:"rvh,omitempty"`
-	Axis         *QRSAxis            `json:"axis_qrs,omitempty"`
-	Rhythm       *RhythmTiming       `json:"rhythm,omitempty"`
-	Transition   string              `json:"transition_zone_lead,omitempty"`
-	Patient      PatientInfo         `json:"patient"`
-	Timestamp    string              `json:"timestamp"`
-	JobID        string              `json:"job_id"`
+	Measurements   map[string]*float64 `json:"measurements"`
+	Indices        *LVHIndices         `json:"indices,omitempty"`
+	RVH            *RVHData            `json:"rvh,omitempty"`
+	Axis           *QRSAxis            `json:"axis_qrs,omitempty"`
+	Rhythm         *RhythmTiming       `json:"rhythm,omitempty"`
+	Transition     string              `json:"transition_zone_lead,omitempty"`
+	Interpretation *ECGInterpretation  `json:"interpretation,omitempty"`
+	Patient        PatientInfo         `json:"patient"`
+	Timestamp      string              `json:"timestamp"`
+	JobID          string              `json:"job_id"`
+}
+
+// InterpretationStatus represents the clinical status of an interpretation item.
+type InterpretationStatus string
+
+const (
+	StatusPositive InterpretationStatus = "positive" // criterion met (e.g. LVH index exceeded)
+	StatusNegative InterpretationStatus = "negative" // criterion not met
+	StatusNormal   InterpretationStatus = "normal"   // value within normal range
+	StatusAbnormal InterpretationStatus = "abnormal" // value outside normal range
+)
+
+// ECGInterpretation holds the structured conclusion generated from indices.
+type ECGInterpretation struct {
+	Items   []InterpretationItem `json:"items"`
+	Summary []InterpretationItem `json:"summary"`
+}
+
+// InterpretationItem is a single interpretation line with structured fields.
+type InterpretationItem struct {
+	Label     string               `json:"label"`
+	Value     string               `json:"value"`
+	Threshold string               `json:"threshold,omitempty"`
+	Status    InterpretationStatus `json:"status"`
+	Group     string               `json:"group,omitempty"` // "lvh", "rvh", "rhythm"
 }
 
 // LVHIndices holds left ventricular hypertrophy index values (mV).

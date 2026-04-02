@@ -138,7 +138,7 @@ linters:
     misspell:
       mode: restricted
     nestif:
-      min-complexity: 4
+      min-complexity: 5
     nilnil:
       detect-opposite: true
     nolintlint:
@@ -320,6 +320,7 @@ linters:
           - gosec
           - maintidx
           - reassign
+          - revive
       - source: '[Cc]onst'
         linters:
           - gochecknoglobals

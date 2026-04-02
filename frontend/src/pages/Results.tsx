@@ -7,7 +7,7 @@ import { formatDate, formatStatus, getStatusColor, formatECGParams } from '@/uti
 import { Layout } from '@/components/Layout';
 import { useEventSource } from '@/hooks/useEventSource';
 import { usePendingJobs } from '@/hooks/usePendingJobs';
-import type { ECGAnalysisResult, ECGStructuredResult, LVHIndices } from '@/types';
+import type { ECGAnalysisResult, ECGStructuredResult, LVHIndices, InterpretationItem } from '@/types';
 
 const LEADS_ORDER = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6'];
 
@@ -244,7 +244,34 @@ export function Results() {
 function StructuredResultView({ result }: { result: ECGStructuredResult }) {
   return (
     <>
+      {/* Interpretation */}
+      {result.interpretation && (result.interpretation.items?.length || result.interpretation.summary?.length) ? (
+        <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+          <h2 className="text-lg font-bold text-gray-900 mb-3">Интерпретация</h2>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4 text-xs text-amber-800">
+            Результат автоматической обработки. Не является медицинским заключением и не заменяет консультацию врача.
+          </div>
+          {result.interpretation.summary && result.interpretation.summary.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
+              {result.interpretation.summary.map((s, i) => (
+                <div key={i} className="bg-white rounded-lg px-4 py-3 border border-purple-100 flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-xs text-gray-500">{s.label}</p>
+                    <p className="text-sm font-medium text-gray-900">{s.value}</p>
+                  </div>
+                  <StatusBadge status={s.status} />
+                </div>
+              ))}
+            </div>
+          )}
+          {result.interpretation.items && result.interpretation.items.length > 0 && (
+            <InterpretationItems items={result.interpretation.items} />
+          )}
+        </div>
+      ) : null}
+
       {/* Measurements Table */}
+      {Object.values(result.measurements).some((v) => v != null) && (
       <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 overflow-x-auto animate-fade-in-up">
         <h2 className="text-lg font-bold text-gray-900 mb-4">Измерения по отведениям</h2>
         <table className="w-full text-sm">
@@ -272,9 +299,10 @@ function StructuredResultView({ result }: { result: ECGStructuredResult }) {
           </tbody>
         </table>
       </div>
+      )}
 
       {/* Rhythm & Intervals */}
-      {result.rhythm && (
+      {result.rhythm && (result.rhythm.QRS_ms != null || result.rhythm.RR_ms != null || result.rhythm.HR_bpm != null) && (
         <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
           <h2 className="text-lg font-bold text-gray-900 mb-3">Интервалы и ритм</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-center">
@@ -286,7 +314,9 @@ function StructuredResultView({ result }: { result: ECGStructuredResult }) {
       )}
 
       {/* LVH Indices */}
-      {result.indices && <LVHIndicesView indices={result.indices} sex={result.patient?.sex} />}
+      {result.indices && Object.values(result.indices).some((v) => v != null) && (
+        <LVHIndicesView indices={result.indices} sex={result.patient?.sex} />
+      )}
 
       {/* QRS Axis */}
       {result.axis_qrs && (
@@ -303,7 +333,7 @@ function StructuredResultView({ result }: { result: ECGStructuredResult }) {
       )}
 
       {/* RVH */}
-      {result.rvh && (
+      {result.rvh && Object.values(result.rvh).some((v) => v != null) && (
         <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
           <h2 className="text-lg font-bold text-gray-900 mb-3">Маркеры ГПЖ</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
@@ -314,6 +344,7 @@ function StructuredResultView({ result }: { result: ECGStructuredResult }) {
           </div>
         </div>
       )}
+
     </>
   );
 }
@@ -354,6 +385,68 @@ function LVHIndicesView({ indices, sex }: { indices: LVHIndices; sex?: string })
   );
 }
 
+const STATUS_STYLES: Record<string, string> = {
+  positive: 'bg-red-100 text-red-700',
+  abnormal: 'bg-red-100 text-red-700',
+  negative: 'bg-green-100 text-green-700',
+  normal: 'bg-green-100 text-green-700',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  positive: 'положительный',
+  negative: 'отрицательный',
+  normal: 'норма',
+  abnormal: 'отклонение',
+};
+
+function StatusBadge({ status }: { status: string }) {
+  return (
+    <span className={`text-xs px-1.5 py-0.5 rounded whitespace-nowrap ${STATUS_STYLES[status] ?? 'bg-gray-100 text-gray-600'}`}>
+      {STATUS_LABELS[status] ?? status}
+    </span>
+  );
+}
+
+const GROUP_LABELS: Record<string, string> = {
+  lvh: 'Критерии ГЛЖ',
+  rvh: 'Критерии ГПЖ',
+  rhythm: 'Ритм и проводимость',
+};
+
+function InterpretationItems({ items }: { items: InterpretationItem[] }) {
+  const groups = new Map<string, InterpretationItem[]>();
+  for (const it of items) {
+    const g = it.group || 'other';
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g)!.push(it);
+  }
+
+  return (
+    <div className="space-y-3">
+      {Array.from(groups.entries()).map(([group, groupItems]) => (
+        <div key={group}>
+          {GROUP_LABELS[group] && (
+            <p className="text-xs font-medium text-gray-500 mb-1.5">{GROUP_LABELS[group]}</p>
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {groupItems.map((it, i) => (
+              <div key={i} className="bg-white rounded-lg px-4 py-3 border border-purple-100">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-gray-900">{it.label}: {it.value}</p>
+                  <StatusBadge status={it.status} />
+                </div>
+                {it.threshold && (
+                  <p className="text-xs text-gray-400 mt-1">{it.threshold}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function MetricCard({ label, value, unit }: { label: string; value: string; unit?: string }) {
   return (
     <div className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors duration-150">
@@ -368,6 +461,8 @@ function MetricCard({ label, value, unit }: { label: string; value: string; unit
 
 function RequestImage({ requestId, fileId }: { requestId: string; fileId: string }) {
   const [src, setSrc] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [scale, setScale] = useState(1);
 
   useEffect(() => {
     let cancelled = false;
@@ -394,15 +489,80 @@ function RequestImage({ requestId, fileId }: { requestId: string; fileId: string
   );
 
   return (
-    <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
-      <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Исходное изображение</h2>
-      <div className="flex justify-center">
-        <img
-          src={src}
-          alt="Исходное ЭКГ изображение"
-          className="max-w-full h-auto rounded-lg shadow-md"
-        />
+    <>
+      <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+        <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Исходное изображение</h2>
+        <div className="flex justify-center">
+          <img
+            src={src}
+            alt="Исходное ЭКГ изображение"
+            className="max-w-full h-auto rounded-lg shadow-md cursor-pointer hover:opacity-90 transition-opacity"
+            onClick={() => { setScale(1); setShowModal(true); }}
+          />
+        </div>
       </div>
-    </div>
+
+      {showModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowModal(false)}
+        >
+          {/* Toolbar */}
+          <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/60 to-transparent">
+            <span className="text-white/70 text-sm font-medium">
+              {Math.round(scale * 100)}%
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={(e) => { e.stopPropagation(); setScale((s) => Math.max(s - 0.25, 0.25)); }}
+                className="w-9 h-9 rounded-lg bg-white/10 text-white/80 hover:bg-white/20 hover:text-white flex items-center justify-center transition-all backdrop-blur-md"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
+                </svg>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setScale(1); }}
+                className="h-9 px-3 rounded-lg bg-white/10 text-white/80 hover:bg-white/20 hover:text-white text-xs font-medium transition-all backdrop-blur-md"
+              >
+                Сброс
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setScale((s) => Math.min(s + 0.25, 5)); }}
+                className="w-9 h-9 rounded-lg bg-white/10 text-white/80 hover:bg-white/20 hover:text-white flex items-center justify-center transition-all backdrop-blur-md"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m-7-7h14" />
+                </svg>
+              </button>
+              <div className="w-px h-5 bg-white/20 mx-1" />
+              <button
+                onClick={() => setShowModal(false)}
+                className="w-9 h-9 rounded-lg bg-white/10 text-white/80 hover:bg-red-500/80 hover:text-white flex items-center justify-center transition-all backdrop-blur-md"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Image */}
+          <div
+            className="h-full w-full overflow-auto flex items-center justify-center pt-14"
+            onClick={(e) => e.stopPropagation()}
+            onDoubleClick={(e) => { e.stopPropagation(); setScale((s) => s < 2 ? 2 : 1); }}
+          >
+            <img
+              src={src}
+              alt="ЭКГ"
+              style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}
+              className="transition-transform duration-200 ease-out select-none"
+              draggable={false}
+            />
+          </div>
+        </div>
+      )}
+    </>
   );
 }
