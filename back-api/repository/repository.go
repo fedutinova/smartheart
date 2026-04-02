@@ -60,6 +60,7 @@ type RAGFeedbackRepo interface {
 // PaymentRepo provides payment data access.
 type PaymentRepo interface {
 	CreatePayment(ctx context.Context, p *models.Payment) error
+	HasPendingPayment(ctx context.Context, userID uuid.UUID, paymentType string) (bool, error)
 	ConfirmPayment(ctx context.Context, yookassaID string) error
 	CancelPayment(ctx context.Context, yookassaID string) error
 	CancelStalePayments(ctx context.Context, olderThan time.Duration) (int, error)

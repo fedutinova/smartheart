@@ -1480,6 +1480,64 @@ func (_c *MockStore_GetUserByID_Call) RunAndReturn(run func(context.Context, uui
 	return _c
 }
 
+// HasPendingPayment provides a mock function with given fields: ctx, userID, paymentType
+func (_m *MockStore) HasPendingPayment(ctx context.Context, userID uuid.UUID, paymentType string) (bool, error) {
+	ret := _m.Called(ctx, userID, paymentType)
+
+	if len(ret) == 0 {
+		panic("no return value specified for HasPendingPayment")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) (bool, error)); ok {
+		return rf(ctx, userID, paymentType)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) bool); ok {
+		r0 = rf(ctx, userID, paymentType)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, string) error); ok {
+		r1 = rf(ctx, userID, paymentType)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStore_HasPendingPayment_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HasPendingPayment'
+type MockStore_HasPendingPayment_Call struct {
+	*mock.Call
+}
+
+// HasPendingPayment is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID uuid.UUID
+//   - paymentType string
+func (_e *MockStore_Expecter) HasPendingPayment(ctx interface{}, userID interface{}, paymentType interface{}) *MockStore_HasPendingPayment_Call {
+	return &MockStore_HasPendingPayment_Call{Call: _e.mock.On("HasPendingPayment", ctx, userID, paymentType)}
+}
+
+func (_c *MockStore_HasPendingPayment_Call) Run(run func(ctx context.Context, userID uuid.UUID, paymentType string)) *MockStore_HasPendingPayment_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(uuid.UUID), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockStore_HasPendingPayment_Call) Return(_a0 bool, _a1 error) *MockStore_HasPendingPayment_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStore_HasPendingPayment_Call) RunAndReturn(run func(context.Context, uuid.UUID, string) (bool, error)) *MockStore_HasPendingPayment_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IncrementDailyUsage provides a mock function with given fields: ctx, userID
 func (_m *MockStore) IncrementDailyUsage(ctx context.Context, userID uuid.UUID) (int, error) {
 	ret := _m.Called(ctx, userID)

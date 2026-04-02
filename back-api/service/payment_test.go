@@ -13,6 +13,7 @@ import (
 
 	"github.com/fedutinova/smartheart/back-api/apperr"
 	"github.com/fedutinova/smartheart/back-api/config"
+	"github.com/fedutinova/smartheart/back-api/models"
 	repomocks "github.com/fedutinova/smartheart/back-api/repository/mocks"
 )
 
@@ -169,6 +170,7 @@ func TestCreateSubscription_AllowsExpiredSubscription(t *testing.T) {
 	expired := time.Now().Add(-24 * time.Hour)
 
 	repo.EXPECT().GetSubscriptionExpiresAt(mock.Anything, userID).Return(&expired, nil)
+	repo.EXPECT().HasPendingPayment(mock.Anything, userID, models.PaymentTypeSubscription).Return(false, nil)
 
 	// Will fail at the HTTP call to YooKassa (no real server), but passes the subscription check.
 	_, err := svc.CreateSubscription(ctx, userID)

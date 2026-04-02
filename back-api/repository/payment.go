@@ -8,19 +8,43 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/fedutinova/smartheart/back-api/apperr"
 	"github.com/fedutinova/smartheart/back-api/models"
 )
 
-// CreatePayment inserts a new payment record.
+// CreatePayment inserts a new payment record. If a record with the same
+// yookassa_id already exists, the call is a no-op (idempotent).
+// Returns ErrConflict if a duplicate pending subscription is detected
+// (protected by the uq_payments_pending_subscription partial unique index).
 func (r *Repository) CreatePayment(ctx context.Context, p *models.Payment) error {
 	_, err := r.querier.Exec(ctx, `
 		INSERT INTO payments (id, user_id, yookassa_id, status, amount_kopecks, description, analyses_count, payment_type)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		ON CONFLICT (yookassa_id) DO NOTHING
 	`, p.ID, p.UserID, p.YooKassaID, p.Status, p.AmountKopecks, p.Description, p.AnalysesCount, p.PaymentType)
 	if err != nil {
+		if isUniqueViolation(err) {
+			return fmt.Errorf("duplicate pending payment: %w", apperr.ErrConflict)
+		}
 		return fmt.Errorf("create payment: %w", err)
 	}
 	return nil
+}
+
+// HasPendingPayment checks whether the user already has a pending payment of
+// the given type. Used to prevent duplicate concurrent payment creation.
+func (r *Repository) HasPendingPayment(ctx context.Context, userID uuid.UUID, paymentType string) (bool, error) {
+	var exists bool
+	err := r.querier.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM payments
+			WHERE user_id = $1 AND payment_type = $2 AND status = 'pending'
+		)
+	`, userID, paymentType).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("check pending payment: %w", err)
+	}
+	return exists, nil
 }
 
 // ConfirmPayment marks a payment as succeeded and credits the user atomically.

@@ -228,6 +228,16 @@ func (s *paymentService) CreateSubscription(ctx context.Context, userID uuid.UUI
 			subExpires.Format("2006-01-02"), apperr.ErrConflict)
 	}
 
+	// Reject if there is already a pending subscription payment to prevent
+	// duplicate charges from concurrent requests.
+	hasPending, err := s.repo.HasPendingPayment(ctx, userID, models.PaymentTypeSubscription)
+	if err != nil {
+		return nil, apperr.WrapInternal("check pending subscription", err)
+	}
+	if hasPending {
+		return nil, fmt.Errorf("subscription payment is already in progress: %w", apperr.ErrConflict)
+	}
+
 	paymentID := uuid.New()
 
 	return s.createYooKassaPayment(ctx, &models.Payment{
