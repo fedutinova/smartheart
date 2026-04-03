@@ -374,6 +374,10 @@ func TestRefresh_Success(t *testing.T) {
 		RevokeRefreshToken(mock.Anything, tokenHash).
 		Return(nil)
 
+	repo.EXPECT().
+		RevokeRefreshToken(mock.Anything, tokenHash).
+		Return(nil)
+
 	tokens, err := svc.Refresh(ctx, refreshToken)
 	require.NoError(t, err)
 	assert.NotEmpty(t, tokens.AccessToken)

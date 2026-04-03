@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"
 
+	"github.com/fedutinova/smartheart/back-api/auth"
 	"github.com/fedutinova/smartheart/back-api/config"
 	"github.com/fedutinova/smartheart/back-api/handler"
 )
@@ -53,13 +54,23 @@ func rateLimitHandler(w http.ResponseWriter, _ *http.Request) {
 }
 
 // EndpointRateLimit returns a rate-limiting middleware for a specific endpoint.
+// For authenticated requests the key is the user ID; otherwise it falls back to IP.
 func EndpointRateLimit(rpm int) func(http.Handler) http.Handler {
 	return httprate.Limit(
 		rpm,
 		time.Minute,
-		httprate.WithKeyFuncs(httprate.KeyByIP),
+		httprate.WithKeyFuncs(keyByUserOrIP),
 		httprate.WithLimitHandler(rateLimitHandler),
 	)
+}
+
+// keyByUserOrIP returns the authenticated user's ID as rate-limit key,
+// falling back to the client IP for anonymous requests.
+func keyByUserOrIP(r *http.Request) (string, error) {
+	if claims, ok := auth.FromContext(r.Context()); ok && claims.UserID != "" {
+		return "user:" + claims.UserID, nil
+	}
+	return httprate.KeyByIP(r)
 }
 
 // securityHeaders adds standard security headers to every response.

@@ -44,20 +44,12 @@ test-rag:
 	pytest rag_pipeline/tests -q
 
 test-frontend:
-	@echo "Running frontend lint..."
-	cd frontend && npm run lint
-	@echo "Running frontend tests..."
-	cd frontend && npm run test
-	@echo "Running frontend production build..."
-	cd frontend && npm run build
+	@echo "Running frontend lint, tests, and build..."
+	cd frontend && npm run lint && npm run test && npm run build
 
 test-admin:
-	@echo "Running admin typecheck..."
-	cd admin && npm run typecheck
-	@echo "Running admin tests..."
-	cd admin && npm run test
-	@echo "Running admin production build..."
-	cd admin && npm run build
+	@echo "Running admin typecheck, tests, and build..."
+	cd admin && npm run typecheck && npm run test && npm run build
 
 test-coverage:
 	@echo "Running backend tests with coverage..."
@@ -101,10 +93,8 @@ docker-compose-down:
 
 # Code quality targets
 lint:
-	@echo "Running Go linter..."
-	golangci-lint run
-	@echo "Running frontend lint..."
-	cd frontend && npm run lint
+	@echo "Running linters..."
+	golangci-lint run && cd frontend && npm run lint
 
 fmt:
 	@echo "Formatting code..."
@@ -165,15 +155,11 @@ docs:
 # CI/CD targets
 ci-test:
 	@echo "Running CI tests..."
-	GOCACHE=/tmp/smartheart-gocache go test ./back-api/... -skip TestECGHandler_Integration_
-	GOCACHE=/tmp/smartheart-gocache go test ./back-api/workers -run TestECGHandler_Integration_
-	pytest rag_pipeline/tests -q
-	cd frontend && npm run lint
-	cd frontend && npm run test
-	cd frontend && npm run build
-	cd admin && npm run typecheck
-	cd admin && npm run test
-	cd admin && npm run build
+	GOCACHE=/tmp/smartheart-gocache go test ./back-api/... -skip TestECGHandler_Integration_ && \
+	GOCACHE=/tmp/smartheart-gocache go test ./back-api/workers -run TestECGHandler_Integration_ && \
+	pytest rag_pipeline/tests -q && \
+	cd frontend && npm run lint && npm run test && npm run build && \
+	cd ../admin && npm run typecheck && npm run test && npm run build
 
 ci-build:
 	@echo "Building for CI..."
