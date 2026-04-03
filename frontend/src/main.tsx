@@ -20,6 +20,7 @@ const queryClient = new QueryClient({
   },
 });
 
+// eslint-disable-next-line react-refresh/only-export-components
 function Root() {
   const initialize = useAuthStore((state) => state.initialize);
   
@@ -41,4 +42,3 @@ createRoot(document.getElementById('root')!).render(
     </QueryClientProvider>
   </StrictMode>
 );
-

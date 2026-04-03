@@ -56,7 +56,7 @@ export function Results() {
   });
 
   useEffect(() => {
-    if (id && request && (request.status === 'completed' || request.status === 'failed')) {
+    if (id && (request?.status === 'completed' || request?.status === 'failed')) {
       removeJob(id);
     }
   }, [id, request?.status, removeJob]);
@@ -441,6 +441,16 @@ function MetricCard({ label, value, unit }: { label: string; value: string; unit
   );
 }
 
+function isSafeImageURL(url: string): boolean {
+  if (url.startsWith('blob:')) return true;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
 function RequestImage({ requestId, fileId }: { requestId: string; fileId: string }) {
   const [src, setSrc] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -480,7 +490,7 @@ function RequestImage({ requestId, fileId }: { requestId: string; fileId: string
     const load = async () => {
       try {
         const directURL = await requestAPI.getFileDirectURL(requestId, fileId);
-        if (!cancelled) {
+        if (!cancelled && isSafeImageURL(directURL)) {
           setLoadFailed(false);
           setSrc(directURL);
         }

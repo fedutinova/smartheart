@@ -113,6 +113,16 @@ func TestRegister_UsernameTooLong(t *testing.T) {
 	assert.ErrorIs(t, err, apperr.ErrValidation)
 }
 
+func TestRegister_PasswordMustUseLatinLayout(t *testing.T) {
+	svc, _, _ := newAuthService(t)
+	ctx := context.Background()
+
+	_, err := svc.Register(ctx, "testuser", "test@example.com", "парольпароль1")
+	require.Error(t, err)
+	require.ErrorIs(t, err, apperr.ErrValidation)
+	assert.Contains(t, err.Error(), "only English letters, digits, and symbols")
+}
+
 func TestRegister_InvalidEmail(t *testing.T) {
 	svc, _, _ := newAuthService(t)
 	ctx := context.Background()
@@ -156,6 +166,20 @@ func TestRegister_TxFails(t *testing.T) {
 	_, err := svc.Register(ctx, "testuser", "test@example.com", "strongpassword123")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "tx failed")
+}
+
+func TestRegister_ConflictPassThrough(t *testing.T) {
+	svc, repo, _ := newAuthService(t)
+	ctx := context.Background()
+
+	repo.EXPECT().
+		RunTx(mock.Anything, mock.Anything).
+		Return(apperr.ErrConflict)
+
+	_, err := svc.Register(ctx, "testuser", "test@example.com", "strongpassword123")
+	require.Error(t, err)
+	require.ErrorIs(t, err, apperr.ErrConflict)
+	assert.NotErrorIs(t, err, apperr.ErrInternal)
 }
 
 // --- Login ---

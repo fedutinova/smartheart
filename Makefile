@@ -1,16 +1,18 @@
 # SmartHeart Makefile
 
-.PHONY: help test test-unit test-integration test-ekg test-coverage test-race build run clean docker-build docker-run lint fmt vet check-deps
+.PHONY: help test test-backend test-backend-integration test-rag test-frontend test-admin test-coverage test-race build run clean docker-build docker-run lint fmt vet check-deps
 
 # Default target
 help:
 	@echo "Available targets:"
 	@echo "  check-deps        - Check system dependencies"
-	@echo "  test              - Run all tests"
-	@echo "  test-unit         - Run unit tests only"
-	@echo "  test-integration  - Run integration tests only"
-	@echo "  test-ekg          - Run EKG-specific tests"
-	@echo "  test-coverage    - Run tests with coverage report"
+	@echo "  test              - Run the full local verification suite"
+	@echo "  test-backend      - Run backend tests except sandbox-sensitive EKG integration"
+	@echo "  test-backend-integration - Run backend EKG integration test"
+	@echo "  test-rag          - Run RAG pipeline tests"
+	@echo "  test-frontend     - Run frontend lint, tests, and production build"
+	@echo "  test-admin        - Run admin typecheck, tests, and production build"
+	@echo "  test-coverage     - Run backend tests with coverage report"
 	@echo "  test-race         - Run tests with race detection"
 	@echo "  build             - Build the application"
 	@echo "  run               - Run the application"
@@ -27,29 +29,45 @@ check-deps:
 	@./scripts/install-dependencies.sh || true
 
 # Test targets
-test: test-unit test-integration
+test: test-backend test-backend-integration test-rag test-frontend test-admin
 
-test-unit:
-	@echo "Running unit tests..."
-	go test -v -race -short ./internal/...
+test-backend:
+	@echo "Running backend tests..."
+	GOCACHE=/tmp/smartheart-gocache go test ./back-api/... -skip TestECGHandler_Integration_
 
-test-integration:
-	@echo "Running integration tests..."
-	go test -v -race -tags=integration ./internal/...
+test-backend-integration:
+	@echo "Running backend EKG integration test..."
+	GOCACHE=/tmp/smartheart-gocache go test ./back-api/workers -run TestECGHandler_Integration_
 
-test-ekg:
-	@echo "Running EKG tests..."
-	go test -v -race ./internal/workers/...
+test-rag:
+	@echo "Running RAG pipeline tests..."
+	pytest rag_pipeline/tests -q
+
+test-frontend:
+	@echo "Running frontend lint..."
+	cd frontend && npm run lint
+	@echo "Running frontend tests..."
+	cd frontend && npm run test
+	@echo "Running frontend production build..."
+	cd frontend && npm run build
+
+test-admin:
+	@echo "Running admin typecheck..."
+	cd admin && npm run typecheck
+	@echo "Running admin tests..."
+	cd admin && npm run test
+	@echo "Running admin production build..."
+	cd admin && npm run build
 
 test-coverage:
-	@echo "Running tests with coverage..."
-	go test -v -race -coverprofile=coverage.out ./...
+	@echo "Running backend tests with coverage..."
+	GOCACHE=/tmp/smartheart-gocache go test -coverprofile=coverage.out ./back-api/... -skip TestECGHandler_Integration_
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report generated: coverage.html"
 
 test-race:
-	@echo "Running tests with race detection..."
-	go test -v -race ./...
+	@echo "Running backend tests with race detection..."
+	GOCACHE=/tmp/smartheart-gocache go test -race ./back-api/... -skip TestECGHandler_Integration_
 
 # Build targets
 build:
@@ -83,8 +101,10 @@ docker-compose-down:
 
 # Code quality targets
 lint:
-	@echo "Running linter..."
+	@echo "Running Go linter..."
 	golangci-lint run
+	@echo "Running frontend lint..."
+	cd frontend && npm run lint
 
 fmt:
 	@echo "Formatting code..."
@@ -126,11 +146,11 @@ db-reset:
 # Performance testing
 benchmark:
 	@echo "Running benchmarks..."
-	go test -bench=. -benchmem ./...
+	GOCACHE=/tmp/smartheart-gocache go test -bench=. -benchmem ./back-api/...
 
 benchmark-ekg:
 	@echo "Running EKG benchmarks..."
-	go test -bench=. -benchmem ./internal/workers/...
+	GOCACHE=/tmp/smartheart-gocache go test -bench=. -benchmem ./back-api/workers/...
 
 # Security testing
 security:
@@ -145,8 +165,15 @@ docs:
 # CI/CD targets
 ci-test:
 	@echo "Running CI tests..."
-	go test -v -race -coverprofile=coverage.out ./...
-	go tool cover -func=coverage.out
+	GOCACHE=/tmp/smartheart-gocache go test ./back-api/... -skip TestECGHandler_Integration_
+	GOCACHE=/tmp/smartheart-gocache go test ./back-api/workers -run TestECGHandler_Integration_
+	pytest rag_pipeline/tests -q
+	cd frontend && npm run lint
+	cd frontend && npm run test
+	cd frontend && npm run build
+	cd admin && npm run typecheck
+	cd admin && npm run test
+	cd admin && npm run build
 
 ci-build:
 	@echo "Building for CI..."
@@ -159,7 +186,7 @@ env-setup:
 	@echo "Please edit .env file with your configuration"
 
 # Quick development workflow
-dev: fmt vet test-unit build
+dev: fmt vet test-backend build
 	@echo "Development build complete"
 
 # Production build
@@ -173,5 +200,6 @@ test-full: fmt vet lint test-coverage security
 # Help for specific test packages
 test-help:
 	@echo "Test package examples:"
-	@echo "  make test-ekg                    - EKG worker tests"
-	@echo "  go test ./internal/workers/...   - Workers package only"
+	@echo "  make test-backend                - Backend tests without EKG integration"
+	@echo "  make test-backend-integration    - EKG integration test"
+	@echo "  GOCACHE=/tmp/smartheart-gocache go test ./back-api/service -run TestRegister_"

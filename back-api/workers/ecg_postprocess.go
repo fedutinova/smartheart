@@ -10,6 +10,8 @@ import (
 	"github.com/fedutinova/smartheart/back-api/models"
 )
 
+const singleSignDetected = "выявлен отдельный признак"
+
 var allLeads = []string{"I", "II", "III", "aVR", "aVL", "aVF", "V1", "V2", "V3", "V4", "V5", "V6"}
 
 var chestLeads = map[string]bool{
@@ -309,6 +311,98 @@ func computeStructuredResult(
 	}
 }
 
+// thresholdCheck evaluates a single value against a threshold and appends the result item.
+// Returns true if the threshold was exceeded.
+type thresholdCheck struct {
+	value     *float64
+	label     string
+	threshold float64
+	op        string // ">=" or ">"
+	unit      string // e.g. "мВ" or "" for dimensionless
+	threshFmt string // full threshold label for display
+	group     string
+}
+
+func evalChecks(checks []thresholdCheck, items *[]models.InterpretationItem) int {
+	posCount := 0
+	for _, c := range checks {
+		if c.value == nil {
+			continue
+		}
+		var exceeded bool
+		if c.op == ">=" {
+			exceeded = *c.value >= c.threshold
+		} else {
+			exceeded = *c.value > c.threshold
+		}
+		status := models.StatusNegative
+		if exceeded {
+			status = models.StatusPositive
+			posCount++
+		}
+		display := fmt.Sprintf("%.2f", *c.value)
+		if c.unit != "" {
+			display += " " + c.unit
+		}
+		*items = append(*items, models.InterpretationItem{
+			Label: c.label, Value: display, Threshold: c.threshFmt, Status: status, Group: c.group,
+		})
+	}
+	return posCount
+}
+
+func lvhTextPart(s models.InterpretationItem, items []models.InterpretationItem) string {
+	if s.Status != models.StatusPositive {
+		return "Убедительных признаков ГЛЖ не выявлено."
+	}
+	var criteria []string
+	for _, it := range items {
+		if it.Group == "lvh" && it.Status == models.StatusPositive {
+			criteria = append(criteria, fmt.Sprintf("%s %s", it.Label, it.Value))
+		}
+	}
+	if len(criteria) > 0 {
+		return fmt.Sprintf("Признаки ГЛЖ: %s (%s).", s.Value, strings.Join(criteria, ", "))
+	}
+	return fmt.Sprintf("Признаки ГЛЖ: %s.", s.Value)
+}
+
+func lvhSummary(posCount int) models.InterpretationItem {
+	value := "не обнаружены"
+	status := models.StatusNegative
+	if posCount >= 2 {
+		value = "обнаружены"
+		status = models.StatusPositive
+	} else if posCount == 1 {
+		value = singleSignDetected
+		status = models.StatusPositive
+	}
+	return models.InterpretationItem{Label: "Признаки ГЛЖ", Value: value, Status: status}
+}
+
+func rvhSummary(posCount int, axis *models.QRSAxis) models.InterpretationItem {
+	axisRight := axis != nil && axis.AxisDeg != nil && *axis.AxisDeg > 90
+	axisNormal := axis != nil && axis.AxisDeg != nil && *axis.AxisDeg >= -30 && *axis.AxisDeg <= 90
+
+	value := "не обнаружены"
+	status := models.StatusNegative
+	switch {
+	case posCount >= 2 && axisRight:
+		value = "обнаружены"
+		status = models.StatusPositive
+	case posCount >= 2:
+		value = "выявлены признаки, ось не отклонена вправо"
+		status = models.StatusPositive
+	case posCount == 1 && axisNormal:
+		value = "выявлен отдельный признак при нормальной оси, требуется проверка"
+		status = models.StatusNegative
+	case posCount == 1:
+		value = singleSignDetected
+		status = models.StatusPositive
+	}
+	return models.InterpretationItem{Label: "Признаки ГПЖ", Value: value, Status: status}
+}
+
 // buildInterpretation generates a structured conclusion from computed indices.
 func buildInterpretation(
 	indices *models.LVHIndices,
@@ -331,102 +425,53 @@ func buildInterpretation(
 		sexLabel = "жен"
 	}
 
-	item := func(label, value, threshold string, status models.InterpretationStatus, group string) models.InterpretationItem {
-		return models.InterpretationItem{Label: label, Value: value, Threshold: threshold, Status: status, Group: group}
-	}
-	posStatus := func(exceeded bool) models.InterpretationStatus {
-		if exceeded {
-			return models.StatusPositive
-		}
-		return models.StatusNegative
-	}
 	normStatus := func(ok bool) models.InterpretationStatus {
 		if ok {
 			return models.StatusNormal
 		}
 		return models.StatusAbnormal
 	}
-	fv := func(v float64) string { return fmt.Sprintf("%.2f мВ", v) }
 
 	var items []models.InterpretationItem
 
 	// LVH indices
 	thrSok := 3.5
-	lvhPosCount := 0
+	var lvhChecks []thresholdCheck
 	if indices != nil {
-		if v := indices.SokolowLyon; v != nil {
-			exceeded := *v >= thrSok
-			items = append(items, item("Соколов-Лайон", fv(*v),
-				fmt.Sprintf(">= %.1f мВ", thrSok), posStatus(exceeded), "lvh"))
-			if exceeded {
-				lvhPosCount++
-			}
-		}
-		if v := indices.CornellVoltage; v != nil {
-			exceeded := *v > thrCornell
-			items = append(items, item("Корнелл (RaVL+SV3)", fv(*v),
-				fmt.Sprintf("> %.1f мВ (%s)", thrCornell, sexLabel), posStatus(exceeded), "lvh"))
-			if exceeded {
-				lvhPosCount++
-			}
-		}
-		if v := indices.PegueroLoPresti; v != nil {
-			exceeded := *v >= thrPeguero
-			items = append(items, item("Пегеро-Ло Прести", fv(*v),
-				fmt.Sprintf(">= %.1f мВ (%s)", thrPeguero, sexLabel), posStatus(exceeded), "lvh"))
-			if exceeded {
-				lvhPosCount++
-			}
+		lvhChecks = []thresholdCheck{
+			{indices.SokolowLyon, "Соколов-Лайон", thrSok, ">=", "мВ", fmt.Sprintf(">= %.1f мВ", thrSok), "lvh"},
+			{indices.CornellVoltage, "Корнелл (RaVL+SV3)", thrCornell, ">", "мВ", fmt.Sprintf("> %.1f мВ (%s)", thrCornell, sexLabel), "lvh"},
+			{indices.PegueroLoPresti, "Пегеро-Ло Прести", thrPeguero, ">=", "мВ", fmt.Sprintf(">= %.1f мВ (%s)", thrPeguero, sexLabel), "lvh"},
 		}
 	}
+	lvhPosCount := evalChecks(lvhChecks, &items)
 
 	// RVH markers
-	rvhPosCount := 0
+	var rvhChecks []thresholdCheck
 	if rvh != nil {
-		if v := rvh.RV1mV; v != nil {
-			exceeded := *v >= 0.7
-			items = append(items, item("R в V1", fv(*v),
-				">= 0.70 мВ", posStatus(exceeded), "rvh"))
-			if exceeded {
-				rvhPosCount++
-			}
-		}
-		if v := rvh.ROverSV1; v != nil {
-			exceeded := *v > 1.0
-			items = append(items, item("R/S в V1", fmt.Sprintf("%.2f", *v),
-				"> 1.0", posStatus(exceeded), "rvh"))
-			if exceeded {
-				rvhPosCount++
-			}
-		}
-		if v := rvh.RV1PlusSV5; v != nil {
-			exceeded := *v > 1.05
-			items = append(items, item("RV1+|SV5|", fv(*v),
-				"> 1.05 мВ", posStatus(exceeded), "rvh"))
-			if exceeded {
-				rvhPosCount++
-			}
-		}
-		if v := rvh.RV1PlusSV6; v != nil {
-			exceeded := *v > 1.05
-			items = append(items, item("RV1+|SV6|", fv(*v),
-				"> 1.05 мВ", posStatus(exceeded), "rvh"))
-			if exceeded {
-				rvhPosCount++
-			}
+		rvhChecks = []thresholdCheck{
+			{rvh.RV1mV, "R в V1", 0.7, ">=", "мВ", ">= 0.70 мВ", "rvh"},
+			{rvh.ROverSV1, "R/S в V1", 1.0, ">", "", "> 1.0", "rvh"},
+			{rvh.RV1PlusSV5, "RV1+|SV5|", 1.05, ">", "мВ", "> 1.05 мВ", "rvh"},
+			{rvh.RV1PlusSV6, "RV1+|SV6|", 1.05, ">", "мВ", "> 1.05 мВ", "rvh"},
 		}
 	}
+	rvhPosCount := evalChecks(rvhChecks, &items)
 
 	// QRS
 	if rhythm != nil && rhythm.QRSms != nil {
-		items = append(items, item("QRS", fmt.Sprintf("%.0f мс", *rhythm.QRSms),
-			"60-100 мс", normStatus(*rhythm.QRSms >= 60 && *rhythm.QRSms <= 100), "rhythm"))
+		items = append(items, models.InterpretationItem{
+			Label: "QRS", Value: fmt.Sprintf("%.0f мс", *rhythm.QRSms),
+			Threshold: "60-100 мс", Status: normStatus(*rhythm.QRSms >= 60 && *rhythm.QRSms <= 100), Group: "rhythm",
+		})
 	}
 
 	// HR
 	if rhythm != nil && rhythm.HRbpm != nil {
-		items = append(items, item("ЧСС", fmt.Sprintf("%.0f уд/мин", *rhythm.HRbpm),
-			"60-100", normStatus(*rhythm.HRbpm >= 60 && *rhythm.HRbpm <= 100), "rhythm"))
+		items = append(items, models.InterpretationItem{
+			Label: "ЧСС", Value: fmt.Sprintf("%.0f уд/мин", *rhythm.HRbpm),
+			Threshold: "60-100", Status: normStatus(*rhythm.HRbpm >= 60 && *rhythm.HRbpm <= 100), Group: "rhythm",
+		})
 	}
 
 	// Summary
@@ -434,42 +479,13 @@ func buildInterpretation(
 
 	if axis != nil && axis.AxisDeg != nil {
 		axisOk := *axis.AxisDeg >= -30 && *axis.AxisDeg <= 90
-		summary = append(summary, item("ЭОС",
-			fmt.Sprintf("%.0f° (%s)", *axis.AxisDeg, axis.Classification),
-			"-30°...+90°", normStatus(axisOk), ""))
+		summary = append(summary, models.InterpretationItem{
+			Label: "ЭОС", Value: fmt.Sprintf("%.0f° (%s)", *axis.AxisDeg, axis.Classification),
+			Threshold: "-30°...+90°", Status: normStatus(axisOk),
+		})
 	}
 
-	// LVH aggregate — cautious wording based on count
-	lvhValue := "не обнаружены"
-	lvhStatus := models.StatusNegative
-	if lvhPosCount >= 2 {
-		lvhValue = "обнаружены"
-		lvhStatus = models.StatusPositive
-	} else if lvhPosCount == 1 {
-		lvhValue = "выявлен отдельный признак"
-		lvhStatus = models.StatusPositive
-	}
-	summary = append(summary, item("Признаки ГЛЖ", lvhValue, "", lvhStatus, ""))
-
-	// RVH aggregate — cautious wording, consider axis context
-	axisRight := axis != nil && axis.AxisDeg != nil && *axis.AxisDeg > 90
-	axisNormal := axis != nil && axis.AxisDeg != nil && *axis.AxisDeg >= -30 && *axis.AxisDeg <= 90
-	rvhValue := "не обнаружены"
-	rvhStatus := models.StatusNegative
-	if rvhPosCount >= 2 && axisRight {
-		rvhValue = "обнаружены"
-		rvhStatus = models.StatusPositive
-	} else if rvhPosCount >= 2 {
-		rvhValue = "выявлены признаки, ось не отклонена вправо"
-		rvhStatus = models.StatusPositive
-	} else if rvhPosCount == 1 && axisNormal {
-		rvhValue = "выявлен отдельный признак при нормальной оси, требуется проверка"
-		rvhStatus = models.StatusNegative
-	} else if rvhPosCount == 1 {
-		rvhValue = "выявлен отдельный признак"
-		rvhStatus = models.StatusPositive
-	}
-	summary = append(summary, item("Признаки ГПЖ", rvhValue, "", rvhStatus, ""))
+	summary = append(summary, lvhSummary(lvhPosCount), rvhSummary(rvhPosCount, axis))
 
 	if len(items) == 0 {
 		return nil
@@ -531,23 +547,7 @@ func buildTextSummary(
 	// LVH
 	for _, s := range summary {
 		if s.Label == "Признаки ГЛЖ" {
-			if s.Status == models.StatusPositive {
-				// Collect which criteria are positive
-				var criteria []string
-				for _, it := range items {
-					if it.Group == "lvh" && it.Status == models.StatusPositive {
-						criteria = append(criteria, fmt.Sprintf("%s %s", it.Label, it.Value))
-					}
-				}
-				if len(criteria) > 0 {
-					parts = append(parts, fmt.Sprintf("Признаки ГЛЖ: %s (%s).",
-						s.Value, strings.Join(criteria, ", ")))
-				} else {
-					parts = append(parts, fmt.Sprintf("Признаки ГЛЖ: %s.", s.Value))
-				}
-			} else {
-				parts = append(parts, "Убедительных признаков ГЛЖ не выявлено.")
-			}
+			parts = append(parts, lvhTextPart(s, items))
 			break
 		}
 	}
@@ -555,11 +555,12 @@ func buildTextSummary(
 	// RVH
 	for _, s := range summary {
 		if s.Label == "Признаки ГПЖ" {
-			if s.Status == models.StatusPositive {
+			switch {
+			case s.Status == models.StatusPositive:
 				parts = append(parts, fmt.Sprintf("Признаки ГПЖ: %s.", s.Value))
-			} else if strings.Contains(s.Value, "требуется проверка") {
+			case strings.Contains(s.Value, "требуется проверка"):
 				parts = append(parts, fmt.Sprintf("ГПЖ: %s.", s.Value))
-			} else {
+			default:
 				parts = append(parts, "Убедительных признаков ГПЖ не выявлено.")
 			}
 			break

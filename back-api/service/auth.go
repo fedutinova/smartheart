@@ -2,9 +2,11 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/mail"
+	"regexp"
 	"time"
 
 	"github.com/google/uuid"
@@ -47,6 +49,8 @@ const (
 	refreshWindow            = 5 * time.Minute
 )
 
+var passwordASCIIOnly = regexp.MustCompile(`^[\x21-\x7E]+$`)
+
 func (s *authService) Register(ctx context.Context, username, email, password string) (uuid.UUID, error) {
 	if username == "" || email == "" || password == "" {
 		return uuid.Nil, fmt.Errorf("username, email, and password are required: %w", apperr.ErrValidation)
@@ -62,6 +66,9 @@ func (s *authService) Register(ctx context.Context, username, email, password st
 	}
 	if len(password) > maxPasswordLen {
 		return uuid.Nil, fmt.Errorf("password must not exceed %d bytes: %w", maxPasswordLen, apperr.ErrValidation)
+	}
+	if !passwordASCIIOnly.MatchString(password) {
+		return uuid.Nil, fmt.Errorf("password must contain only English letters, digits, and symbols (no spaces): %w", apperr.ErrValidation)
 	}
 
 	passwordHash, err := auth.HashPassword(password)
@@ -82,6 +89,9 @@ func (s *authService) Register(ctx context.Context, username, email, password st
 		}
 		return txRepo.AssignRoleToUser(ctx, user.ID, auth.RoleUser)
 	}); err != nil {
+		if apperr.IsConflict(err) || apperr.IsValidation(err) {
+			return uuid.Nil, err
+		}
 		return uuid.Nil, apperr.WrapInternal("register user", err)
 	}
 
@@ -159,20 +169,27 @@ func (s *authService) Refresh(ctx context.Context, refreshToken string) (*auth.T
 	}
 
 	if err := s.sessions.RevokeRefreshToken(ctx, tokenHash); err != nil {
-		slog.ErrorContext(ctx, "Failed to revoke old refresh token", "error", err)
+		slog.ErrorContext(ctx, "Failed to revoke old refresh token in redis", "error", err)
+	}
+	if err := s.repo.RevokeRefreshToken(ctx, tokenHash); err != nil {
+		slog.ErrorContext(ctx, "Failed to revoke old refresh token in db", "error", err)
 	}
 
 	return tokens, nil
 }
 
 func (s *authService) Logout(ctx context.Context, refreshToken, accessToken string, claims *auth.Claims) error {
+	var errs []error
+
 	if refreshToken != "" {
 		tokenHash := auth.HashToken(refreshToken)
 		if err := s.sessions.RevokeRefreshToken(ctx, tokenHash); err != nil {
 			slog.ErrorContext(ctx, "Failed to revoke refresh token", "error", err)
+			errs = append(errs, err)
 		}
 		if err := s.repo.RevokeRefreshToken(ctx, tokenHash); err != nil {
 			slog.ErrorContext(ctx, "Failed to revoke refresh token in db", "error", err)
+			errs = append(errs, err)
 		}
 	}
 
@@ -182,10 +199,14 @@ func (s *authService) Logout(ctx context.Context, refreshToken, accessToken stri
 		if ttl > 0 {
 			if err := s.sessions.StoreBlacklistedToken(ctx, tokenHash, ttl); err != nil {
 				slog.ErrorContext(ctx, "Failed to blacklist access token", "error", err)
+				errs = append(errs, err)
 			}
 		}
 	}
 
+	if len(errs) > 0 {
+		return apperr.WrapInternal("logout", errors.Join(errs...))
+	}
 	return nil
 }
 

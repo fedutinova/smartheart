@@ -434,6 +434,29 @@ func TestRegister_PasswordTooLong(t *testing.T) {
 	}
 }
 
+func TestRegister_Conflict(t *testing.T) {
+	d := newTestDeps(t)
+	h := d.handler()
+
+	d.authSvc.EXPECT().
+		Register(mock.Anything, "alice", "alice@example.com", "securepassword123").
+		Return(uuid.Nil, apperr.ErrConflict)
+
+	body, _ := json.Marshal(map[string]string{
+		"username": "alice",
+		"email":    "alice@example.com",
+		"password": "securepassword123",
+	})
+	req := httptest.NewRequest("POST", "/v1/auth/register", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Auth.Register(w, req)
+
+	if w.Code != http.StatusConflict {
+		t.Fatalf("expected 409, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 func TestLogin_InvalidJSON(t *testing.T) {
 	d := newTestDeps(t)
 	h := d.handler()

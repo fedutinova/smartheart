@@ -111,8 +111,8 @@ function ChatDemo() {
 
 const FEATURES = [
   {
-    title: 'AI-анализ ЭКГ',
-    description: 'Загрузите фото ЭКГ и получите структурированные измерения, индексы ГЛЖ и интерпретацию за секунды',
+    title: 'Автоматизированный анализ ЭКГ',
+    description: 'Загрузите фото ЭКГ и получите структурированные измерения, индексы ГЛЖ и предварительную интерпретацию',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
@@ -120,7 +120,7 @@ const FEATURES = [
     ),
   },
   {
-    title: 'Медицинский чат-бот',
+    title: 'Справочный чат-бот',
     description: 'Задайте вопрос по кардиологии. Ответ формируется на основе медицинских учебников и клинических рекомендаций',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -169,7 +169,7 @@ const FEATURES = [
 const STEPS = [
   { num: '1', title: 'Загрузите фото', description: 'Сфотографируйте ЭКГ или загрузите файл' },
   { num: '2', title: 'Укажите параметры', description: 'Возраст, пол, скорость плёнки' },
-  { num: '3', title: 'Получите результат', description: 'Измерения, индексы и интерпретация' },
+  { num: '3', title: 'Получите результат', description: 'Измерения, индексы и справочную интерпретацию' },
 ];
 
 export function Landing() {
@@ -213,7 +213,7 @@ export function Landing() {
           </h1>
           <p className="mt-6 text-lg sm:text-xl text-gray-500 max-w-2xl mx-auto leading-relaxed">
             Загрузите фото электрокардиограммы и получите структурированные измерения,
-            расчёт индексов гипертрофии и интерпретацию за секунды
+            расчёт индексов гипертрофии и справочную интерпретацию
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
@@ -231,6 +231,9 @@ export function Landing() {
           </div>
           <p className="mt-4 text-sm text-gray-400">
             2 бесплатных анализа в день, без привязки карты
+          </p>
+          <p className="mt-2 text-xs text-gray-400 max-w-2xl mx-auto">
+            Сервис предназначен для информационной поддержки и не заменяет медицинское заключение врача.
           </p>
         </div>
       </section>

@@ -127,6 +127,15 @@ export function Analyze() {
       <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl font-semibold text-gray-900 mb-6">Анализ ЭКГ</h1>
 
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <p className="font-medium">Перед отправкой убедитесь, что файл обезличен.</p>
+          <p className="mt-1">
+            Не загружайте ФИО, дату рождения, номер карты и другие прямые идентификаторы пациента без
+            самостоятельного правового основания на такую передачу. Результат сервиса носит информационный
+            характер и не заменяет клиническое решение врача.
+          </p>
+        </div>
+
         {/* Quota */}
         {quota && <QuotaBanner quota={quota} />}
 
@@ -199,7 +208,8 @@ export function Analyze() {
                   className="mt-0.5 h-4 w-4 rounded border-gray-300 text-rose-600 focus:ring-rose-500"
                 />
                 <span className="text-sm text-gray-600">
-                  Изображение не содержит персональных данных
+                  Подтверждаю, что изображение обезличено или у меня есть надлежащее основание для передачи
+                  данных в сервис
                 </span>
               </label>
             )}
@@ -227,6 +237,7 @@ export function Analyze() {
         <div className="mt-6 sm:mt-8 flex flex-wrap gap-x-6 gap-y-2 text-xs text-gray-400">
           <span>JPEG, PNG, PDF до 10 MB</span>
           {mode === 'camera' && <span>Держите телефон параллельно бумаге</span>}
+          {mode === 'url' && <span>Используйте только ссылку на обезличенное изображение</span>}
         </div>
       </div>
     </Layout>

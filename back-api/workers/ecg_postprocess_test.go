@@ -675,7 +675,7 @@ func TestBuildInterpretation_LVHPositive(t *testing.T) {
 			if s.Status != "positive" {
 				t.Errorf("expected LVH positive, got %s", s.Status)
 			}
-			if s.Value != "выявлен отдельный признак" {
+			if s.Value != singleSignDetected {
 				t.Errorf("expected single sign, got %s", s.Value)
 			}
 			return
