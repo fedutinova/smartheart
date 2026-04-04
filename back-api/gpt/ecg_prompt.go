@@ -3,6 +3,7 @@ package gpt
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -92,10 +93,43 @@ type RawECGMeasurement struct {
 	Calibration RawCalibration       `json:"calibration"`
 }
 
+// flexFloat64Slice accepts both a single number and an array of numbers from JSON.
+// GPT may return either `"R_up_sq": 3.5` or `"R_up_sq": [3.5]`.
+type flexFloat64Slice []float64
+
+func (f *flexFloat64Slice) UnmarshalJSON(data []byte) error {
+	// null → nil slice.
+	if string(data) == "null" {
+		*f = nil
+		return nil
+	}
+	// Try array first.
+	var arr []float64
+	if err := json.Unmarshal(data, &arr); err == nil {
+		*f = arr
+		return nil
+	}
+	// Fallback: single number.
+	var v float64
+	if err := json.Unmarshal(data, &v); err == nil {
+		*f = []float64{v}
+		return nil
+	}
+	// Fallback: GPT sometimes returns a stringified number like "3.5".
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		if sv, err := strconv.ParseFloat(s, 64); err == nil {
+			*f = []float64{sv}
+			return nil
+		}
+	}
+	return fmt.Errorf("flexFloat64Slice: cannot unmarshal %s", string(data))
+}
+
 // LeadData holds R and S measurements in small squares.
 type LeadData struct {
-	RUpSq   []float64 `json:"R_up_sq"`
-	SDownSq []float64 `json:"S_down_sq"`
+	RUpSq   flexFloat64Slice `json:"R_up_sq"`
+	SDownSq flexFloat64Slice `json:"S_down_sq"`
 }
 
 // RawCalibration holds optional calibration detected by GPT.

@@ -57,6 +57,12 @@ type RAGFeedbackRepo interface {
 	CreateRAGFeedback(ctx context.Context, feedback *models.RAGFeedback) error
 }
 
+// KBCacheRepo provides semantic cache for knowledge-base queries.
+type KBCacheRepo interface {
+	FindCachedAnswer(ctx context.Context, question string, threshold float64) (*models.KBCacheEntry, error)
+	SaveCacheEntry(ctx context.Context, question, answer, sourceMeta string) error
+}
+
 // PaymentRepo provides payment data access.
 type PaymentRepo interface {
 	CreatePayment(ctx context.Context, p *models.Payment) error
@@ -86,6 +92,7 @@ type Store interface {
 	RoleRepo
 	QuotaRepo
 	RAGFeedbackRepo
+	KBCacheRepo
 	PaymentRepo
 	AdminRepo
 

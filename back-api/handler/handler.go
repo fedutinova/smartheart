@@ -1,9 +1,13 @@
 package handler
 
 import (
+	"context"
+	"io"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+
+	"github.com/fedutinova/smartheart/back-api/gpt"
 
 	"github.com/fedutinova/smartheart/back-api/auth"
 	"github.com/fedutinova/smartheart/back-api/config"
@@ -61,6 +65,7 @@ type Middlewares struct {
 type Handler struct {
 	Auth    *AuthHandler
 	EKG     *ECGHandler
+	EKGSync *ECGSyncHandler // non-nil when ECG_SYNC_MODE=true
 	GPT     *GPTHandler
 	Request *RequestHandler
 	Healthz *HealthHandler
@@ -71,6 +76,13 @@ type Handler struct {
 	Admin   *AdminHandler
 	Config  config.Config
 	MW      Middlewares
+	MockGPT *gpt.MockProcessor // non-nil when GPT_MOCK=true; exposes /debug/h2
+}
+
+// ECGSyncProcessor is implemented by workers.ECGWorker to avoid a direct import.
+type ECGSyncProcessor interface {
+	UploadForSync(ctx context.Context, filename string, reader io.Reader, contentType string) (string, error)
+	ProcessECGSync(ctx context.Context, payload *job.ECGJobPayload) error
 }
 
 // NewHandler creates a Handler with all sub-handlers wired to shared dependencies.
@@ -108,6 +120,19 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 	// Health check (no auth required, for load balancer)
 	r.Get("/health", h.Healthz.Health)
 
+	// Debug endpoint for H2 hypothesis testing (mock mode only).
+	if h.MockGPT != nil {
+		r.Get("/debug/h2", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(w, http.StatusOK, map[string]int64{
+				"max_concurrent_gpt": h.MockGPT.ConcurrentMax(),
+			})
+		})
+		r.Post("/debug/h2/reset", func(w http.ResponseWriter, _ *http.Request) {
+			h.MockGPT.ResetConcurrentMax()
+			writeJSON(w, http.StatusOK, map[string]string{"status": "reset"})
+		})
+	}
+
 	// OpenAPI spec (public)
 	r.Get("/openapi.yaml", OpenAPISpec)
 
@@ -140,7 +165,11 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		if h.MW.AnalyzeRateLimit != nil {
 			ekgMiddleware = append(ekgMiddleware, h.MW.AnalyzeRateLimit)
 		}
-		r.With(ekgMiddleware...).Post("/v1/ecg/analyze", h.EKG.SubmitECGAnalyze)
+		if h.EKGSync != nil {
+			r.With(ekgMiddleware...).Post("/v1/ecg/analyze", h.EKGSync.SubmitECGAnalyzeSync)
+		} else {
+			r.With(ekgMiddleware...).Post("/v1/ecg/analyze", h.EKG.SubmitECGAnalyze)
+		}
 		r.With(ekgMiddleware...).Post("/v1/gpt/process", h.GPT.SubmitGPTRequest)
 
 		r.With(auth.RequirePerm(auth.PermJobReadOwn)).Get("/v1/jobs/{id}", h.Request.GetJob)

@@ -109,6 +109,7 @@ type Config struct {
 	Quota     QuotaConfig
 	RAG       RAGConfig
 	YooKassa  YooKassaConfig
+	SyncMode  bool // ECG_SYNC_MODE: process ECG synchronously (for H2 baseline testing)
 }
 
 // Storage mode constants for compile-time safety.
@@ -342,5 +343,6 @@ func Load() Config {
 			PriceKopecks:             envInt("YOOKASSA_PRICE_KOPECKS", 4900),                // 49 rub default
 			SubscriptionPriceKopecks: envInt("YOOKASSA_SUBSCRIPTION_PRICE_KOPECKS", 199900), // 1999 rub default
 		},
+		SyncMode: envBool("ECG_SYNC_MODE", false),
 	}
 }

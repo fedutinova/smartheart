@@ -423,6 +423,51 @@ func (_c *MockStore_CreateRAGFeedback_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
+// FindCachedAnswer provides a mock function with given fields: ctx, question, threshold
+func (_m *MockStore) FindCachedAnswer(ctx context.Context, question string, threshold float64) (*models.KBCacheEntry, error) {
+	ret := _m.Called(ctx, question, threshold)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FindCachedAnswer")
+	}
+
+	var r0 *models.KBCacheEntry
+	if rf, ok := ret.Get(0).(func(context.Context, string, float64) *models.KBCacheEntry); ok {
+		r0 = rf(ctx, question, threshold)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.KBCacheEntry)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string, float64) error); ok {
+		r1 = rf(ctx, question, threshold)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SaveCacheEntry provides a mock function with given fields: ctx, question, answer, sourceMeta
+func (_m *MockStore) SaveCacheEntry(ctx context.Context, question string, answer string, sourceMeta string) error {
+	ret := _m.Called(ctx, question, answer, sourceMeta)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SaveCacheEntry")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) error); ok {
+		r0 = rf(ctx, question, answer, sourceMeta)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // CreateRefreshToken provides a mock function with given fields: ctx, token
 func (_m *MockStore) CreateRefreshToken(ctx context.Context, token *models.RefreshToken) error {
 	ret := _m.Called(ctx, token)

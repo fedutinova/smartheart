@@ -54,9 +54,28 @@ func main() {
 	defer func() { _ = q.Close() }()
 
 	hub := notify.NewHub()
-	startWorkers(ctx, cfg, db, q, storageService, repo, hub)
+	var gptClient gpt.Processor
+	var mockGPT *gpt.MockProcessor
+	if os.Getenv("GPT_MOCK") == "true" {
+		mockDelay, _ := time.ParseDuration(os.Getenv("GPT_MOCK_DELAY"))
+		if mockDelay == 0 {
+			mockDelay = 5 * time.Second
+		}
+		slog.Warn("GPT_MOCK enabled — using simulated responses", "delay", mockDelay)
+		mockGPT = &gpt.MockProcessor{Delay: mockDelay}
+		gptClient = mockGPT
+	} else {
+		gptClient = gpt.NewClient(cfg.GPT.APIKey, storageService, gpt.WithModel(cfg.GPT.Model))
+	}
+	startWorkers(ctx, cfg, db, q, storageService, repo, hub, gptClient)
 
-	srv := startHTTPServer(cfg, repo, sessions, storageService, q, hub)
+	var syncWorker handler.ECGSyncProcessor
+	if cfg.SyncMode {
+		slog.Warn("ECG_SYNC_MODE enabled — ECG requests will be processed synchronously")
+		syncWorker = workers.NewECGWorker(db, q, storageService, repo, gptClient, hub)
+	}
+
+	srv := startHTTPServer(cfg, repo, sessions, storageService, q, hub, syncWorker, mockGPT)
 
 	// Cancel pending payments older than 1 hour, check every 10 minutes.
 	service.StartStalePaymentCleaner(ctx, repo, 10*time.Minute, 1*time.Hour)
@@ -169,8 +188,7 @@ func initQueue(cfg appconfig.Config, sessions *session.Service) job.Queue {
 	}
 }
 
-func startWorkers(ctx context.Context, cfg appconfig.Config, db *database.DB, q job.Queue, storageService storage.Storage, repo repository.Store, hub *notify.Hub) {
-	gptClient := gpt.NewClient(cfg.GPT.APIKey, storageService, gpt.WithModel(cfg.GPT.Model))
+func startWorkers(ctx context.Context, cfg appconfig.Config, db *database.DB, q job.Queue, storageService storage.Storage, repo repository.Store, hub *notify.Hub, gptClient gpt.Processor) {
 	gptWorker := workers.NewGPTWorker(db, gptClient, repo, hub)
 	ecgWorker := workers.NewECGWorker(db, q, storageService, repo, gptClient, hub)
 
@@ -181,18 +199,33 @@ func startWorkers(ctx context.Context, cfg appconfig.Config, db *database.DB, q 
 	q.StartConsumers(ctx, cfg.Queue.Workers, registry.Dispatch)
 }
 
-func startHTTPServer(cfg appconfig.Config, repo repository.Store, sessions *session.Service, storageService storage.Storage, q job.Queue, hub *notify.Hub) *http.Server {
+func startHTTPServer(
+	cfg appconfig.Config,
+	repo repository.Store,
+	sessions *session.Service,
+	storageService storage.Storage,
+	q job.Queue,
+	hub *notify.Hub,
+	syncWorker handler.ECGSyncProcessor,
+	mockGPT *gpt.MockProcessor,
+) *http.Server {
 	authSvc := service.NewAuthService(repo, sessions, cfg.JWT)
 	submissionSvc := service.NewSubmissionService(repo, q, storageService, cfg.Quota)
 	requestSvc := service.NewRequestService(repo, q)
 	paymentSvc := service.NewPaymentService(repo, cfg.YooKassa, cfg.Quota.DailyLimit)
 
 	mw := handler.Middlewares{
-		WebhookIP:             server.WebhookIPWhitelist(cfg.YooKassa.ShopID),
-		AnalyzeRateLimit:      server.EndpointRateLimit(10), // 10 RPM per IP for analysis
-		SubscriptionRateLimit: server.EndpointRateLimit(5),  // 5 RPM per IP for subscriptions
+		WebhookIP: server.WebhookIPWhitelist(cfg.YooKassa.ShopID),
+	}
+	if cfg.RateLimit.RPM > 0 {
+		mw.AnalyzeRateLimit = server.EndpointRateLimit(10)
+		mw.SubscriptionRateLimit = server.EndpointRateLimit(5)
 	}
 	handlers := handler.NewHandler(authSvc, submissionSvc, requestSvc, paymentSvc, q, repo, sessions, storageService, hub, cfg, mw)
+	if syncWorker != nil {
+		handlers.EKGSync = &handler.ECGSyncHandler{Worker: syncWorker}
+	}
+	handlers.MockGPT = mockGPT
 	r := server.NewRouter(handlers, cfg)
 
 	srv := &http.Server{

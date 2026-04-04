@@ -61,10 +61,12 @@ const (
 // ECGJobPayload represents the payload for EKG analysis jobs.
 // Either ImageTempURL (URL mode) or ImageFileKey (file upload mode) is set.
 type ECGJobPayload struct {
-	ImageTempURL  string    `json:"image_temp_url,omitempty"`
-	ImageFileKey  string    `json:"image_file_key,omitempty"`
-	Notes         string    `json:"notes,omitempty"`
-	UserID        uuid.UUID `json:"user_id"`
+	ImageTempURL string    `json:"image_temp_url,omitempty"`
+	ImageFileKey string    `json:"image_file_key,omitempty"`
+	Notes        string    `json:"notes,omitempty"`
+	UserID       uuid.UUID `json:"user_id"`
+	// RequestID identifies an existing request row. When uuid.Nil, processEKG
+	// creates the row inside its transaction and writes the new ID back here.
 	RequestID     uuid.UUID `json:"request_id"`
 	Age           *int      `json:"age,omitempty"`
 	Sex           string    `json:"sex,omitempty"`
