@@ -24,11 +24,17 @@ const api = axios.create({
 });
 
 // Retry network errors and 5xx with exponential backoff (max 3 attempts).
-// Only retry idempotent methods (GET, HEAD, OPTIONS) — never retry POST/PUT/DELETE.
+// Only retry safe idempotent methods (GET, HEAD, OPTIONS) — never retry POST/PUT/DELETE.
 axiosRetry(api, {
   retries: 3,
   retryDelay: axiosRetry.exponentialDelay,
-  retryCondition: (error) => axiosRetry.isNetworkOrIdempotentRequestError(error),
+  retryCondition: (error) => {
+    const method = error.config?.method?.toUpperCase();
+    if (method && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+      return false;
+    }
+    return axiosRetry.isNetworkOrIdempotentRequestError(error);
+  },
 });
 
 let isRefreshing = false;
