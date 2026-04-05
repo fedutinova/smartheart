@@ -2,6 +2,8 @@
 	email admin@{$DOMAIN_NAME}
 }
 
+# === Primary domain ===
+
 {$DOMAIN_NAME}, www.{$DOMAIN_NAME} {
 	root * /var/www/frontend
 	try_files {path} /index.html
@@ -13,18 +15,6 @@
 		X-Frame-Options "DENY"
 		X-XSS-Protection "1; mode=block"
 		Referrer-Policy "strict-origin-when-cross-origin"
-	}
-}
-
-admin.{$DOMAIN_NAME} {
-	root * /var/www/admin
-	try_files {path} /index.html
-	file_server
-	encode gzip
-
-	header {
-		X-Content-Type-Options "nosniff"
-		X-Frame-Options "DENY"
 	}
 }
 
