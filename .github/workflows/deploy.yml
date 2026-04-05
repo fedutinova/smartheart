@@ -200,7 +200,7 @@ jobs:
       - name: Build
         working-directory: frontend
         env:
-          VITE_API_URL: https://api.${{ secrets.DOMAIN_NAME }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL || format('https://api.{0}', secrets.DOMAIN_NAME) }}
         run: npm run build
 
       - uses: actions/upload-artifact@v4
@@ -229,7 +229,7 @@ jobs:
       - name: Build
         working-directory: admin
         env:
-          VITE_API_URL: https://api.${{ secrets.DOMAIN_NAME }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL || format('https://api.{0}', secrets.DOMAIN_NAME) }}
         run: npm run build
 
       - uses: actions/upload-artifact@v4
