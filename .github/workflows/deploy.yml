@@ -270,8 +270,10 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           RAG_ADMIN_API_KEY: ${{ secrets.RAG_ADMIN_API_KEY }}
           DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
+          CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
         run: |
           printf 'DOMAIN_NAME=%s\n'       "$DOMAIN_NAME"       >  /tmp/smartheart.env
+          printf 'CORS_ORIGINS=%s\n'      "$CORS_ORIGINS"       >> /tmp/smartheart.env
           printf 'DB_PASSWORD=%s\n'       "$DB_PASSWORD"        >> /tmp/smartheart.env
           printf 'JWT_SECRET=%s\n'        "$JWT_SECRET"         >> /tmp/smartheart.env
           printf 'OPENAI_API_KEY=%s\n'    "$OPENAI_API_KEY"     >> /tmp/smartheart.env
