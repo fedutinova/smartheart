@@ -68,7 +68,7 @@ services:
       JOB_MAX_DURATION: 30s
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       RAG_URL: http://rag:8000
-      CORS_ORIGINS: ${CORS_ORIGINS:-https://${DOMAIN_NAME},https://www.${DOMAIN_NAME},https://admin.${DOMAIN_NAME}}
+      CORS_ORIGINS: https://${DOMAIN_NAME},https://www.${DOMAIN_NAME},https://admin.${DOMAIN_NAME}
       QUOTA_DAILY_LIMIT: ${QUOTA_DAILY_LIMIT:-5}
       RATE_LIMIT_RPM: ${RATE_LIMIT_RPM:-100}
       YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID:-}
