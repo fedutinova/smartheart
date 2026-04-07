@@ -1,5 +1,5 @@
-import { lazy, Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { lazy, Suspense, useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ROUTES } from '@/config';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -9,15 +9,39 @@ import { Login } from '@/pages/Login';
 import { Register } from '@/pages/Register';
 import { Landing } from '@/pages/Landing';
 
-const Dashboard = lazy(() => import('@/pages/Dashboard').then((m) => ({ default: m.Dashboard })));
-const Analyze = lazy(() => import('@/pages/Analyze').then((m) => ({ default: m.Analyze })));
-const History = lazy(() => import('@/pages/History').then((m) => ({ default: m.History })));
-const KnowledgeBase = lazy(() => import('@/pages/KnowledgeBase').then((m) => ({ default: m.KnowledgeBase })));
-const Contacts = lazy(() => import('@/pages/Contacts').then((m) => ({ default: m.Contacts })));
-const Results = lazy(() => import('@/pages/Results').then((m) => ({ default: m.Results })));
-const Account = lazy(() => import('@/pages/Account').then((m) => ({ default: m.Account })));
-const Privacy = lazy(() => import('@/pages/Privacy').then((m) => ({ default: m.Privacy })));
-const Terms = lazy(() => import('@/pages/Terms').then((m) => ({ default: m.Terms })));
+/**
+ * Retry a dynamic import up to `retries` times, then force-reload the page
+ * so the browser fetches fresh chunk URLs after a deployment.
+ */
+function lazyRetry<T extends Record<string, unknown>>(
+  factory: () => Promise<T>,
+  retries = 2,
+): Promise<T> {
+  return factory().catch((err: unknown) => {
+    if (retries > 0) {
+      return new Promise<T>((resolve) =>
+        setTimeout(() => resolve(lazyRetry(factory, retries - 1)), 500),
+      );
+    }
+    // All retries exhausted — reload to pick up new chunk URLs
+    const alreadyReloaded = sessionStorage.getItem('chunk_reload');
+    if (!alreadyReloaded) {
+      sessionStorage.setItem('chunk_reload', '1');
+      window.location.reload();
+    }
+    throw err;
+  });
+}
+
+const Dashboard = lazy(() => lazyRetry(() => import('@/pages/Dashboard').then((m) => ({ default: m.Dashboard }))));
+const Analyze = lazy(() => lazyRetry(() => import('@/pages/Analyze').then((m) => ({ default: m.Analyze }))));
+const History = lazy(() => lazyRetry(() => import('@/pages/History').then((m) => ({ default: m.History }))));
+const KnowledgeBase = lazy(() => lazyRetry(() => import('@/pages/KnowledgeBase').then((m) => ({ default: m.KnowledgeBase }))));
+const Contacts = lazy(() => lazyRetry(() => import('@/pages/Contacts').then((m) => ({ default: m.Contacts }))));
+const Results = lazy(() => lazyRetry(() => import('@/pages/Results').then((m) => ({ default: m.Results }))));
+const Account = lazy(() => lazyRetry(() => import('@/pages/Account').then((m) => ({ default: m.Account }))));
+const Privacy = lazy(() => lazyRetry(() => import('@/pages/Privacy').then((m) => ({ default: m.Privacy }))));
+const Terms = lazy(() => lazyRetry(() => import('@/pages/Terms').then((m) => ({ default: m.Terms }))));
 
 function PageLoader() {
   return (
@@ -31,9 +55,14 @@ function App() {
   // SSE + toasts live here — once for the entire app lifetime,
   // not inside Layout which remounts on every navigation.
   const { toasts, dismiss } = useToastNotifications();
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    sessionStorage.removeItem('chunk_reload');
+  }, []);
 
   return (
-    <ErrorBoundary>
+    <ErrorBoundary resetKey={pathname}>
       <ToastContainer toasts={toasts} onDismiss={dismiss} />
       <Suspense fallback={<PageLoader />}>
         <Routes>

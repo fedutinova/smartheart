@@ -2,76 +2,48 @@ import { Link, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth';
 import { ROUTES } from '@/config';
 
-// Static demo: ECG analysis result
+// Static demo: ECG analysis result (mirrors StructuredResultView interpretation block)
 function DemoPreview() {
-  const leads = [
-    { name: 'I', r: '4.2', s: '1.0' },
-    { name: 'II', r: '8.5', s: '0.5' },
-    { name: 'V1', r: '2.0', s: '12.3' },
-    { name: 'V5', r: '18.1', s: '1.5' },
-  ];
-
   return (
-    <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-      <div className="bg-gray-50 border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-700">Результат анализа ЭКГ</span>
-        <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-700">Завершён</span>
+    <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 rounded-2xl shadow-xl p-4 sm:p-6">
+      <h2 className="text-base font-bold text-gray-900 mb-3">Интерпретация</h2>
+      <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3 text-xs text-amber-800">
+        Результат автоматической обработки. Не является медицинским заключением.
       </div>
-      <div className="p-4 sm:p-6 space-y-4">
-        <div className="flex flex-wrap gap-2">
-          <span className="px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-600">Мужской</span>
-          <span className="px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-600">52 года</span>
-          <span className="px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-600">25 мм/с</span>
-        </div>
-        <div>
-          <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Измерения</p>
-          <div className="grid grid-cols-4 gap-px bg-gray-200 rounded-lg overflow-hidden text-sm">
-            <div className="bg-gray-50 px-3 py-1.5 font-medium text-gray-500">Отв.</div>
-            <div className="bg-gray-50 px-3 py-1.5 text-right font-medium text-gray-500">R, мм</div>
-            <div className="bg-gray-50 px-3 py-1.5 font-medium text-gray-500">Отв.</div>
-            <div className="bg-gray-50 px-3 py-1.5 text-right font-medium text-gray-500">R, мм</div>
-            {leads.map((l) => (
-              <div key={l.name} className="contents">
-                <div className="bg-white px-3 py-1.5 font-medium text-gray-800">{l.name}</div>
-                <div className="bg-white px-3 py-1.5 text-right font-mono text-gray-700">{l.r}</div>
-              </div>
-            ))}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
+        {[
+          { label: 'Ритм', value: 'Синусовый', status: 'normal' },
+          { label: 'ЭОС', value: 'Нормальная', status: 'normal' },
+          { label: 'ГЛЖ', value: 'Пограничная', status: 'abnormal' },
+        ].map((s) => (
+          <div key={s.label} className="bg-white rounded-lg px-3 py-2.5 border border-purple-100 flex items-center justify-between gap-2">
+            <div>
+              <p className="text-[10px] text-gray-500">{s.label}</p>
+              <p className="text-xs font-medium text-gray-900">{s.value}</p>
+            </div>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap ${s.status === 'normal' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+              {s.status === 'normal' ? 'норма' : 'отклонение'}
+            </span>
           </div>
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          <div className="bg-gray-50 rounded-lg p-2.5 text-center">
-            <p className="text-[10px] text-gray-400 mb-0.5">QRS</p>
-            <p className="text-base font-semibold text-gray-900">94 <span className="text-xs font-normal text-gray-400">мс</span></p>
+        ))}
+      </div>
+      <p className="text-[10px] font-medium text-gray-500 mb-1.5">Критерии ГЛЖ</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {[
+          { label: 'Соколов-Лайон', value: '2.81 мВ', status: 'negative', threshold: '< 3.5 мВ' },
+          { label: 'Корнелл', value: '1.92 мВ', status: 'negative', threshold: '< 2.8 мВ' },
+          { label: 'Пегуэро', value: '2.45 мВ', status: 'positive', threshold: '\u2265 2.3 мВ' },
+        ].map((it) => (
+          <div key={it.label} className="bg-white rounded-lg px-3 py-2.5 border border-purple-100">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-gray-900">{it.label}: {it.value}</p>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap ${it.status === 'negative' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                {it.status === 'negative' ? 'отрицательный' : 'положительный'}
+              </span>
+            </div>
+            <p className="text-[10px] text-gray-400 mt-0.5">{it.threshold}</p>
           </div>
-          <div className="bg-gray-50 rounded-lg p-2.5 text-center">
-            <p className="text-[10px] text-gray-400 mb-0.5">ЧСС</p>
-            <p className="text-base font-semibold text-gray-900">72 <span className="text-xs font-normal text-gray-400">уд/мин</span></p>
-          </div>
-          <div className="bg-gray-50 rounded-lg p-2.5 text-center">
-            <p className="text-[10px] text-gray-400 mb-0.5">Ось</p>
-            <p className="text-base font-semibold text-gray-900">+48<span className="text-xs font-normal text-gray-400">°</span></p>
-          </div>
-        </div>
-        <div>
-          <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Индексы ГЛЖ</p>
-          <div className="space-y-1.5">
-            {[
-              { name: 'Соколов-Лайон', val: '2.81 мВ', ok: true, thr: '< 3.5' },
-              { name: 'Корнелл', val: '1.92 мВ', ok: true, thr: '< 2.8' },
-              { name: 'Пегуэро', val: '2.45 мВ', ok: false, thr: '≥ 2.3' },
-            ].map((idx) => (
-              <div key={idx.name} className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">{idx.name}</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-gray-900">{idx.val}</span>
-                  <span className={`text-xs px-1.5 py-0.5 rounded ${idx.ok ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {idx.thr}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        ))}
       </div>
     </div>
   );
@@ -319,8 +291,60 @@ export function Landing() {
         </div>
       </section>
 
-      {/* CTA */}
+      {/* Pricing */}
       <section className="py-16 sm:py-20 px-4 sm:px-6 bg-gray-50">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center mb-12">
+            Стоимость
+          </h2>
+          <div className="max-w-sm mx-auto">
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+              <div className="p-6 sm:p-8 text-center">
+                <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">Подписка</p>
+                <div className="flex items-baseline justify-center gap-1 mb-2">
+                  <span className="text-4xl sm:text-5xl font-bold text-gray-900">1 990</span>
+                  <span className="text-lg text-gray-500">&#8381;/мес</span>
+                </div>
+                <p className="text-sm text-gray-500 mb-6">
+                  Доступ к информационно-справочному сервису анализа ЭКГ на 1 месяц
+                </p>
+                <ul className="text-sm text-gray-600 space-y-3 text-left mb-8">
+                  <li className="flex items-start gap-2.5">
+                    <svg className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                    </svg>
+                    Безлимитные анализы ЭКГ
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <svg className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                    </svg>
+                    Справочный чат-бот по кардиологии
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <svg className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                    </svg>
+                    История всех анализов
+                  </li>
+                </ul>
+                <Link
+                  to={ROUTES.REGISTER}
+                  className="block w-full px-6 py-3 text-base font-medium text-white bg-rose-600 hover:bg-rose-700 active:scale-95 rounded-xl transition-all duration-150 shadow-lg shadow-rose-200"
+                >
+                  Попробовать бесплатно
+                </Link>
+                <p className="mt-3 text-xs text-gray-400">
+                  2 бесплатных анализа в день без подписки
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-16 sm:py-20 px-4 sm:px-6">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">
             Начните прямо сейчас

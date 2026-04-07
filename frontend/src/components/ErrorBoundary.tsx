@@ -3,6 +3,8 @@ import type { ErrorInfo, ReactNode } from 'react';
 
 interface Props {
   children: ReactNode;
+  /** Change this value (e.g. current pathname) to auto-reset the boundary */
+  resetKey?: string;
 }
 
 interface State {
@@ -14,6 +16,12 @@ export class ErrorBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(): State {
     return { hasError: true };
+  }
+
+  componentDidUpdate(prevProps: Props) {
+    if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false });
+    }
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
@@ -29,15 +37,23 @@ export class ErrorBoundary extends Component<Props, State> {
             <p className="text-gray-500 mb-6">
               Произошла непредвиденная ошибка. Попробуйте перезагрузить страницу.
             </p>
-            <button
-              onClick={() => {
-                this.setState({ hasError: false });
-                window.location.href = '/';
-              }}
-              className="px-4 py-2 bg-rose-600 text-white rounded-md hover:bg-rose-700"
-            >
-              На главную
-            </button>
+            <div className="flex items-center justify-center gap-3">
+              <button
+                onClick={() => this.setState({ hasError: false })}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+              >
+                Попробовать снова
+              </button>
+              <button
+                onClick={() => {
+                  this.setState({ hasError: false });
+                  window.location.href = '/';
+                }}
+                className="px-4 py-2 bg-rose-600 text-white rounded-md hover:bg-rose-700"
+              >
+                На главную
+              </button>
+            </div>
           </div>
         </div>
       );
