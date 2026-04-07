@@ -14,6 +14,7 @@ import type {
 } from '@/types';
 import { API_BASE_URL, API_TIMEOUT, API_TIMEOUT_UPLOAD, API_TIMEOUT_RAG, REFRESH_TOKEN_KEY, AUTH_ERROR_KEY } from '@/config';
 import { useAuthStore } from '@/store/auth';
+import { queryClient } from '@/services/queryClient';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -122,6 +123,7 @@ api.interceptors.response.use(
         sessionStorage.setItem(AUTH_ERROR_KEY, reason);
 
         useAuthStore.getState().logout();
+        queryClient.clear();
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

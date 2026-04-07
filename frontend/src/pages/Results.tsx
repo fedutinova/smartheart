@@ -37,6 +37,7 @@ export function Results() {
     queryFn: () => requestAPI.getRequest(id!),
     enabled: !!id,
     refetchInterval: (query) => {
+      if (query.state.fetchStatus === 'paused' || query.state.status === 'error') return false;
       const data = query.state.data;
       if (!data) return false;
       if (data.status === 'pending' || data.status === 'processing') return 2000;

@@ -100,7 +100,7 @@ func (r *Repository) GetRequestsByUserID(ctx context.Context, userID uuid.UUID, 
 		SELECT id, user_id, text_query, status, created_at, updated_at,
 		       ecg_age, ecg_sex, ecg_paper_speed_mms, ecg_mm_per_mv_limb, ecg_mm_per_mv_chest
 		FROM requests
-		WHERE user_id = $1
+		WHERE user_id = $1 AND ecg_paper_speed_mms IS NOT NULL
 		ORDER BY created_at DESC
 		LIMIT $2 OFFSET $3
 	`
@@ -208,7 +208,7 @@ func (r *Repository) GetRecentRequestsWithResponses(ctx context.Context, userID 
 // CountRequestsByUserID returns the total number of requests for a user.
 func (r *Repository) CountRequestsByUserID(ctx context.Context, userID uuid.UUID) (int, error) {
 	var count int
-	err := r.querier.QueryRow(ctx, `SELECT COUNT(*) FROM requests WHERE user_id = $1`, userID).Scan(&count)
+	err := r.querier.QueryRow(ctx, `SELECT COUNT(*) FROM requests WHERE user_id = $1 AND ecg_paper_speed_mms IS NOT NULL`, userID).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("failed to count requests: %w", err)
 	}

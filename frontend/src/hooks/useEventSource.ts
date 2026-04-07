@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { API_BASE_URL, JWT_STORAGE_KEY } from '@/config';
+import { API_BASE_URL } from '@/config';
+import { useAuthStore } from '@/store/auth';
 
 interface SSEEvent {
   type: string;
@@ -7,40 +8,63 @@ interface SSEEvent {
   status: string;
 }
 
+const MAX_RECONNECT_DELAY = 30_000;
+
 /**
  * Subscribes to the SSE event stream. Calls onEvent for each received event.
- * Falls back silently on connection error (polling remains as backup).
- *
- * Uses a stable ref for the callback so the SSE connection is not
- * torn down / recreated on every render.
+ * Reconnects with exponential backoff on connection errors.
+ * Re-establishes the connection when the access token changes.
  */
 export function useEventSource(onEvent: (evt: SSEEvent) => void) {
   const callbackRef = useRef(onEvent);
   callbackRef.current = onEvent;
 
+  const token = useAuthStore((s) => s.accessToken);
+
   useEffect(() => {
-    const token = localStorage.getItem(JWT_STORAGE_KEY);
     if (!token) return;
 
-    // EventSource doesn't support custom headers, so pass token as query param.
-    const url = `${API_BASE_URL}/v1/events?token=${encodeURIComponent(token)}`;
-    const es = new EventSource(url);
+    let es: EventSource | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let attempt = 0;
+    let closed = false;
 
-    es.onmessage = (e) => {
-      try {
-        const evt: SSEEvent = JSON.parse(e.data);
-        callbackRef.current(evt);
-      } catch {
-        // Ignore malformed events
-      }
+    function connect() {
+      if (closed) return;
+
+      const url = `${API_BASE_URL}/v1/events?token=${encodeURIComponent(token!)}`;
+      es = new EventSource(url);
+
+      es.onopen = () => {
+        attempt = 0;
+      };
+
+      es.onmessage = (e) => {
+        try {
+          const evt: SSEEvent = JSON.parse(e.data);
+          callbackRef.current(evt);
+        } catch {
+          // Ignore malformed events
+        }
+      };
+
+      es.onerror = () => {
+        es?.close();
+        es = null;
+        if (closed) return;
+
+        const delay = Math.min(1000 * 2 ** attempt, MAX_RECONNECT_DELAY);
+        attempt++;
+        reconnectTimer = setTimeout(connect, delay);
+      };
+    }
+
+    connect();
+
+    return () => {
+      closed = true;
+      es?.close();
+      if (reconnectTimer) clearTimeout(reconnectTimer);
     };
-
-    es.onerror = () => {
-      es.close();
-    };
-
-    return () => es.close();
-    // Only reconnect when token changes, not on every callback change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [token]);
 }
