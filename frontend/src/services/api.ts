@@ -74,8 +74,11 @@ api.interceptors.response.use(
     const originalRequest = error.config;
     if (!originalRequest) return Promise.reject(error);
 
-    // If 401 and not already a refresh request
-    if (error.response?.status === 401 && !originalRequest.url?.includes('/v1/auth/refresh')) {
+    // Skip token refresh for auth endpoints (401 = bad credentials, not expired token)
+    // and for requests already retried once (prevents infinite loops).
+    const isAuthEndpoint = originalRequest.url?.startsWith('/v1/auth/');
+    const alreadyRetried = (originalRequest as unknown as Record<string, unknown>)._retried;
+    if (error.response?.status === 401 && !isAuthEndpoint && !alreadyRetried) {
       const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
 
       if (!refreshToken) {
@@ -89,6 +92,7 @@ api.interceptors.response.use(
           failedQueue.push({
             resolve: (token: string) => {
               originalRequest.headers.Authorization = `Bearer ${token}`;
+              (originalRequest as unknown as Record<string, unknown>)._retried = true;
               resolve(api(originalRequest));
             },
             reject,
@@ -111,6 +115,7 @@ api.interceptors.response.use(
         processQueue(null, access_token);
 
         originalRequest.headers.Authorization = `Bearer ${access_token}`;
+        (originalRequest as unknown as Record<string, unknown>)._retried = true;
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
