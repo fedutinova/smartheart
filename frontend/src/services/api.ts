@@ -38,7 +38,7 @@ axiosRetry(api, {
   },
 });
 
-let isRefreshing = false;
+let refreshPromise: Promise<string> | null = null;
 let failedQueue: Array<{
   resolve: (token: string) => void;
   reject: (error: unknown) => void;
@@ -54,6 +54,43 @@ const processQueue = (error: unknown, token: string | null = null) => {
   });
   failedQueue = [];
 };
+
+/**
+ * Refresh the access token. Deduplicates concurrent calls —
+ * if a refresh is already in-flight, returns the same promise.
+ * Used by both the axios interceptor and useEventSource.
+ */
+export function ensureFreshToken(): Promise<string> {
+  if (refreshPromise) return refreshPromise;
+
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  if (!refreshToken) {
+    useAuthStore.getState().logout();
+    return Promise.reject(new Error('no refresh token'));
+  }
+
+  refreshPromise = axios
+    .post<TokenPair>(`${API_BASE_URL}/v1/auth/refresh`, { refresh_token: refreshToken })
+    .then(({ data }) => {
+      useAuthStore.getState().login(data);
+      return data.access_token;
+    })
+    .catch((err) => {
+      const isNetwork = err instanceof AxiosError && !err.response;
+      const reason = isNetwork
+        ? 'Не удалось связаться с сервером. Проверьте подключение к интернету.'
+        : 'Время сессии истекло, войдите снова';
+      sessionStorage.setItem(AUTH_ERROR_KEY, reason);
+      useAuthStore.getState().logout();
+      queryClient.clear();
+      throw err;
+    })
+    .finally(() => {
+      refreshPromise = null;
+    });
+
+  return refreshPromise;
+}
 
 // Request interceptor для добавления токена
 api.interceptors.request.use(
@@ -79,59 +116,15 @@ api.interceptors.response.use(
     const isAuthEndpoint = originalRequest.url?.startsWith('/v1/auth/');
     const alreadyRetried = (originalRequest as unknown as Record<string, unknown>)._retried;
     if (error.response?.status === 401 && !isAuthEndpoint && !alreadyRetried) {
-      const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-
-      if (!refreshToken) {
-        useAuthStore.getState().logout();
-        return Promise.reject(error);
-      }
-
-      if (isRefreshing) {
-        // Queue this request until refresh completes
-        return new Promise((resolve, reject) => {
-          failedQueue.push({
-            resolve: (token: string) => {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
-              (originalRequest as unknown as Record<string, unknown>)._retried = true;
-              resolve(api(originalRequest));
-            },
-            reject,
-          });
-        });
-      }
-
-      isRefreshing = true;
-
       try {
-        const response = await axios.post<TokenPair>(
-          `${API_BASE_URL}/v1/auth/refresh`,
-          { refresh_token: refreshToken }
-        );
-        const { access_token, refresh_token } = response.data;
-
-        // Sync both localStorage and Zustand store
-        useAuthStore.getState().login({ access_token, refresh_token });
-
-        processQueue(null, access_token);
-
-        originalRequest.headers.Authorization = `Bearer ${access_token}`;
+        const newToken = await ensureFreshToken();
+        processQueue(null, newToken);
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
         (originalRequest as unknown as Record<string, unknown>)._retried = true;
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-
-        // Determine user-friendly error message
-        const isNetwork = refreshError instanceof AxiosError && !refreshError.response;
-        const reason = isNetwork
-          ? 'Не удалось связаться с сервером. Проверьте подключение к интернету.'
-          : 'Время сессии истекло, войдите снова';
-        sessionStorage.setItem(AUTH_ERROR_KEY, reason);
-
-        useAuthStore.getState().logout();
-        queryClient.clear();
         return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
       }
     }
 
