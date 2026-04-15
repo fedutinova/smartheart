@@ -93,9 +93,22 @@ export function Analyze() {
       image.setError(mode === 'camera' ? 'Сделайте фото и обрежьте изображение' : 'Выберите и обрежьте изображение');
       return;
     }
-    if (mode === 'url' && !imageUrl.trim()) {
-      image.setError('Введите URL изображения');
-      return;
+    if (mode === 'url') {
+      const trimmed = imageUrl.trim();
+      if (!trimmed) {
+        image.setError('Введите URL изображения');
+        return;
+      }
+      try {
+        const parsed = new URL(trimmed);
+        if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+          image.setError('URL должен начинаться с https:// или http://');
+          return;
+        }
+      } catch {
+        image.setError('Некорректный формат URL');
+        return;
+      }
     }
     image.setError('');
     mutation.mutate();

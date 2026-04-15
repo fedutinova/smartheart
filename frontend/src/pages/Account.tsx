@@ -1,22 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
-import { profileAPI, authAPI } from '@/services/api';
-import { useAuthStore } from '@/store/auth';
+import { profileAPI } from '@/services/api';
 import { useQuota } from '@/hooks/useQuota';
+import { useLogout } from '@/hooks/useLogout';
 import { PaymentModal } from '@/components/PaymentModal';
-import { ROUTES } from '@/config';
 import { useState } from 'react';
-import { formatPrice } from '@/utils/format';
+import { formatPrice, formatDateLong } from '@/utils/format';
 import { AccountSkeleton } from '@/components/Skeleton';
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-}
 
 export function Account() {
   const { data: profile, isLoading: profileLoading } = useQuery({
@@ -25,14 +15,7 @@ export function Account() {
   });
   const { quota, isLoading: quotaLoading } = useQuota();
   const [showPayment, setShowPayment] = useState(false);
-  const navigate = useNavigate();
-  const { logout } = useAuthStore();
-
-  const handleLogout = async () => {
-    try { await authAPI.logout(); } catch { /* ignore */ }
-    logout();
-    navigate(ROUTES.LOGIN);
-  };
+  const handleLogout = useLogout();
 
   const isLoading = profileLoading || quotaLoading;
   const hasActiveSub = quota?.subscription_expires_at && new Date(quota.subscription_expires_at) > new Date();
@@ -72,7 +55,7 @@ export function Account() {
               </div>
               <div>
                 <p className="text-xs text-gray-400">Дата регистрации</p>
-                <p className="text-sm text-gray-900 mt-0.5">{formatDate(profile.created_at)}</p>
+                <p className="text-sm text-gray-900 mt-0.5">{formatDateLong(profile.created_at)}</p>
               </div>
             </div>
           </div>
@@ -87,7 +70,7 @@ export function Account() {
                 <div>
                   <p className="text-sm font-medium text-green-700">Активна</p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    до {formatDate(quota.subscription_expires_at!)}, безлимитные анализы
+                    до {formatDateLong(quota.subscription_expires_at!)}, безлимитные анализы
                   </p>
                 </div>
                 <span className="px-3 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">

@@ -1,16 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/auth';
 import { ROUTES } from '@/config';
-import { authAPI, profileAPI } from '@/services/api';
+import { profileAPI } from '@/services/api';
+import { useLogout } from '@/hooks/useLogout';
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, logout } = useAuthStore();
-  const navigate = useNavigate();
+  const { isAuthenticated } = useAuthStore();
   const location = useLocation();
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+  const handleLogout = useLogout();
 
   const { data: profile } = useQuery({
     queryKey: ['profile'],
@@ -34,16 +35,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setProfileOpen(false);
   }, [location.pathname]);
-
-  const handleLogout = async () => {
-    try {
-      await authAPI.logout();
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-    logout();
-    navigate(ROUTES.LOGIN);
-  };
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -203,6 +194,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <Link
                 key={tab.to}
                 to={tab.to}
+                aria-label={tab.label}
                 className={`flex flex-col items-center justify-center flex-1 py-1 active:scale-90 transition-all duration-150 ${
                   active ? 'text-rose-600' : 'text-gray-400'
                 }`}

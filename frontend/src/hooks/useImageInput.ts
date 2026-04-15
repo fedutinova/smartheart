@@ -23,25 +23,44 @@ export interface UseImageInputReturn extends ImageInputState, ImageInputActions 
   error: string;
 }
 
-function compressImage(file: File): Promise<string> {
-  const MAX_PIXELS = 4096;
+const MAX_IMAGE_DIM = 4096;
+const COMPRESS_QUALITY = 0.85;
+const ROTATE_QUALITY = 0.92;
+
+function getContext2D(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Браузер не смог создать canvas-контекст. Попробуйте уменьшить изображение.');
+  return ctx;
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (b) => (b ? resolve(b) : reject(new Error('Не удалось сконвертировать изображение'))),
+      type,
+      quality,
+    );
+  });
+}
+
+function compressImage(file: File): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const objectUrl = URL.createObjectURL(file);
     img.onload = () => {
       URL.revokeObjectURL(objectUrl);
       let { width, height } = img;
-      if (width > MAX_PIXELS || height > MAX_PIXELS) {
-        const scale = MAX_PIXELS / Math.max(width, height);
+      if (width > MAX_IMAGE_DIM || height > MAX_IMAGE_DIM) {
+        const scale = MAX_IMAGE_DIM / Math.max(width, height);
         width = Math.round(width * scale);
         height = Math.round(height * scale);
       }
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
-      const ctx = canvas.getContext('2d')!;
+      const ctx = getContext2D(canvas);
       ctx.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL('image/jpeg', 0.85));
+      canvasToBlob(canvas, 'image/jpeg', COMPRESS_QUALITY).then(resolve, reject);
     };
     img.onerror = () => {
       URL.revokeObjectURL(objectUrl);
@@ -80,6 +99,12 @@ export function useImageInput(): UseImageInputReturn {
   }, []);
 
   const handleFileSelect = useCallback(async (file: File) => {
+    // Revoke previous object URLs to avoid memory leaks on re-select
+    if (previewSrcRef.current) URL.revokeObjectURL(previewSrcRef.current);
+    if (croppedPreviewRef.current && croppedPreviewRef.current !== previewSrcRef.current) {
+      URL.revokeObjectURL(croppedPreviewRef.current);
+    }
+
     if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
       setError('Поддерживаются только изображения и PDF');
       return;
@@ -87,12 +112,12 @@ export function useImageInput(): UseImageInputReturn {
     if (file.size > 10 * 1024 * 1024) {
       if (file.type.startsWith('image/')) {
         try {
-          const compressedUrl = await compressImage(file);
+          const blob = await compressImage(file);
+          const url = URL.createObjectURL(blob);
           setError('');
-          setPreviewSrc(compressedUrl);
-          const blob = await srcToBlob(compressedUrl);
+          setPreviewSrc(url);
           setCroppedBlob(blob);
-          setCroppedPreview(compressedUrl);
+          setCroppedPreview(url);
           setStep('ready');
         } catch {
           setError('Не удалось сжать изображение');
@@ -124,7 +149,7 @@ export function useImageInput(): UseImageInputReturn {
   const handleCropCancel = useCallback(() => {
     if (previewSrc) {
       setCroppedPreview(previewSrc);
-      srcToBlob(previewSrc).then(setCroppedBlob);
+      srcToBlob(previewSrc).then(setCroppedBlob).catch(() => {});
     }
     setStep('ready');
   }, [previewSrc]);
@@ -139,13 +164,11 @@ export function useImageInput(): UseImageInputReturn {
     const canvas = document.createElement('canvas');
     canvas.width = img.height;
     canvas.height = img.width;
-    const ctx = canvas.getContext('2d')!;
+    const ctx = getContext2D(canvas);
     ctx.translate(canvas.width / 2, canvas.height / 2);
     ctx.rotate(Math.PI / 2);
     ctx.drawImage(img, -img.width / 2, -img.height / 2);
-    const blob = await new Promise<Blob>((resolve) =>
-      canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.92),
-    );
+    const blob = await canvasToBlob(canvas, 'image/jpeg', ROTATE_QUALITY);
     if (croppedPreview) URL.revokeObjectURL(croppedPreview);
     setCroppedBlob(blob);
     setCroppedPreview(URL.createObjectURL(blob));
