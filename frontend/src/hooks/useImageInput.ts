@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 
 export type ImageStep = 'select' | 'crop' | 'ready';
 
@@ -63,14 +63,20 @@ export function useImageInput(): UseImageInputReturn {
   const [croppedPreview, setCroppedPreview] = useState<string | null>(null);
   const [error, setError] = useState('');
 
-  // Cleanup Object URLs on unmount
+  // Track current object URLs in refs so the unmount cleanup always
+  // revokes the latest values, not the stale ones from the first render.
+  const previewSrcRef = useRef(previewSrc);
+  const croppedPreviewRef = useRef(croppedPreview);
+  previewSrcRef.current = previewSrc;
+  croppedPreviewRef.current = croppedPreview;
+
   useEffect(() => {
     return () => {
-      if (previewSrc) URL.revokeObjectURL(previewSrc);
-      if (croppedPreview && croppedPreview !== previewSrc) URL.revokeObjectURL(croppedPreview);
+      if (previewSrcRef.current) URL.revokeObjectURL(previewSrcRef.current);
+      if (croppedPreviewRef.current && croppedPreviewRef.current !== previewSrcRef.current) {
+        URL.revokeObjectURL(croppedPreviewRef.current);
+      }
     };
-    // Only run on unmount — intentionally omit deps
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleFileSelect = useCallback(async (file: File) => {
@@ -106,6 +112,9 @@ export function useImageInput(): UseImageInputReturn {
   }, []);
 
   const handleCropComplete = useCallback((blob: Blob) => {
+    if (croppedPreviewRef.current && croppedPreviewRef.current !== previewSrcRef.current) {
+      URL.revokeObjectURL(croppedPreviewRef.current);
+    }
     setCroppedBlob(blob);
     const url = URL.createObjectURL(blob);
     setCroppedPreview(url);

@@ -39,21 +39,6 @@ axiosRetry(api, {
 });
 
 let refreshPromise: Promise<string> | null = null;
-let failedQueue: Array<{
-  resolve: (token: string) => void;
-  reject: (error: unknown) => void;
-}> = [];
-
-const processQueue = (error: unknown, token: string | null = null) => {
-  failedQueue.forEach((prom) => {
-    if (token) {
-      prom.resolve(token);
-    } else {
-      prom.reject(error);
-    }
-  });
-  failedQueue = [];
-};
 
 /**
  * Refresh the access token via the httpOnly refresh-token cookie.
@@ -124,12 +109,10 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !isAuthEndpoint && !alreadyRetried) {
       try {
         const newToken = await ensureFreshToken();
-        processQueue(null, newToken);
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         (originalRequest as unknown as Record<string, unknown>)._retried = true;
         return api(originalRequest);
       } catch (refreshError) {
-        processQueue(refreshError, null);
         return Promise.reject(refreshError);
       }
     }

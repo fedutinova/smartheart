@@ -35,7 +35,7 @@ export function KnowledgeBase() {
   // Persist chat history across refresh
   const [messages, setMessages] = useSessionState<Message[]>('kb_messages', []);
   const [input, setInput, clearDraft] = useDraft('kb_draft');
-  const [isLoading, setIsLoading] = useSessionState<boolean>('kb_loading', false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useSessionState<string | null>('kb_error', null);
   // Optimistic feedback: update UI immediately, revert on failure
   const [feedbackGiven, setFeedbackGiven] = useSessionState<Record<number, -1 | 1>>('kb_feedback', {});

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Navigate, Link } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
 import { authAPI } from '@/services/api';
 import { useAuthStore } from '@/store/auth';
 import { ROUTES } from '@/config';
@@ -16,10 +17,28 @@ export function Register() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const navigate = useNavigate();
   const { isAuthenticated, isInitializing } = useAuthStore();
+
+  const registerMutation = useMutation({
+    mutationFn: () => authAPI.register({ username, email, password }),
+    onSuccess: () => {
+      navigate(ROUTES.LOGIN);
+    },
+    onError: (err: unknown) => {
+      const { status, message } = getApiError(err);
+      if ((status === 400 || status === 409) && message.includes('already exists')) {
+        setError('Пользователь с таким email или именем уже существует');
+      } else if (status === 429) {
+        setError('Слишком много попыток. Попробуйте позже');
+      } else if (!status) {
+        setError('Не удалось связаться с сервером. Проверьте подключение к интернету');
+      } else {
+        setError(message || 'Ошибка регистрации');
+      }
+    },
+  });
 
   if (isInitializing) {
     return null;
@@ -29,9 +48,10 @@ export function Register() {
     return <Navigate to={ROUTES.DASHBOARD} replace />;
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    registerMutation.reset();
 
     if (password !== confirmPassword) {
       setError('Пароли не совпадают');
@@ -43,25 +63,7 @@ export function Register() {
       return;
     }
 
-    setLoading(true);
-
-    try {
-      await authAPI.register({ username, email, password });
-      navigate(ROUTES.LOGIN);
-    } catch (err: unknown) {
-      const { status, message } = getApiError(err);
-      if ((status === 400 || status === 409) && message.includes('already exists')) {
-        setError('Пользователь с таким email или именем уже существует');
-      } else if (status === 429) {
-        setError('Слишком много попыток. Попробуйте позже');
-      } else if (!status) {
-        setError('Не удалось связаться с сервером. Проверьте подключение к интернету');
-      } else {
-        setError(message || 'Ошибка регистрации');
-      }
-    } finally {
-      setLoading(false);
-    }
+    registerMutation.mutate();
   };
 
   return (
@@ -233,10 +235,10 @@ export function Register() {
             <div>
               <button
                 type="submit"
-                disabled={loading || !agreed}
+                disabled={registerMutation.isPending || !agreed}
                 className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-rose-600 hover:bg-rose-700 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 disabled:opacity-50 transition-all duration-150"
               >
-                {loading ? 'Регистрация...' : 'Зарегистрироваться'}
+                {registerMutation.isPending ? 'Регистрация...' : 'Зарегистрироваться'}
               </button>
             </div>
           </form>

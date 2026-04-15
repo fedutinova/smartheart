@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Navigate, Link } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
 import { authAPI } from '@/services/api';
 import { useAuthStore } from '@/store/auth';
 import { ROUTES, AUTH_ERROR_KEY } from '@/config';
@@ -12,7 +13,6 @@ export function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [authNotice, setAuthNotice] = useState('');
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { setAccessToken, isAuthenticated, isInitializing } = useAuthStore();
 
@@ -25,25 +25,13 @@ export function Login() {
     }
   }, []);
 
-  if (isInitializing) {
-    return null;
-  }
-
-  if (isAuthenticated) {
-    return <Navigate to={ROUTES.DASHBOARD} replace />;
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setAuthNotice('');
-    setLoading(true);
-
-    try {
-      const { access_token } = await authAPI.login({ email, password });
+  const loginMutation = useMutation({
+    mutationFn: () => authAPI.login({ email, password }),
+    onSuccess: ({ access_token }) => {
       setAccessToken(access_token);
       navigate(ROUTES.DASHBOARD);
-    } catch (err: unknown) {
+    },
+    onError: (err: unknown) => {
       const { status, message } = getApiError(err);
       if (status === 401) {
         setError('Неверный email или пароль');
@@ -54,9 +42,23 @@ export function Login() {
       } else {
         setError(message || 'Ошибка входа');
       }
-    } finally {
-      setLoading(false);
-    }
+    },
+  });
+
+  if (isInitializing) {
+    return null;
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to={ROUTES.DASHBOARD} replace />;
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setAuthNotice('');
+    loginMutation.reset();
+    loginMutation.mutate();
   };
 
   return (
@@ -150,10 +152,10 @@ export function Login() {
             <div>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loginMutation.isPending}
                 className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-rose-600 hover:bg-rose-700 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 disabled:opacity-50 transition-all duration-150"
               >
-                {loading ? 'Вход...' : 'Войти'}
+                {loginMutation.isPending ? 'Вход...' : 'Войти'}
               </button>
             </div>
           </form>
