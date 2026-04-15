@@ -145,7 +145,11 @@ const STEPS = [
 ];
 
 export function Landing() {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, isInitializing } = useAuthStore();
+
+  if (isInitializing) {
+    return null;
+  }
 
   if (isAuthenticated) {
     return <Navigate to={ROUTES.DASHBOARD} replace />;

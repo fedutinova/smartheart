@@ -5,8 +5,7 @@ import { profileAPI, authAPI } from '@/services/api';
 import { useAuthStore } from '@/store/auth';
 import { useQuota } from '@/hooks/useQuota';
 import { PaymentModal } from '@/components/PaymentModal';
-import { ROUTES, REFRESH_TOKEN_KEY } from '@/config';
-import { storage } from '@/utils/storage';
+import { ROUTES } from '@/config';
 import { useState } from 'react';
 import { formatPrice } from '@/utils/format';
 import { AccountSkeleton } from '@/components/Skeleton';
@@ -30,10 +29,7 @@ export function Account() {
   const { logout } = useAuthStore();
 
   const handleLogout = async () => {
-    const refreshToken = storage.get(REFRESH_TOKEN_KEY);
-    if (refreshToken) {
-      try { await authAPI.logout(refreshToken); } catch { /* ignore */ }
-    }
+    try { await authAPI.logout(); } catch { /* ignore */ }
     logout();
     navigate(ROUTES.LOGIN);
   };

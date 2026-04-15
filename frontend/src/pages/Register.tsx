@@ -19,7 +19,11 @@ export function Register() {
   const [loading, setLoading] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, isInitializing } = useAuthStore();
+
+  if (isInitializing) {
+    return null;
+  }
 
   if (isAuthenticated) {
     return <Navigate to={ROUTES.DASHBOARD} replace />;

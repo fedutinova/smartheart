@@ -410,7 +410,7 @@ func TestRefresh_TooManyAttempts(t *testing.T) {
 }
 
 func TestRefresh_InvalidToken(t *testing.T) {
-	svc, _, sessions := newAuthService(t)
+	svc, repo, sessions := newAuthService(t)
 	ctx := context.Background()
 
 	refreshToken := "invalid-token"
@@ -423,6 +423,47 @@ func TestRefresh_InvalidToken(t *testing.T) {
 	sessions.EXPECT().
 		GetRefreshTokenUserID(mock.Anything, tokenHash).
 		Return("", errors.New("not found"))
+
+	// Token was never issued — no reuse detected
+	repo.EXPECT().
+		GetRevokedRefreshTokenOwner(mock.Anything, tokenHash).
+		Return(uuid.Nil, apperr.ErrNotFound)
+
+	_, err := svc.Refresh(ctx, refreshToken)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, apperr.ErrInvalidToken)
+}
+
+func TestRefresh_TokenReuseRevokesAllUserTokens(t *testing.T) {
+	svc, repo, sessions := newAuthService(t)
+	ctx := context.Background()
+
+	refreshToken := "stolen-token"
+	tokenHash := auth.HashToken(refreshToken)
+	ownerID := uuid.New()
+
+	sessions.EXPECT().
+		IncrLoginAttempts(mock.Anything, "refresh:"+tokenHash, refreshWindow).
+		Return(int64(1), nil)
+
+	// Token already consumed (rotated) — not in Redis
+	sessions.EXPECT().
+		GetRefreshTokenUserID(mock.Anything, tokenHash).
+		Return("", errors.New("not found"))
+
+	// DB shows this token was previously revoked → reuse attack
+	repo.EXPECT().
+		GetRevokedRefreshTokenOwner(mock.Anything, tokenHash).
+		Return(ownerID, nil)
+
+	// All user tokens must be revoked
+	sessions.EXPECT().
+		RevokeAllUserTokens(mock.Anything, ownerID.String()).
+		Return(nil)
+
+	repo.EXPECT().
+		RevokeAllUserRefreshTokens(mock.Anything, ownerID).
+		Return(nil)
 
 	_, err := svc.Refresh(ctx, refreshToken)
 	require.Error(t, err)

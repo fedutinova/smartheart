@@ -71,3 +71,38 @@ func (r *Repository) RevokeRefreshToken(ctx context.Context, tokenHash string) e
 	}
 	return nil
 }
+
+// GetRevokedRefreshTokenOwner returns the owning user ID of a refresh token
+// that has already been revoked. Returns apperr.ErrNotFound if no such
+// revoked token exists (i.e. the token was never issued or is still active).
+func (r *Repository) GetRevokedRefreshTokenOwner(ctx context.Context, tokenHash string) (uuid.UUID, error) {
+	query := `
+		SELECT user_id FROM refresh_tokens
+		WHERE token_hash = $1 AND revoked_at IS NOT NULL
+	`
+
+	var userID uuid.UUID
+	err := r.querier.QueryRow(ctx, query, tokenHash).Scan(&userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return uuid.Nil, apperr.ErrNotFound
+		}
+		return uuid.Nil, fmt.Errorf("failed to get revoked token owner: %w", err)
+	}
+	return userID, nil
+}
+
+// RevokeAllUserRefreshTokens revokes all refresh tokens for the given user.
+func (r *Repository) RevokeAllUserRefreshTokens(ctx context.Context, userID uuid.UUID) error {
+	query := `
+		UPDATE refresh_tokens
+		SET revoked_at = NOW()
+		WHERE user_id = $1 AND revoked_at IS NULL
+	`
+
+	_, err := r.querier.Exec(ctx, query, userID)
+	if err != nil {
+		return fmt.Errorf("failed to revoke all user refresh tokens: %w", err)
+	}
+	return nil
+}

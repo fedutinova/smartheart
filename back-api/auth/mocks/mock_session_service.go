@@ -344,6 +344,53 @@ func (_c *MockSessionService_ResetLoginAttempts_Call) RunAndReturn(run func(cont
 	return _c
 }
 
+// RevokeAllUserTokens provides a mock function with given fields: ctx, userID
+func (_m *MockSessionService) RevokeAllUserTokens(ctx context.Context, userID string) error {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RevokeAllUserTokens")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSessionService_RevokeAllUserTokens_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RevokeAllUserTokens'
+type MockSessionService_RevokeAllUserTokens_Call struct {
+	*mock.Call
+}
+
+// RevokeAllUserTokens is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID string
+func (_e *MockSessionService_Expecter) RevokeAllUserTokens(ctx interface{}, userID interface{}) *MockSessionService_RevokeAllUserTokens_Call {
+	return &MockSessionService_RevokeAllUserTokens_Call{Call: _e.mock.On("RevokeAllUserTokens", ctx, userID)}
+}
+
+func (_c *MockSessionService_RevokeAllUserTokens_Call) Run(run func(ctx context.Context, userID string)) *MockSessionService_RevokeAllUserTokens_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockSessionService_RevokeAllUserTokens_Call) Return(_a0 error) *MockSessionService_RevokeAllUserTokens_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSessionService_RevokeAllUserTokens_Call) RunAndReturn(run func(context.Context, string) error) *MockSessionService_RevokeAllUserTokens_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RevokeRefreshToken provides a mock function with given fields: ctx, tokenHash
 func (_m *MockSessionService) RevokeRefreshToken(ctx context.Context, tokenHash string) error {
 	ret := _m.Called(ctx, tokenHash)

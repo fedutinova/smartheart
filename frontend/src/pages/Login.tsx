@@ -14,7 +14,7 @@ export function Login() {
   const [authNotice, setAuthNotice] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { login, isAuthenticated } = useAuthStore();
+  const { setAccessToken, isAuthenticated, isInitializing } = useAuthStore();
 
   // Show auth error from redirect (expired session, network error, etc.)
   useEffect(() => {
@@ -24,6 +24,10 @@ export function Login() {
       sessionStorage.removeItem(AUTH_ERROR_KEY);
     }
   }, []);
+
+  if (isInitializing) {
+    return null;
+  }
 
   if (isAuthenticated) {
     return <Navigate to={ROUTES.DASHBOARD} replace />;
@@ -36,8 +40,8 @@ export function Login() {
     setLoading(true);
 
     try {
-      const tokens = await authAPI.login({ email, password });
-      login(tokens);
+      const { access_token } = await authAPI.login({ email, password });
+      setAccessToken(access_token);
       navigate(ROUTES.DASHBOARD);
     } catch (err: unknown) {
       const { status, message } = getApiError(err);

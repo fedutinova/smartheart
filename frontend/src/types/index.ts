@@ -24,11 +24,6 @@ export interface RegisterRequest {
   password: string;
 }
 
-export interface TokenPair {
-  access_token: string;
-  refresh_token: string;
-}
-
 export interface ECGAnalysisRequest {
   image_temp_url: string;
   notes?: string;

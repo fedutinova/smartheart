@@ -24,12 +24,10 @@ type loginRequest struct {
 	Password string `json:"password" validate:"required"`
 }
 
-type tokenRequest struct {
-	RefreshToken string `json:"refresh_token" validate:"required"`
-}
-
-type logoutRequest struct {
-	RefreshToken string `json:"refresh_token"`
+// accessTokenResponse is the JSON body returned by login/refresh.
+// The refresh token is no longer included — it travels as an httpOnly cookie.
+type accessTokenResponse struct {
+	AccessToken string `json:"access_token"`
 }
 
 // Register handles user registration.
@@ -68,35 +66,33 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, tokens)
+	auth.SetRefreshTokenCookie(w, tokens.RefreshToken, h.Config.JWT.TTLRefresh, h.Config.Cookie)
+	writeJSON(w, http.StatusOK, accessTokenResponse{AccessToken: tokens.AccessToken})
 }
 
 // Refresh handles token refresh.
+// The refresh token is read from the httpOnly cookie.
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
-
-	var req tokenRequest
-	if !decodeAndValidate(w, r, &req) {
+	refreshToken := auth.RefreshTokenFromCookie(r)
+	if refreshToken == "" {
+		writeError(w, http.StatusUnauthorized, "missing refresh token")
 		return
 	}
 
-	tokens, err := h.Service.Refresh(r.Context(), req.RefreshToken)
+	tokens, err := h.Service.Refresh(r.Context(), refreshToken)
 	if err != nil {
+		auth.ClearRefreshTokenCookie(w, h.Config.Cookie)
 		handleServiceError(w, err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, tokens)
+	auth.SetRefreshTokenCookie(w, tokens.RefreshToken, h.Config.JWT.TTLRefresh, h.Config.Cookie)
+	writeJSON(w, http.StatusOK, accessTokenResponse{AccessToken: tokens.AccessToken})
 }
 
 // Logout handles user logout.
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
-
-	var req logoutRequest
-	if !decodeAndValidate(w, r, &req) {
-		return
-	}
+	refreshToken := auth.RefreshTokenFromCookie(r)
 
 	// Extract access token from Authorization header
 	var accessToken string
@@ -105,8 +101,9 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	}
 	claims, _ := auth.FromContext(r.Context())
 
-	_ = h.Service.Logout(r.Context(), req.RefreshToken, accessToken, claims)
+	_ = h.Service.Logout(r.Context(), refreshToken, accessToken, claims)
 
+	auth.ClearRefreshTokenCookie(w, h.Config.Cookie)
 	writeJSON(w, http.StatusOK, map[string]string{"message": "logged out successfully"})
 }
 

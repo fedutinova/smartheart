@@ -22,6 +22,7 @@ type SessionService interface {
 	StoreRefreshToken(ctx context.Context, userID, tokenHash string, ttl time.Duration) error
 	GetRefreshTokenUserID(ctx context.Context, tokenHash string) (string, error)
 	RevokeRefreshToken(ctx context.Context, tokenHash string) error
+	RevokeAllUserTokens(ctx context.Context, userID string) error
 
 	// Access token blacklisting
 	StoreBlacklistedToken(ctx context.Context, tokenHash string, ttl time.Duration) error

@@ -423,51 +423,6 @@ func (_c *MockStore_CreateRAGFeedback_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
-// FindCachedAnswer provides a mock function with given fields: ctx, question, threshold
-func (_m *MockStore) FindCachedAnswer(ctx context.Context, question string, threshold float64) (*models.KBCacheEntry, error) {
-	ret := _m.Called(ctx, question, threshold)
-
-	if len(ret) == 0 {
-		panic("no return value specified for FindCachedAnswer")
-	}
-
-	var r0 *models.KBCacheEntry
-	if rf, ok := ret.Get(0).(func(context.Context, string, float64) *models.KBCacheEntry); ok {
-		r0 = rf(ctx, question, threshold)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*models.KBCacheEntry)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string, float64) error); ok {
-		r1 = rf(ctx, question, threshold)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// SaveCacheEntry provides a mock function with given fields: ctx, question, answer, sourceMeta
-func (_m *MockStore) SaveCacheEntry(ctx context.Context, question string, answer string, sourceMeta string) error {
-	ret := _m.Called(ctx, question, answer, sourceMeta)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SaveCacheEntry")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) error); ok {
-		r0 = rf(ctx, question, answer, sourceMeta)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
 // CreateRefreshToken provides a mock function with given fields: ctx, token
 func (_m *MockStore) CreateRefreshToken(ctx context.Context, token *models.RefreshToken) error {
 	ret := _m.Called(ctx, token)
@@ -756,6 +711,66 @@ func (_c *MockStore_DecrementPaidAnalyses_Call) Return(_a0 int, _a1 error) *Mock
 }
 
 func (_c *MockStore_DecrementPaidAnalyses_Call) RunAndReturn(run func(context.Context, uuid.UUID) (int, error)) *MockStore_DecrementPaidAnalyses_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// FindCachedAnswer provides a mock function with given fields: ctx, question, threshold
+func (_m *MockStore) FindCachedAnswer(ctx context.Context, question string, threshold float64) (*models.KBCacheEntry, error) {
+	ret := _m.Called(ctx, question, threshold)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FindCachedAnswer")
+	}
+
+	var r0 *models.KBCacheEntry
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, float64) (*models.KBCacheEntry, error)); ok {
+		return rf(ctx, question, threshold)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, float64) *models.KBCacheEntry); ok {
+		r0 = rf(ctx, question, threshold)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.KBCacheEntry)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, float64) error); ok {
+		r1 = rf(ctx, question, threshold)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStore_FindCachedAnswer_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindCachedAnswer'
+type MockStore_FindCachedAnswer_Call struct {
+	*mock.Call
+}
+
+// FindCachedAnswer is a helper method to define mock.On call
+//   - ctx context.Context
+//   - question string
+//   - threshold float64
+func (_e *MockStore_Expecter) FindCachedAnswer(ctx interface{}, question interface{}, threshold interface{}) *MockStore_FindCachedAnswer_Call {
+	return &MockStore_FindCachedAnswer_Call{Call: _e.mock.On("FindCachedAnswer", ctx, question, threshold)}
+}
+
+func (_c *MockStore_FindCachedAnswer_Call) Run(run func(ctx context.Context, question string, threshold float64)) *MockStore_FindCachedAnswer_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(float64))
+	})
+	return _c
+}
+
+func (_c *MockStore_FindCachedAnswer_Call) Return(_a0 *models.KBCacheEntry, _a1 error) *MockStore_FindCachedAnswer_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStore_FindCachedAnswer_Call) RunAndReturn(run func(context.Context, string, float64) (*models.KBCacheEntry, error)) *MockStore_FindCachedAnswer_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1344,6 +1359,65 @@ func (_c *MockStore_GetResponseByRequestID_Call) Return(_a0 *models.Response, _a
 }
 
 func (_c *MockStore_GetResponseByRequestID_Call) RunAndReturn(run func(context.Context, uuid.UUID) (*models.Response, error)) *MockStore_GetResponseByRequestID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetRevokedRefreshTokenOwner provides a mock function with given fields: ctx, tokenHash
+func (_m *MockStore) GetRevokedRefreshTokenOwner(ctx context.Context, tokenHash string) (uuid.UUID, error) {
+	ret := _m.Called(ctx, tokenHash)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRevokedRefreshTokenOwner")
+	}
+
+	var r0 uuid.UUID
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (uuid.UUID, error)); ok {
+		return rf(ctx, tokenHash)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) uuid.UUID); ok {
+		r0 = rf(ctx, tokenHash)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(uuid.UUID)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, tokenHash)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStore_GetRevokedRefreshTokenOwner_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRevokedRefreshTokenOwner'
+type MockStore_GetRevokedRefreshTokenOwner_Call struct {
+	*mock.Call
+}
+
+// GetRevokedRefreshTokenOwner is a helper method to define mock.On call
+//   - ctx context.Context
+//   - tokenHash string
+func (_e *MockStore_Expecter) GetRevokedRefreshTokenOwner(ctx interface{}, tokenHash interface{}) *MockStore_GetRevokedRefreshTokenOwner_Call {
+	return &MockStore_GetRevokedRefreshTokenOwner_Call{Call: _e.mock.On("GetRevokedRefreshTokenOwner", ctx, tokenHash)}
+}
+
+func (_c *MockStore_GetRevokedRefreshTokenOwner_Call) Run(run func(ctx context.Context, tokenHash string)) *MockStore_GetRevokedRefreshTokenOwner_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockStore_GetRevokedRefreshTokenOwner_Call) Return(_a0 uuid.UUID, _a1 error) *MockStore_GetRevokedRefreshTokenOwner_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStore_GetRevokedRefreshTokenOwner_Call) RunAndReturn(run func(context.Context, string) (uuid.UUID, error)) *MockStore_GetRevokedRefreshTokenOwner_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1946,6 +2020,53 @@ func (_c *MockStore_Ping_Call) RunAndReturn(run func(context.Context) error) *Mo
 	return _c
 }
 
+// RevokeAllUserRefreshTokens provides a mock function with given fields: ctx, userID
+func (_m *MockStore) RevokeAllUserRefreshTokens(ctx context.Context, userID uuid.UUID) error {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RevokeAllUserRefreshTokens")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockStore_RevokeAllUserRefreshTokens_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RevokeAllUserRefreshTokens'
+type MockStore_RevokeAllUserRefreshTokens_Call struct {
+	*mock.Call
+}
+
+// RevokeAllUserRefreshTokens is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID uuid.UUID
+func (_e *MockStore_Expecter) RevokeAllUserRefreshTokens(ctx interface{}, userID interface{}) *MockStore_RevokeAllUserRefreshTokens_Call {
+	return &MockStore_RevokeAllUserRefreshTokens_Call{Call: _e.mock.On("RevokeAllUserRefreshTokens", ctx, userID)}
+}
+
+func (_c *MockStore_RevokeAllUserRefreshTokens_Call) Run(run func(ctx context.Context, userID uuid.UUID)) *MockStore_RevokeAllUserRefreshTokens_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(uuid.UUID))
+	})
+	return _c
+}
+
+func (_c *MockStore_RevokeAllUserRefreshTokens_Call) Return(_a0 error) *MockStore_RevokeAllUserRefreshTokens_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockStore_RevokeAllUserRefreshTokens_Call) RunAndReturn(run func(context.Context, uuid.UUID) error) *MockStore_RevokeAllUserRefreshTokens_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RevokeRefreshToken provides a mock function with given fields: ctx, tokenHash
 func (_m *MockStore) RevokeRefreshToken(ctx context.Context, tokenHash string) error {
 	ret := _m.Called(ctx, tokenHash)
@@ -2036,6 +2157,55 @@ func (_c *MockStore_RunTx_Call) Return(_a0 error) *MockStore_RunTx_Call {
 }
 
 func (_c *MockStore_RunTx_Call) RunAndReturn(run func(context.Context, func(pgx.Tx) error) error) *MockStore_RunTx_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SaveCacheEntry provides a mock function with given fields: ctx, question, answer, sourceMeta
+func (_m *MockStore) SaveCacheEntry(ctx context.Context, question string, answer string, sourceMeta string) error {
+	ret := _m.Called(ctx, question, answer, sourceMeta)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SaveCacheEntry")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) error); ok {
+		r0 = rf(ctx, question, answer, sourceMeta)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockStore_SaveCacheEntry_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SaveCacheEntry'
+type MockStore_SaveCacheEntry_Call struct {
+	*mock.Call
+}
+
+// SaveCacheEntry is a helper method to define mock.On call
+//   - ctx context.Context
+//   - question string
+//   - answer string
+//   - sourceMeta string
+func (_e *MockStore_Expecter) SaveCacheEntry(ctx interface{}, question interface{}, answer interface{}, sourceMeta interface{}) *MockStore_SaveCacheEntry_Call {
+	return &MockStore_SaveCacheEntry_Call{Call: _e.mock.On("SaveCacheEntry", ctx, question, answer, sourceMeta)}
+}
+
+func (_c *MockStore_SaveCacheEntry_Call) Run(run func(ctx context.Context, question string, answer string, sourceMeta string)) *MockStore_SaveCacheEntry_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string))
+	})
+	return _c
+}
+
+func (_c *MockStore_SaveCacheEntry_Call) Return(_a0 error) *MockStore_SaveCacheEntry_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockStore_SaveCacheEntry_Call) RunAndReturn(run func(context.Context, string, string, string) error) *MockStore_SaveCacheEntry_Call {
 	_c.Call.Return(run)
 	return _c
 }

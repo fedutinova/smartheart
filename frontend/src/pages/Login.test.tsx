@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
-import { AUTH_ERROR_KEY, JWT_STORAGE_KEY, REFRESH_TOKEN_KEY } from '@/config';
+import { AUTH_ERROR_KEY, JWT_STORAGE_KEY } from '@/config';
 import { useAuthStore } from '@/store/auth';
 import { Login } from './Login';
 
@@ -49,8 +49,8 @@ describe('Login', () => {
     mockGetMe.mockReset();
     useAuthStore.setState({
       accessToken: null,
-      refreshToken: null,
       isAuthenticated: false,
+      isInitializing: false,
     });
     localStorage.clear();
     sessionStorage.clear();
@@ -65,11 +65,10 @@ describe('Login', () => {
     expect(sessionStorage.getItem(AUTH_ERROR_KEY)).toBeNull();
   });
 
-  it('stores tokens and redirects to dashboard on successful login', async () => {
+  it('stores access token and redirects to dashboard on successful login', async () => {
     const user = userEvent.setup();
     mockLogin.mockResolvedValue({
       access_token: 'access-token',
-      refresh_token: 'refresh-token',
     });
 
     renderLogin();
@@ -88,6 +87,5 @@ describe('Login', () => {
       expect(useAuthStore.getState().isAuthenticated).toBe(true);
     });
     expect(localStorage.getItem(JWT_STORAGE_KEY)).toBe('access-token');
-    expect(localStorage.getItem(REFRESH_TOKEN_KEY)).toBe('refresh-token');
   });
 });

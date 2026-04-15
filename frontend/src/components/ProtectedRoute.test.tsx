@@ -25,8 +25,8 @@ describe('ProtectedRoute', () => {
   beforeEach(() => {
     useAuthStore.setState({
       accessToken: null,
-      refreshToken: null,
       isAuthenticated: false,
+      isInitializing: false,
     });
   });
 
@@ -40,13 +40,25 @@ describe('ProtectedRoute', () => {
   it('renders protected content for authenticated users', async () => {
     useAuthStore.setState({
       accessToken: 'access-token',
-      refreshToken: 'refresh-token',
       isAuthenticated: true,
+      isInitializing: false,
     });
 
     renderProtectedRoute();
 
     expect(await screen.findByText('Личный кабинет')).toBeInTheDocument();
     expect(screen.queryByText('Страница входа')).not.toBeInTheDocument();
+  });
+
+  it('renders nothing while initializing', () => {
+    useAuthStore.setState({
+      accessToken: null,
+      isAuthenticated: false,
+      isInitializing: true,
+    });
+
+    const { container } = renderProtectedRoute();
+
+    expect(container.innerHTML).toBe('');
   });
 });

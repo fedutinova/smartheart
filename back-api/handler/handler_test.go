@@ -554,31 +554,51 @@ func TestLogin_Success(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
-	var tokens auth.TokenPair
-	if err := json.NewDecoder(w.Body).Decode(&tokens); err != nil {
+
+	// Access token returned in JSON body
+	var resp map[string]string
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if tokens.AccessToken == "" {
-		t.Error("expected non-empty access_token")
+	if resp["access_token"] == "" {
+		t.Error("expected non-empty access_token in body")
 	}
-	if tokens.RefreshToken == "" {
-		t.Error("expected non-empty refresh_token")
+	if _, hasRefresh := resp["refresh_token"]; hasRefresh {
+		t.Error("refresh_token must NOT be in JSON body — it should be in a cookie")
+	}
+
+	// Refresh token set as httpOnly cookie
+	cookies := w.Result().Cookies()
+	var refreshCookie *http.Cookie
+	for _, c := range cookies {
+		if c.Name == "refresh_token" {
+			refreshCookie = c
+			break
+		}
+	}
+	if refreshCookie == nil {
+		t.Fatal("expected refresh_token cookie to be set")
+	}
+	if refreshCookie.Value != "refresh-token" {
+		t.Errorf("expected cookie value 'refresh-token', got %q", refreshCookie.Value)
+	}
+	if !refreshCookie.HttpOnly {
+		t.Error("refresh_token cookie must be HttpOnly")
 	}
 }
 
-func TestRefresh_MissingToken(t *testing.T) {
+func TestRefresh_MissingCookie(t *testing.T) {
 	d := newTestDeps(t)
 	h := d.handler()
 
-	// Missing refresh_token caught by struct tag validation (required)
-	body, _ := json.Marshal(make(map[string]string))
-	req := httptest.NewRequest("POST", "/v1/auth/refresh", bytes.NewReader(body))
+	// No refresh_token cookie → 401
+	req := httptest.NewRequest("POST", "/v1/auth/refresh", http.NoBody)
 	w := httptest.NewRecorder()
 
 	h.Auth.Refresh(w, req)
 
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", w.Code)
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", w.Code)
 	}
 }
 
@@ -591,8 +611,8 @@ func TestRefresh_InvalidToken(t *testing.T) {
 
 	h := d.handler()
 
-	body, _ := json.Marshal(map[string]string{"refresh_token": "invalid-token"})
-	req := httptest.NewRequest("POST", "/v1/auth/refresh", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/v1/auth/refresh", http.NoBody)
+	req.AddCookie(&http.Cookie{Name: "refresh_token", Value: "invalid-token"})
 	w := httptest.NewRecorder()
 
 	h.Auth.Refresh(w, req)
@@ -612,8 +632,8 @@ func TestLogout_Success(t *testing.T) {
 
 	h := d.handler()
 
-	body, _ := json.Marshal(map[string]string{"refresh_token": "some-refresh-token"})
-	req := httptest.NewRequest("POST", "/v1/auth/logout", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/v1/auth/logout", http.NoBody)
+	req.AddCookie(&http.Cookie{Name: "refresh_token", Value: "some-refresh-token"})
 	req = withAuthContext(req, userID, []string{"user"})
 	accessToken, _ := auth.NewToken("test-secret", "test", userID.String(), []string{"user"}, 15*time.Minute)
 	req.Header.Set("Authorization", "Bearer "+accessToken)
@@ -624,9 +644,25 @@ func TestLogout_Success(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
+
+	// Cookie must be cleared
+	cookies := w.Result().Cookies()
+	var refreshCookie *http.Cookie
+	for _, c := range cookies {
+		if c.Name == "refresh_token" {
+			refreshCookie = c
+			break
+		}
+	}
+	if refreshCookie == nil {
+		t.Fatal("expected refresh_token cookie to be cleared")
+	}
+	if refreshCookie.MaxAge >= 0 {
+		t.Errorf("expected MaxAge < 0 (cookie deletion), got %d", refreshCookie.MaxAge)
+	}
 }
 
-func TestLogout_EmptyBody(t *testing.T) {
+func TestLogout_NoCookie(t *testing.T) {
 	d := newTestDeps(t)
 	userID := uuid.New()
 
@@ -636,8 +672,7 @@ func TestLogout_EmptyBody(t *testing.T) {
 
 	h := d.handler()
 
-	body, _ := json.Marshal(make(map[string]string))
-	req := httptest.NewRequest("POST", "/v1/auth/logout", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/v1/auth/logout", http.NoBody)
 	req = withAuthContext(req, userID, []string{"user"})
 	w := httptest.NewRecorder()
 

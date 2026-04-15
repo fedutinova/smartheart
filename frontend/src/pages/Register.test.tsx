@@ -45,8 +45,8 @@ describe('Register', () => {
     mockRegister.mockReset();
     useAuthStore.setState({
       accessToken: null,
-      refreshToken: null,
       isAuthenticated: false,
+      isInitializing: false,
     });
   });
 

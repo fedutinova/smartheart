@@ -45,6 +45,8 @@ type TokenRepo interface {
 	CreateRefreshToken(ctx context.Context, token *models.RefreshToken) error
 	GetRefreshToken(ctx context.Context, tokenHash string) (*models.RefreshToken, error)
 	RevokeRefreshToken(ctx context.Context, tokenHash string) error
+	GetRevokedRefreshTokenOwner(ctx context.Context, tokenHash string) (uuid.UUID, error)
+	RevokeAllUserRefreshTokens(ctx context.Context, userID uuid.UUID) error
 }
 
 // RoleRepo provides role/permission data access.

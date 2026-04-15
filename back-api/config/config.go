@@ -56,6 +56,12 @@ type StorageConfig struct {
 	LocalURL string
 }
 
+// CookieConfig holds refresh-token cookie settings.
+type CookieConfig struct {
+	Secure bool   // Set Secure flag (must be true in production / HTTPS).
+	Domain string // Cookie Domain attribute (empty = origin host only).
+}
+
 // CORSConfig holds CORS settings.
 type CORSConfig struct {
 	Origins     []string
@@ -98,6 +104,7 @@ type RAGConfig struct {
 type Config struct {
 	HTTPAddr  string
 	JWT       JWTConfig
+	Cookie    CookieConfig
 	Queue     QueueConfig
 	DB        DBConfig
 	S3        S3Config
@@ -320,6 +327,10 @@ func Load() Config {
 		GPT: GPTConfig{
 			APIKey: envString("OPENAI_API_KEY", ""),
 			Model:  envString("GPT_MODEL", "gpt-4o"),
+		},
+		Cookie: CookieConfig{
+			Secure: envBool("COOKIE_SECURE", true),
+			Domain: envString("COOKIE_DOMAIN", ""),
 		},
 		RedisURL: envString("REDIS_URL", "redis://localhost:6379"),
 		CORS: CORSConfig{

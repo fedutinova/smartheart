@@ -21,6 +21,7 @@ import (
 // AuthHandler handles authentication endpoints (register, login, refresh, logout).
 type AuthHandler struct {
 	Service service.AuthService
+	Config  config.Config
 }
 
 // ECGHandler handles EKG submission endpoints.
@@ -100,7 +101,7 @@ func NewHandler(
 	mw Middlewares,
 ) *Handler {
 	return &Handler{
-		Auth:    &AuthHandler{Service: authSvc},
+		Auth:    &AuthHandler{Service: authSvc, Config: cfg},
 		EKG:     &ECGHandler{Service: submissionSvc},
 		GPT:     &GPTHandler{Service: submissionSvc},
 		Request: &RequestHandler{Service: requestSvc, Config: cfg, Storage: storageService},

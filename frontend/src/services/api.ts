@@ -3,7 +3,6 @@ import axiosRetry from 'axios-retry';
 import type {
   LoginRequest,
   RegisterRequest,
-  TokenPair,
   ECGAnalysisRequest,
   ECGCalibrationParams,
   Job,
@@ -12,13 +11,14 @@ import type {
   QuotaInfo,
   PaymentResult,
 } from '@/types';
-import { API_BASE_URL, API_TIMEOUT, API_TIMEOUT_UPLOAD, API_TIMEOUT_RAG, REFRESH_TOKEN_KEY, AUTH_ERROR_KEY } from '@/config';
+import { API_BASE_URL, API_TIMEOUT, API_TIMEOUT_UPLOAD, API_TIMEOUT_RAG, AUTH_ERROR_KEY } from '@/config';
 import { useAuthStore } from '@/store/auth';
 import { queryClient } from '@/services/queryClient';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: API_TIMEOUT,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -56,26 +56,36 @@ const processQueue = (error: unknown, token: string | null = null) => {
 };
 
 /**
- * Refresh the access token. Deduplicates concurrent calls —
- * if a refresh is already in-flight, returns the same promise.
+ * Refresh the access token via the httpOnly refresh-token cookie.
+ * Deduplicates concurrent calls — if a refresh is already in-flight,
+ * returns the same promise.
  * Used by both the axios interceptor and useEventSource.
+ *
+ * @param silent  When true the failed refresh does NOT set an auth-error
+ *                banner or force logout. Used for the initial page-load
+ *                attempt where a missing session is expected (first visit).
  */
-export function ensureFreshToken(): Promise<string> {
-  if (refreshPromise) return refreshPromise;
-
-  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-  if (!refreshToken) {
-    useAuthStore.getState().logout();
-    return Promise.reject(new Error('no refresh token'));
+export function ensureFreshToken(silent = false): Promise<string> {
+  if (!refreshPromise) {
+    refreshPromise = axios
+      .post<{ access_token: string }>(`${API_BASE_URL}/v1/auth/refresh`, null, {
+        withCredentials: true,
+        timeout: API_TIMEOUT,
+      })
+      .then(({ data }) => {
+        useAuthStore.getState().setAccessToken(data.access_token);
+        return data.access_token;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
   }
 
-  refreshPromise = axios
-    .post<TokenPair>(`${API_BASE_URL}/v1/auth/refresh`, { refresh_token: refreshToken })
-    .then(({ data }) => {
-      useAuthStore.getState().login(data);
-      return data.access_token;
-    })
-    .catch((err) => {
+  // Each caller handles failure independently based on its own `silent` flag,
+  // so a silent initial-load call doesn't swallow errors for a later
+  // non-silent interceptor call sharing the same deduplicated promise.
+  return refreshPromise.catch((err) => {
+    if (!silent) {
       const isNetwork = err instanceof AxiosError && !err.response;
       const reason = isNetwork
         ? 'Не удалось связаться с сервером. Проверьте подключение к интернету.'
@@ -83,13 +93,9 @@ export function ensureFreshToken(): Promise<string> {
       sessionStorage.setItem(AUTH_ERROR_KEY, reason);
       useAuthStore.getState().logout();
       queryClient.clear();
-      throw err;
-    })
-    .finally(() => {
-      refreshPromise = null;
-    });
-
-  return refreshPromise;
+    }
+    throw err;
+  });
 }
 
 // Request interceptor для добавления токена
@@ -139,21 +145,12 @@ export const authAPI = {
   },
 
   login: async (data: LoginRequest) => {
-    const response = await api.post<TokenPair>('/v1/auth/login', data);
+    const response = await api.post<{ access_token: string }>('/v1/auth/login', data);
     return response.data;
   },
 
-  refresh: async (refreshToken: string) => {
-    const response = await api.post<TokenPair>('/v1/auth/refresh', {
-      refresh_token: refreshToken,
-    });
-    return response.data;
-  },
-
-  logout: async (refreshToken: string) => {
-    const response = await api.post('/v1/auth/logout', {
-      refresh_token: refreshToken,
-    });
+  logout: async () => {
+    const response = await api.post('/v1/auth/logout');
     return response.data;
   },
 };

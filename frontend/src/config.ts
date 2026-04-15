@@ -19,7 +19,6 @@ export const ROUTES = {
 };
 
 export const JWT_STORAGE_KEY = 'access_token';
-export const REFRESH_TOKEN_KEY = 'refresh_token';
 
 /**
  * Key in sessionStorage for storing the auth error reason

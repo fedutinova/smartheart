@@ -2,8 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/auth';
-import { ROUTES, REFRESH_TOKEN_KEY } from '@/config';
-import { storage } from '@/utils/storage';
+import { ROUTES } from '@/config';
 import { authAPI, profileAPI } from '@/services/api';
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -37,13 +36,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }, [location.pathname]);
 
   const handleLogout = async () => {
-    const refreshToken = storage.get(REFRESH_TOKEN_KEY);
-    if (refreshToken) {
-      try {
-        await authAPI.logout(refreshToken);
-      } catch (error) {
-        console.error('Logout error:', error);
-      }
+    try {
+      await authAPI.logout();
+    } catch (error) {
+      console.error('Logout error:', error);
     }
     logout();
     navigate(ROUTES.LOGIN);

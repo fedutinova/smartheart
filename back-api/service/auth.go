@@ -149,6 +149,8 @@ func (s *authService) Refresh(ctx context.Context, refreshToken string) (*auth.T
 
 	userID, err := s.sessions.GetRefreshTokenUserID(ctx, tokenHash)
 	if err != nil {
+		// Token not in Redis — check if it was previously revoked (reuse attack).
+		s.handlePossibleTokenReuse(ctx, tokenHash)
 		return nil, fmt.Errorf("invalid refresh token: %w", apperr.ErrInvalidToken)
 	}
 
@@ -243,4 +245,29 @@ func (s *authService) issueTokenPair(ctx context.Context, user *models.User) (*a
 	}
 
 	return tokens, nil
+}
+
+// handlePossibleTokenReuse checks whether a refresh token that is no longer in
+// Redis was previously issued and revoked (i.e. already rotated). If so, this
+// is a refresh-token reuse attack: either the attacker replayed a stolen token,
+// or the legitimate user did after the attacker already consumed it.
+//
+// In either case the safest response is to revoke ALL of the user's refresh
+// tokens so both parties are forced to re-authenticate.
+func (s *authService) handlePossibleTokenReuse(ctx context.Context, tokenHash string) {
+	ownerID, err := s.repo.GetRevokedRefreshTokenOwner(ctx, tokenHash)
+	if err != nil {
+		// Token was never issued or DB is unreachable — nothing to do.
+		return
+	}
+
+	slog.WarnContext(ctx, "Refresh token reuse detected — revoking all tokens for user",
+		"user_id", ownerID)
+
+	if err := s.sessions.RevokeAllUserTokens(ctx, ownerID.String()); err != nil {
+		slog.ErrorContext(ctx, "Failed to revoke all user tokens in Redis", "user_id", ownerID, "error", err)
+	}
+	if err := s.repo.RevokeAllUserRefreshTokens(ctx, ownerID); err != nil {
+		slog.ErrorContext(ctx, "Failed to revoke all user tokens in DB", "user_id", ownerID, "error", err)
+	}
 }
