@@ -1,24 +1,43 @@
 import { QueryClient, focusManager } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 
-// Throttle focus-triggered refetches: when the user unlocks their phone,
-// the browser fires a burst of focus/visibilitychange events.  Without
-// throttling, every query with refetchOnWindowFocus=true fires at once
-// with a potentially stale token, causing a cascade of 401s and logouts.
-// Only report "focused" at most once per 10 seconds.
-let lastFocusTime = 0;
+// When the user unlocks their phone the browser fires a burst of
+// focus / visibilitychange events.  Without throttling, every query
+// with refetchOnWindowFocus=true fires at once with a potentially
+// stale token, causing a cascade of 401s.
+//
+// Strategy: always let React Query know about visibility changes (so
+// refetchIntervalInBackground works correctly), but throttle the
+// "became visible" notification so refetchOnWindowFocus queries only
+// fire once per 10-second window.
+let lastVisibleTime = 0;
 focusManager.setEventListener((handleFocus) => {
-  const onFocus = () => {
-    const now = Date.now();
-    if (now - lastFocusTime > 10_000) {
-      lastFocusTime = now;
-      handleFocus();
+  const onVisibility = () => {
+    if (document.hidden) {
+      // Always notify "hidden" immediately — pauses background intervals.
+      handleFocus(false);
+    } else {
+      const now = Date.now();
+      if (now - lastVisibleTime > 10_000) {
+        lastVisibleTime = now;
+        handleFocus(true);
+      }
     }
   };
-  window.addEventListener('visibilitychange', onFocus);
+  const onFocus = () => {
+    // Window focus (tab switch) — same throttle as visibility.
+    if (!document.hidden) {
+      const now = Date.now();
+      if (now - lastVisibleTime > 10_000) {
+        lastVisibleTime = now;
+        handleFocus(true);
+      }
+    }
+  };
+  window.addEventListener('visibilitychange', onVisibility);
   window.addEventListener('focus', onFocus);
   return () => {
-    window.removeEventListener('visibilitychange', onFocus);
+    window.removeEventListener('visibilitychange', onVisibility);
     window.removeEventListener('focus', onFocus);
   };
 });

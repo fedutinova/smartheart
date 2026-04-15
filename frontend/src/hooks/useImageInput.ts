@@ -27,7 +27,9 @@ function compressImage(file: File): Promise<string> {
   const MAX_PIXELS = 4096;
   return new Promise((resolve, reject) => {
     const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
     img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
       let { width, height } = img;
       if (width > MAX_PIXELS || height > MAX_PIXELS) {
         const scale = MAX_PIXELS / Math.max(width, height);
@@ -41,8 +43,11 @@ function compressImage(file: File): Promise<string> {
       ctx.drawImage(img, 0, 0, width, height);
       resolve(canvas.toDataURL('image/jpeg', 0.85));
     };
-    img.onerror = () => reject(new Error('Не удалось загрузить изображение'));
-    img.src = URL.createObjectURL(file);
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Не удалось загрузить изображение'));
+    };
+    img.src = objectUrl;
   });
 }
 

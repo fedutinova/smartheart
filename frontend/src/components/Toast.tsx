@@ -14,11 +14,15 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number)
 
   useEffect(() => {
     requestAnimationFrame(() => setVisible(true));
+    let dismissTimer: ReturnType<typeof setTimeout>;
     const timer = setTimeout(() => {
       setVisible(false);
-      setTimeout(() => onDismiss(toast.id), 300);
+      dismissTimer = setTimeout(() => onDismiss(toast.id), 300);
     }, 5000);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(dismissTimer);
+    };
   }, [toast.id, onDismiss]);
 
   const bg = toast.type === 'success' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200';
