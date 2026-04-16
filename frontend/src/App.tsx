@@ -17,20 +17,25 @@ function lazyRetry<T extends Record<string, unknown>>(
   factory: () => Promise<T>,
   retries = 2,
 ): Promise<T> {
-  return factory().catch((err: unknown) => {
-    if (retries > 0) {
-      return new Promise<T>((resolve) =>
-        setTimeout(() => resolve(lazyRetry(factory, retries - 1)), 500),
-      );
-    }
-    // All retries exhausted — reload to pick up new chunk URLs
-    const alreadyReloaded = sessionStorage.getItem('chunk_reload');
-    if (!alreadyReloaded) {
-      sessionStorage.setItem('chunk_reload', '1');
-      window.location.reload();
-    }
-    throw err;
-  });
+  return factory()
+    .then((module) => {
+      sessionStorage.removeItem('chunk_reload');
+      return module;
+    })
+    .catch((err: unknown) => {
+      if (retries > 0) {
+        return new Promise<T>((resolve) =>
+          setTimeout(() => resolve(lazyRetry(factory, retries - 1)), 500),
+        );
+      }
+      // All retries exhausted — reload to pick up new chunk URLs
+      const alreadyReloaded = sessionStorage.getItem('chunk_reload');
+      if (!alreadyReloaded) {
+        sessionStorage.setItem('chunk_reload', '1');
+        window.location.reload();
+      }
+      throw err;
+    });
 }
 
 const Dashboard = lazy(() => lazyRetry(() => import('@/pages/Dashboard').then((m) => ({ default: m.Dashboard }))));
