@@ -107,7 +107,7 @@ describe('Register', () => {
     await user.click(screen.getByRole('checkbox'));
     await user.click(screen.getByRole('button', { name: 'Зарегистрироваться' }));
 
-    expect(await screen.findByText('Пользователь с таким email или именем уже существует')).toBeInTheDocument();
+    expect(await screen.findByText('Пользователь с таким email уже существует')).toBeInTheDocument();
   });
 
   it('shows rate limit error on 429', async () => {

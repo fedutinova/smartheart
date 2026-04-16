@@ -50,15 +50,17 @@ describe('ProtectedRoute', () => {
     expect(screen.queryByText('Страница входа')).not.toBeInTheDocument();
   });
 
-  it('renders nothing while initializing', () => {
+  it('renders loading spinner while initializing', () => {
     useAuthStore.setState({
       accessToken: null,
       isAuthenticated: false,
       isInitializing: true,
     });
 
-    const { container } = renderProtectedRoute();
+    renderProtectedRoute();
 
-    expect(container.innerHTML).toBe('');
+    expect(screen.getByRole('status', { name: 'Загрузка' })).toBeInTheDocument();
+    expect(screen.queryByText('Личный кабинет')).not.toBeInTheDocument();
+    expect(screen.queryByText('Страница входа')).not.toBeInTheDocument();
   });
 });

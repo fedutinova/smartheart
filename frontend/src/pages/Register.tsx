@@ -9,6 +9,20 @@ import { Layout } from '@/components/Layout';
 
 const passwordAsciiOnly = /^[\x21-\x7E]+$/;
 
+const validationErrors: [RegExp, string][] = [
+  [/required/i, 'Заполните все обязательные поля'],
+  [/username must not exceed/i, 'Имя пользователя слишком длинное'],
+  [/invalid email/i, 'Некорректный email адрес'],
+  [/password must be at least/i, 'Пароль должен быть не менее 10 символов'],
+  [/password must not exceed/i, 'Пароль слишком длинный (максимум 72 символа)'],
+  [/password must contain only/i, 'Пароль должен содержать только английские буквы, цифры и спецсимволы'],
+  [/invalid request body/i, 'Некорректные данные'],
+];
+
+function translateValidationError(message: string): string {
+  return validationErrors.find(([re]) => re.test(message))?.[1] ?? 'Ошибка регистрации';
+}
+
 export function Register() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -28,14 +42,16 @@ export function Register() {
     },
     onError: (err: unknown) => {
       const { status, message } = getApiError(err);
-      if ((status === 400 || status === 409) && message.includes('already exists')) {
-        setError('Пользователь с таким email или именем уже существует');
+      if (status === 409) {
+        setError('Пользователь с таким email уже существует');
       } else if (status === 429) {
         setError('Слишком много попыток. Попробуйте позже');
+      } else if (status === 400) {
+        setError(translateValidationError(message));
       } else if (!status) {
         setError('Не удалось связаться с сервером. Проверьте подключение к интернету');
       } else {
-        setError(message || 'Ошибка регистрации');
+        setError('Ошибка регистрации');
       }
     },
   });

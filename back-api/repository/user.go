@@ -27,7 +27,7 @@ func (r *Repository) CreateUser(ctx context.Context, user *models.User) error {
 	_, err := r.querier.Exec(ctx, query, user.ID, user.Username, user.Email, user.PasswordHash)
 	if err != nil {
 		if isUniqueViolation(err) {
-			return fmt.Errorf("user with this email or username %w", apperr.ErrConflict)
+			return fmt.Errorf("user with this email %w", apperr.ErrConflict)
 		}
 		return fmt.Errorf("failed to create user: %w", err)
 	}
