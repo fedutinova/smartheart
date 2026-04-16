@@ -298,7 +298,7 @@ jobs:
           rsync -avz --delete migrations/ "$SERVER:/opt/smartheart/migrations/"
 
           # Frontend build — rsync with delete for cache-busted assets
-          rsync -avz --delete frontend/dist/ "$SERVER:/opt/smartheart/frontend/dist/"
+          rsync -avz --delete --exclude='yandex_*.html' frontend/dist/ "$SERVER:/opt/smartheart/frontend/dist/"
 
           # Admin build
           rsync -avz --delete admin/dist/ "$SERVER:/opt/smartheart/admin/dist/"
