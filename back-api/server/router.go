@@ -24,7 +24,7 @@ func NewRouter(h *handler.Handler, cfg config.Config) http.Handler {
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.Timeout(60 * time.Second))
+	r.Use(timeoutExcept(60*time.Second, "/v1/events"))
 
 	// Global rate limiting by IP address
 	if cfg.RateLimit.RPM > 0 {
@@ -83,6 +83,25 @@ func securityHeaders(next http.Handler) http.Handler {
 		w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
 		next.ServeHTTP(w, r)
 	})
+}
+
+// timeoutExcept wraps chi's Timeout middleware but skips it for the given paths
+// (e.g. long-lived SSE connections that must stay open indefinitely).
+func timeoutExcept(timeout time.Duration, skipPaths ...string) func(http.Handler) http.Handler {
+	skip := make(map[string]bool, len(skipPaths))
+	for _, p := range skipPaths {
+		skip[p] = true
+	}
+	timeoutMW := middleware.Timeout(timeout)
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if skip[r.URL.Path] {
+				next.ServeHTTP(w, r)
+			} else {
+				timeoutMW(next).ServeHTTP(w, r)
+			}
+		})
+	}
 }
 
 // corsMiddleware creates a CORS middleware with configurable origins
