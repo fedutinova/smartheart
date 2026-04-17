@@ -208,7 +208,7 @@ func (s *paymentService) CreatePayment(ctx context.Context, userID uuid.UUID, an
 		ID:            paymentID,
 		UserID:        userID,
 		AmountKopecks: totalKopecks,
-		Description:   fmt.Sprintf("SmartHeart: %d анализ(ов) ЭКГ", analysesCount),
+		Description:   fmt.Sprintf("Умное сердце: %d анализ(ов) ЭКГ", analysesCount),
 		AnalysesCount: analysesCount,
 		PaymentType:   models.PaymentTypeAnalyses,
 	}, map[string]string{
@@ -244,7 +244,7 @@ func (s *paymentService) CreateSubscription(ctx context.Context, userID uuid.UUI
 		ID:            paymentID,
 		UserID:        userID,
 		AmountKopecks: s.cfg.SubscriptionPriceKopecks,
-		Description:   "SmartHeart: подписка на 30 дней",
+		Description:   "Умное сердце: подписка на 30 дней",
 		AnalysesCount: 0,
 		PaymentType:   models.PaymentTypeSubscription,
 	}, map[string]string{

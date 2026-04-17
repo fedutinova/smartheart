@@ -1,7 +1,7 @@
 {
-  "name": "SmartHeart — Анализ ЭКГ",
-  "short_name": "SmartHeart",
-  "description": "AI-помощник для интерпретации ЭКГ",
+  "name": "Умное сердце — Анализ ЭКГ по фоторграфии",
+  "short_name": "Умное сердце",
+  "description": "AI-помощник для интерпретации ЭКГ по фотографии",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f9fafb",

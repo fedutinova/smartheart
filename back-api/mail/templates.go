@@ -11,7 +11,7 @@ func PasswordResetEmail(resetLink string) string {
 <html lang="ru">
 <head><meta charset="UTF-8"></head>
 <body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#333">
-  <h2 style="color:#2563eb">SmartHeart — Сброс пароля</h2>
+  <h2 style="color:#2563eb">Умное сердце — Сброс пароля</h2>
   <p>Вы получили это письмо, потому что был запрошен сброс пароля для вашей учётной записи.</p>
   <p>Нажмите на кнопку ниже, чтобы установить новый пароль. Ссылка действительна <strong>15 минут</strong>.</p>
   <p style="text-align:center;margin:30px 0">
@@ -22,7 +22,7 @@ func PasswordResetEmail(resetLink string) string {
   </p>
   <p style="font-size:13px;color:#666">Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо.</p>
   <hr style="border:none;border-top:1px solid #eee;margin:30px 0">
-  <p style="font-size:12px;color:#999">SmartHeart — Анализ ЭКГ с помощью ИИ</p>
+  <p style="font-size:12px;color:#999">Умное сердце — Анализ ЭКГ с помощью ИИ</p>
 </body>
 </html>`, safeLink)
 }
