@@ -18,6 +18,8 @@ export function RequestImage({ requestId, fileId }: { requestId: string; fileId:
   const [blobFallbackTried, setBlobFallbackTried] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const objectUrlRef = useRef<string | null>(null);
+  const pinchStartRef = useRef<number | null>(null);
+  const pinchBaseScaleRef = useRef(1);
 
   useEffect(() => {
     let cancelled = false;
@@ -176,12 +178,34 @@ export function RequestImage({ requestId, fileId }: { requestId: string; fileId:
             className="h-full w-full overflow-auto flex items-center justify-center pt-14"
             onClick={(e) => e.stopPropagation()}
             onDoubleClick={(e) => { e.stopPropagation(); setScale((s) => s < 2 ? 2 : 1); }}
+            onTouchStart={(e) => {
+              if (e.touches.length === 2) {
+                e.stopPropagation();
+                pinchStartRef.current = Math.hypot(
+                  e.touches[0].clientX - e.touches[1].clientX,
+                  e.touches[0].clientY - e.touches[1].clientY,
+                );
+                pinchBaseScaleRef.current = scale;
+              }
+            }}
+            onTouchMove={(e) => {
+              if (e.touches.length === 2 && pinchStartRef.current !== null) {
+                e.stopPropagation();
+                const dist = Math.hypot(
+                  e.touches[0].clientX - e.touches[1].clientX,
+                  e.touches[0].clientY - e.touches[1].clientY,
+                );
+                const newScale = Math.min(5, Math.max(0.25, pinchBaseScaleRef.current * (dist / pinchStartRef.current)));
+                setScale(newScale);
+              }
+            }}
+            onTouchEnd={() => { pinchStartRef.current = null; }}
           >
             <img
               src={src}
               alt="ЭКГ"
               decoding="async"
-              style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}
+              style={{ transform: `scale(${scale})`, transformOrigin: 'center center', touchAction: 'none' }}
               className="transition-transform duration-200 ease-out select-none"
               onError={() => { void handleImageError(); }}
               onLoad={() => setLoadFailed(false)}
