@@ -10,6 +10,7 @@ packages:
       SubmissionService:
       RequestService:
       PaymentService:
+      PasswordService:
   github.com/fedutinova/smartheart/back-api/repository:
     interfaces:
       Store:

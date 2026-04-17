@@ -32,6 +32,7 @@ import (
 
 type testDeps struct {
 	authSvc       *svcmocks.MockAuthService
+	passwordSvc   *svcmocks.MockPasswordService
 	submissionSvc *svcmocks.MockSubmissionService
 	requestSvc    *svcmocks.MockRequestService
 	paymentSvc    *svcmocks.MockPaymentService
@@ -45,6 +46,7 @@ type testDeps struct {
 func newTestDeps(t testing.TB) *testDeps {
 	return &testDeps{
 		authSvc:       svcmocks.NewMockAuthService(t),
+		passwordSvc:   svcmocks.NewMockPasswordService(t),
 		submissionSvc: svcmocks.NewMockSubmissionService(t),
 		requestSvc:    svcmocks.NewMockRequestService(t),
 		paymentSvc:    svcmocks.NewMockPaymentService(t),
@@ -57,7 +59,7 @@ func newTestDeps(t testing.TB) *testDeps {
 }
 
 func (d *testDeps) handler() *Handler {
-	return NewHandler(d.authSvc, d.submissionSvc, d.requestSvc, d.paymentSvc, d.queue, d.repo, d.sessions, d.storage, notify.NewHub(), d.config, Middlewares{})
+	return NewHandler(d.authSvc, d.passwordSvc, d.submissionSvc, d.requestSvc, d.paymentSvc, d.queue, d.repo, d.sessions, d.storage, notify.NewHub(), d.config, Middlewares{})
 }
 
 func withAuthContext(r *http.Request, userID uuid.UUID, roles []string) *http.Request {

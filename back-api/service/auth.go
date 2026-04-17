@@ -61,14 +61,8 @@ func (s *authService) Register(ctx context.Context, username, email, password st
 	if _, err := mail.ParseAddress(email); err != nil {
 		return uuid.Nil, fmt.Errorf("invalid email format: %w", apperr.ErrValidation)
 	}
-	if len(password) < minPasswordLen {
-		return uuid.Nil, fmt.Errorf("password must be at least %d characters: %w", minPasswordLen, apperr.ErrValidation)
-	}
-	if len(password) > maxPasswordLen {
-		return uuid.Nil, fmt.Errorf("password must not exceed %d bytes: %w", maxPasswordLen, apperr.ErrValidation)
-	}
-	if !passwordASCIIOnly.MatchString(password) {
-		return uuid.Nil, fmt.Errorf("password must contain only English letters, digits, and symbols (no spaces): %w", apperr.ErrValidation)
+	if err := validatePassword(password); err != nil {
+		return uuid.Nil, err
 	}
 
 	passwordHash, err := auth.HashPassword(password)

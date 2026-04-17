@@ -60,24 +60,27 @@ type Middlewares struct {
 	AnalyzeRateLimit Middleware
 	// SubscriptionRateLimit is a stricter per-endpoint rate limit for subscription creation.
 	SubscriptionRateLimit Middleware
+	// PasswordResetRateLimit limits password-reset requests to prevent email spam.
+	PasswordResetRateLimit Middleware
 }
 
 // Handler composes all focused handlers and registers routes.
 type Handler struct {
-	Auth    *AuthHandler
-	EKG     *ECGHandler
-	EKGSync *ECGSyncHandler // non-nil when ECG_SYNC_MODE=true
-	GPT     *GPTHandler
-	Request *RequestHandler
-	Healthz *HealthHandler
-	Events  *EventsHandler
-	RAG     *RAGHandler
-	Payment *PaymentHandler
-	Profile *ProfileHandler
-	Admin   *AdminHandler
-	Config  config.Config
-	MW      Middlewares
-	MockGPT *gpt.MockProcessor // non-nil when GPT_MOCK=true; exposes /debug/h2
+	Auth     *AuthHandler
+	Password *PasswordHandler
+	EKG      *ECGHandler
+	EKGSync  *ECGSyncHandler // non-nil when ECG_SYNC_MODE=true
+	GPT      *GPTHandler
+	Request  *RequestHandler
+	Healthz  *HealthHandler
+	Events   *EventsHandler
+	RAG      *RAGHandler
+	Payment  *PaymentHandler
+	Profile  *ProfileHandler
+	Admin    *AdminHandler
+	Config   config.Config
+	MW       Middlewares
+	MockGPT  *gpt.MockProcessor // non-nil when GPT_MOCK=true; exposes /debug/h2
 }
 
 // ECGSyncProcessor is implemented by workers.ECGWorker to avoid a direct import.
@@ -89,6 +92,7 @@ type ECGSyncProcessor interface {
 // NewHandler creates a Handler with all sub-handlers wired to shared dependencies.
 func NewHandler(
 	authSvc service.AuthService,
+	passwordSvc service.PasswordService,
 	submissionSvc service.SubmissionService,
 	requestSvc service.RequestService,
 	paymentSvc service.PaymentService,
@@ -101,18 +105,19 @@ func NewHandler(
 	mw Middlewares,
 ) *Handler {
 	return &Handler{
-		Auth:    &AuthHandler{Service: authSvc, Config: cfg},
-		EKG:     &ECGHandler{Service: submissionSvc},
-		GPT:     &GPTHandler{Service: submissionSvc},
-		Request: &RequestHandler{Service: requestSvc, Config: cfg, Storage: storageService},
-		Healthz: &HealthHandler{Queue: queue, Repo: repo, Sessions: sessions, Storage: storageService},
-		Events:  &EventsHandler{Hub: hub},
-		RAG:     NewRAGHandler(cfg.RAG.URL, repo),
-		Payment: &PaymentHandler{Service: paymentSvc},
-		Profile: &ProfileHandler{Repo: repo},
-		Admin:   &AdminHandler{Repo: repo},
-		Config:  cfg,
-		MW:      mw,
+		Auth:     &AuthHandler{Service: authSvc, Config: cfg},
+		Password: &PasswordHandler{Service: passwordSvc},
+		EKG:      &ECGHandler{Service: submissionSvc},
+		GPT:      &GPTHandler{Service: submissionSvc},
+		Request:  &RequestHandler{Service: requestSvc, Config: cfg, Storage: storageService},
+		Healthz:  &HealthHandler{Queue: queue, Repo: repo, Sessions: sessions, Storage: storageService},
+		Events:   &EventsHandler{Hub: hub},
+		RAG:      NewRAGHandler(cfg.RAG.URL, repo),
+		Payment:  &PaymentHandler{Service: paymentSvc},
+		Profile:  &ProfileHandler{Repo: repo},
+		Admin:    &AdminHandler{Repo: repo},
+		Config:   cfg,
+		MW:       mw,
 	}
 }
 
@@ -142,6 +147,12 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		r.Post("/v1/auth/register", h.Auth.Register)
 		r.Post("/v1/auth/login", h.Auth.Login)
 		r.Post("/v1/auth/refresh", h.Auth.Refresh)
+		if h.MW.PasswordResetRateLimit != nil {
+			r.With(h.MW.PasswordResetRateLimit).Post("/v1/auth/password-reset", h.Password.RequestReset)
+		} else {
+			r.Post("/v1/auth/password-reset", h.Password.RequestReset)
+		}
+		r.Post("/v1/auth/password-reset/confirm", h.Password.ConfirmReset)
 	})
 
 	// YooKassa webhook (public — called by YooKassa servers, no JWT)
@@ -161,6 +172,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		}
 
 		r.Post("/v1/auth/logout", h.Auth.Logout)
+		r.Post("/v1/auth/password-change", h.Password.ChangePassword)
 
 		ekgMiddleware := []func(http.Handler) http.Handler{auth.RequirePerm(auth.PermECGSubmit)}
 		if h.MW.AnalyzeRateLimit != nil {

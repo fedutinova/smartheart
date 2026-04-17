@@ -100,6 +100,7 @@ export function Login() {
                   name="email"
                   type="email"
                   required
+                  autoComplete="email"
                   className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 sm:text-sm"
                   placeholder="Email адрес"
                   value={email}
@@ -122,6 +123,7 @@ export function Login() {
                   name="password"
                   type={showPassword ? 'text' : 'password'}
                   required
+                  autoComplete="current-password"
                   className="appearance-none relative block w-full px-4 py-3 pr-11 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 sm:text-sm"
                   placeholder="Пароль"
                   value={password}
@@ -147,6 +149,12 @@ export function Login() {
                   )}
                 </button>
               </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Link to={ROUTES.FORGOT_PASSWORD} className="text-sm text-rose-600 hover:text-rose-500">
+                Забыли пароль?
+              </Link>
             </div>
 
             <div>

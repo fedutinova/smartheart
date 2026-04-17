@@ -17,6 +17,7 @@ type UserRepo interface {
 	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
 	GetUserByID(ctx context.Context, userID uuid.UUID) (*models.User, error)
 	AssignRoleToUser(ctx context.Context, userID uuid.UUID, roleName string) error
+	UpdateUserPassword(ctx context.Context, userID uuid.UUID, passwordHash string) error
 }
 
 // RequestRepo provides request/file/response data access.
@@ -65,6 +66,14 @@ type KBCacheRepo interface {
 	SaveCacheEntry(ctx context.Context, question, answer, sourceMeta string) error
 }
 
+// PasswordResetRepo provides password reset token data access.
+type PasswordResetRepo interface {
+	CreatePasswordResetToken(ctx context.Context, token *models.PasswordResetToken) error
+	GetValidPasswordResetToken(ctx context.Context, tokenHash string) (*models.PasswordResetToken, error)
+	MarkPasswordResetTokenUsed(ctx context.Context, tokenID uuid.UUID) error
+	InvalidateUserPasswordResetTokens(ctx context.Context, userID uuid.UUID) error
+}
+
 // PaymentRepo provides payment data access.
 type PaymentRepo interface {
 	CreatePayment(ctx context.Context, p *models.Payment) error
@@ -96,6 +105,7 @@ type Store interface {
 	RAGFeedbackRepo
 	KBCacheRepo
 	PaymentRepo
+	PasswordResetRepo
 	AdminRepo
 
 	// Transaction support

@@ -15,6 +15,7 @@ import (
 	"github.com/fedutinova/smartheart/back-api/gpt"
 	"github.com/fedutinova/smartheart/back-api/handler"
 	"github.com/fedutinova/smartheart/back-api/job"
+	"github.com/fedutinova/smartheart/back-api/mail"
 	"github.com/fedutinova/smartheart/back-api/notify"
 	"github.com/fedutinova/smartheart/back-api/queue"
 	"github.com/fedutinova/smartheart/back-api/repository"
@@ -210,6 +211,8 @@ func startHTTPServer(
 	mockGPT *gpt.MockProcessor,
 ) *http.Server {
 	authSvc := service.NewAuthService(repo, sessions, cfg.JWT)
+	mailer := mail.NewSender(cfg.SMTP)
+	passwordSvc := service.NewPasswordService(repo, sessions, mailer, cfg)
 	submissionSvc := service.NewSubmissionService(repo, q, storageService, cfg.Quota)
 	requestSvc := service.NewRequestService(repo, q)
 	paymentSvc := service.NewPaymentService(repo, cfg.YooKassa, cfg.Quota.DailyLimit)
@@ -220,8 +223,9 @@ func startHTTPServer(
 	if cfg.RateLimit.RPM > 0 {
 		mw.AnalyzeRateLimit = server.EndpointRateLimit(10)
 		mw.SubscriptionRateLimit = server.EndpointRateLimit(5)
+		mw.PasswordResetRateLimit = server.EndpointRateLimit(3)
 	}
-	handlers := handler.NewHandler(authSvc, submissionSvc, requestSvc, paymentSvc, q, repo, sessions, storageService, hub, cfg, mw)
+	handlers := handler.NewHandler(authSvc, passwordSvc, submissionSvc, requestSvc, paymentSvc, q, repo, sessions, storageService, hub, cfg, mw)
 	if syncWorker != nil {
 		handlers.EKGSync = &handler.ECGSyncHandler{Worker: syncWorker}
 	}
@@ -229,11 +233,10 @@ func startHTTPServer(
 	r := server.NewRouter(handlers, cfg)
 
 	srv := &http.Server{
-		Addr:         cfg.HTTPAddr,
-		Handler:      r,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 60 * time.Second,
-		IdleTimeout:  90 * time.Second,
+		Addr:        cfg.HTTPAddr,
+		Handler:     r,
+		ReadTimeout: 30 * time.Second,
+		IdleTimeout: 90 * time.Second,
 	}
 
 	go func() {

@@ -1,12 +1,13 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { Layout } from '@/components/Layout';
-import { profileAPI } from '@/services/api';
+import { profileAPI, authAPI } from '@/services/api';
 import { useQuota } from '@/hooks/useQuota';
 import { useLogout } from '@/hooks/useLogout';
 import { PaymentModal } from '@/components/PaymentModal';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { formatPrice, formatDateLong } from '@/utils/format';
 import { AccountSkeleton } from '@/components/Skeleton';
+import { getApiError, translatePasswordError } from '@/utils/apiError';
 
 export function Account() {
   const { data: profile, isLoading: profileLoading } = useQuery({
@@ -16,6 +17,56 @@ export function Account() {
   const { quota, isLoading: quotaLoading } = useQuota();
   const [showPayment, setShowPayment] = useState(false);
   const handleLogout = useLogout();
+
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const logoutTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    return () => clearTimeout(logoutTimerRef.current);
+  }, []);
+
+  const changePasswordMutation = useMutation({
+    mutationFn: () => authAPI.changePassword(oldPassword, newPassword),
+    onSuccess: () => {
+      setPasswordSuccess('Пароль изменён. Вы будете перенаправлены на страницу входа...');
+      setOldPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setPasswordError('');
+      logoutTimerRef.current = setTimeout(() => handleLogout(), 2000);
+    },
+    onError: (err: unknown) => {
+      const { status, message } = getApiError(err);
+      if (status === 401) {
+        setPasswordError('Неверный текущий пароль');
+      } else if (status === 400) {
+        setPasswordError(translatePasswordError(message));
+      } else if (!status) {
+        setPasswordError('Не удалось связаться с сервером');
+      } else {
+        setPasswordError(message || 'Ошибка смены пароля');
+      }
+      setPasswordSuccess('');
+    },
+  });
+
+  const handleChangePassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+    changePasswordMutation.reset();
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Пароли не совпадают');
+      return;
+    }
+
+    changePasswordMutation.mutate();
+  };
 
   const isLoading = profileLoading || quotaLoading;
   const hasActiveSub = quota?.subscription_expires_at && new Date(quota.subscription_expires_at) > new Date();
@@ -126,6 +177,73 @@ export function Account() {
             )}
           </div>
         )}
+
+        {/* Change Password */}
+        <div className="bg-white shadow rounded-xl p-6 mb-6">
+          <h2 className="text-sm font-medium text-gray-400 mb-4">Смена пароля</h2>
+          <form className="space-y-4" onSubmit={handleChangePassword}>
+            {passwordError && (
+              <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-xl text-sm">
+                {passwordError}
+              </div>
+            )}
+            {passwordSuccess && (
+              <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-xl text-sm">
+                {passwordSuccess}
+              </div>
+            )}
+            <div>
+              <label htmlFor="old-password" className="block text-xs text-gray-400 mb-1">Текущий пароль</label>
+              <input
+                id="old-password"
+                type="password"
+                required
+                autoComplete="current-password"
+                className="appearance-none block w-full px-4 py-2.5 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 sm:text-sm"
+                value={oldPassword}
+                onChange={(e) => setOldPassword(e.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor="new-password" className="block text-xs text-gray-400 mb-1">Новый пароль</label>
+              <input
+                id="new-password"
+                type="password"
+                required
+                autoComplete="new-password"
+                minLength={10}
+                maxLength={72}
+                pattern="[\x21-\x7E]+"
+                title="Используйте английские буквы, цифры и спецсимволы"
+                className="appearance-none block w-full px-4 py-2.5 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 sm:text-sm"
+                placeholder="От 10 до 72 символов"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor="confirm-new-password" className="block text-xs text-gray-400 mb-1">Повторите новый пароль</label>
+              <input
+                id="confirm-new-password"
+                type="password"
+                required
+                autoComplete="new-password"
+                minLength={10}
+                maxLength={72}
+                className="appearance-none block w-full px-4 py-2.5 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 sm:text-sm"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={changePasswordMutation.isPending}
+              className="px-4 py-2 bg-rose-600 text-white text-sm rounded-lg hover:bg-rose-700 transition-colors disabled:opacity-50"
+            >
+              {changePasswordMutation.isPending ? 'Сохранение...' : 'Изменить пароль'}
+            </button>
+          </form>
+        </div>
 
         <button
           onClick={handleLogout}

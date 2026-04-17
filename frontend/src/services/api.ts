@@ -136,6 +136,21 @@ export const authAPI = {
     const response = await api.post('/v1/auth/logout');
     return response.data;
   },
+
+  requestPasswordReset: async (email: string) => {
+    const response = await api.post('/v1/auth/password-reset', { email });
+    return response.data;
+  },
+
+  confirmPasswordReset: async (token: string, new_password: string) => {
+    const response = await api.post('/v1/auth/password-reset/confirm', { token, new_password });
+    return response.data;
+  },
+
+  changePassword: async (old_password: string, new_password: string) => {
+    const response = await api.post('/v1/auth/password-change', { old_password, new_password });
+    return response.data;
+  },
 };
 
 export interface UserProfile {

@@ -96,6 +96,15 @@ type YooKassaConfig struct {
 	SubscriptionPriceKopecks int
 }
 
+// SMTPConfig holds SMTP email settings.
+type SMTPConfig struct {
+	Host     string
+	Port     int
+	User     string // login (usually the full email address)
+	Password string
+	From     string // sender address shown in From header
+}
+
 // RAGConfig holds RAG microservice settings.
 type RAGConfig struct {
 	URL string // Base URL of the RAG service (e.g. http://rag:8000)
@@ -116,7 +125,9 @@ type Config struct {
 	Quota     QuotaConfig
 	RAG       RAGConfig
 	YooKassa  YooKassaConfig
-	SyncMode  bool // ECG_SYNC_MODE: process ECG synchronously (for H2 baseline testing)
+	SMTP        SMTPConfig
+	FrontendURL string // base URL of the frontend app (for links in emails)
+	SyncMode    bool   // ECG_SYNC_MODE: process ECG synchronously (for H2 baseline testing)
 }
 
 // Storage mode constants for compile-time safety.
@@ -354,6 +365,14 @@ func Load() Config {
 			PriceKopecks:             envInt("YOOKASSA_PRICE_KOPECKS", 4900),                // 49 rub default
 			SubscriptionPriceKopecks: envInt("YOOKASSA_SUBSCRIPTION_PRICE_KOPECKS", 199900), // 1999 rub default
 		},
-		SyncMode: envBool("ECG_SYNC_MODE", false),
+		SMTP: SMTPConfig{
+			Host:     envString("SMTP_HOST", "smtp.timeweb.ru"),
+			Port:     envInt("SMTP_PORT", 2525),
+			User:     envString("SMTP_USER", ""),
+			Password: envString("SMTP_PASSWORD", ""),
+			From:     envString("SMTP_FROM", ""),
+		},
+		FrontendURL: envString("FRONTEND_URL", "http://localhost:3000"),
+		SyncMode:    envBool("ECG_SYNC_MODE", false),
 	}
 }

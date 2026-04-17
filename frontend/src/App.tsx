@@ -8,6 +8,8 @@ import { useToastNotifications } from '@/hooks/useToastNotifications';
 import { Login } from '@/pages/Login';
 import { Register } from '@/pages/Register';
 import { Landing } from '@/pages/Landing';
+import { ForgotPassword } from '@/pages/ForgotPassword';
+import { ResetPassword } from '@/pages/ResetPassword';
 
 /**
  * Retry a dynamic import up to `retries` times, then force-reload the page
@@ -73,6 +75,8 @@ function App() {
         <Routes>
           <Route path={ROUTES.LOGIN} element={<Login />} />
           <Route path={ROUTES.REGISTER} element={<Register />} />
+          <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPassword />} />
+          <Route path={ROUTES.RESET_PASSWORD} element={<ResetPassword />} />
           <Route path={ROUTES.PRIVACY} element={<Privacy />} />
           <Route path={ROUTES.TERMS} element={<Terms />} />
           <Route path={ROUTES.CONTACTS} element={<Contacts />} />
