@@ -102,7 +102,8 @@ type SMTPConfig struct {
 	Port     int
 	User     string // login (usually the full email address)
 	Password string
-	From     string // sender address shown in From header
+	From     string // bare sender address (e.g. noreply@example.com)
+	FromName string // display name (e.g. "Умное сердце"), optional
 }
 
 // RAGConfig holds RAG microservice settings.
@@ -371,6 +372,7 @@ func Load() Config {
 			User:     envString("SMTP_USER", ""),
 			Password: envString("SMTP_PASSWORD", ""),
 			From:     envString("SMTP_FROM", ""),
+			FromName: envString("SMTP_FROM_NAME", ""),
 		},
 		FrontendURL: envString("FRONTEND_URL", "http://localhost:3000"),
 		SyncMode:    envBool("ECG_SYNC_MODE", false),

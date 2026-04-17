@@ -80,6 +80,7 @@ services:
       SMTP_USER: ${SMTP_USER}
       SMTP_PASSWORD: ${SMTP_PASSWORD}
       SMTP_FROM: ${SMTP_FROM}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-}
       FRONTEND_URL: ${FRONTEND_URL:-https://${DOMAIN_NAME}}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       MIGRATIONS_DIR: /app/migrations

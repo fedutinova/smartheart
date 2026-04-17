@@ -274,6 +274,7 @@ jobs:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          SMTP_FROM_NAME: ${{ secrets.SMTP_FROM_NAME }}
           FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
         run: |
           printf 'DOMAIN_NAME=%s\n'       "$DOMAIN_NAME"       >  /tmp/smartheart.env
@@ -285,6 +286,7 @@ jobs:
           printf 'SMTP_USER=%s\n'         "$SMTP_USER"          >> /tmp/smartheart.env
           printf 'SMTP_PASSWORD=%s\n'     "$SMTP_PASSWORD"      >> /tmp/smartheart.env
           printf 'SMTP_FROM=%s\n'         "$SMTP_FROM"          >> /tmp/smartheart.env
+          printf 'SMTP_FROM_NAME=%s\n'    "$SMTP_FROM_NAME"     >> /tmp/smartheart.env
           printf 'FRONTEND_URL=%s\n'      "$FRONTEND_URL"       >> /tmp/smartheart.env
           printf 'GHCR_REPO=%s\n'         "${{ github.repository }}" >> /tmp/smartheart.env
           printf 'BACKEND_TAG=%s\n'       "${{ needs.build-backend.outputs.tag }}" >> /tmp/smartheart.env
