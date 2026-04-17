@@ -271,6 +271,9 @@ jobs:
           RAG_ADMIN_API_KEY: ${{ secrets.RAG_ADMIN_API_KEY }}
           DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
           CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
         run: |
           printf 'DOMAIN_NAME=%s\n'       "$DOMAIN_NAME"       >  /tmp/smartheart.env
           printf 'CORS_ORIGINS=%s\n'      "$CORS_ORIGINS"       >> /tmp/smartheart.env
@@ -278,6 +281,9 @@ jobs:
           printf 'JWT_SECRET=%s\n'        "$JWT_SECRET"         >> /tmp/smartheart.env
           printf 'OPENAI_API_KEY=%s\n'    "$OPENAI_API_KEY"     >> /tmp/smartheart.env
           printf 'RAG_ADMIN_API_KEY=%s\n' "$RAG_ADMIN_API_KEY"  >> /tmp/smartheart.env
+          printf 'SMTP_USER=%s\n'         "$SMTP_USER"          >> /tmp/smartheart.env
+          printf 'SMTP_PASSWORD=%s\n'     "$SMTP_PASSWORD"      >> /tmp/smartheart.env
+          printf 'SMTP_FROM=%s\n'         "$SMTP_FROM"          >> /tmp/smartheart.env
           printf 'GHCR_REPO=%s\n'         "${{ github.repository }}" >> /tmp/smartheart.env
           printf 'BACKEND_TAG=%s\n'       "${{ needs.build-backend.outputs.tag }}" >> /tmp/smartheart.env
           printf 'RAG_TAG=%s\n'           "${{ needs.build-rag.outputs.tag }}"     >> /tmp/smartheart.env
