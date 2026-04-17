@@ -14,12 +14,9 @@ function isSafeImageURL(url: string): boolean {
 export function RequestImage({ requestId, fileId }: { requestId: string; fileId: string }) {
   const [src, setSrc] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [scale, setScale] = useState(1);
   const [blobFallbackTried, setBlobFallbackTried] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const objectUrlRef = useRef<string | null>(null);
-  const pinchStartRef = useRef<number | null>(null);
-  const pinchBaseScaleRef = useRef(1);
 
   useEffect(() => {
     let cancelled = false;
@@ -123,97 +120,218 @@ export function RequestImage({ requestId, fileId }: { requestId: string; fileId:
             className="max-w-full h-auto rounded-lg shadow-md cursor-pointer hover:opacity-90 transition-opacity"
             onError={() => { void handleImageError(); }}
             onLoad={() => setLoadFailed(false)}
-            onClick={() => { setScale(1); setShowModal(true); }}
+            onClick={() => setShowModal(true)}
           />
         </div>
       </div>
 
       {showModal && (
-        <div
-          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm animate-fade-in"
-          onClick={() => setShowModal(false)}
-        >
-          {/* Toolbar */}
-          <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/60 to-transparent">
-            <span className="text-white/70 text-sm font-medium">
-              {Math.round(scale * 100)}%
-            </span>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={(e) => { e.stopPropagation(); setScale((s) => Math.max(s - 0.25, 0.25)); }}
-                className="w-9 h-9 rounded-lg bg-white/10 text-white/80 hover:bg-white/20 hover:text-white flex items-center justify-center transition-all backdrop-blur-md"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
-                </svg>
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); setScale(1); }}
-                className="h-9 px-3 rounded-lg bg-white/10 text-white/80 hover:bg-white/20 hover:text-white text-xs font-medium transition-all backdrop-blur-md"
-              >
-                Сброс
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); setScale((s) => Math.min(s + 0.25, 5)); }}
-                className="w-9 h-9 rounded-lg bg-white/10 text-white/80 hover:bg-white/20 hover:text-white flex items-center justify-center transition-all backdrop-blur-md"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m-7-7h14" />
-                </svg>
-              </button>
-              <div className="w-px h-5 bg-white/20 mx-1" />
-              <button
-                onClick={() => setShowModal(false)}
-                className="w-9 h-9 rounded-lg bg-white/10 text-white/80 hover:bg-red-500/80 hover:text-white flex items-center justify-center transition-all backdrop-blur-md"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          {/* Image */}
-          <div
-            className="h-full w-full overflow-auto flex items-center justify-center pt-14"
-            onClick={(e) => e.stopPropagation()}
-            onDoubleClick={(e) => { e.stopPropagation(); setScale((s) => s < 2 ? 2 : 1); }}
-            onTouchStart={(e) => {
-              if (e.touches.length === 2) {
-                e.stopPropagation();
-                pinchStartRef.current = Math.hypot(
-                  e.touches[0].clientX - e.touches[1].clientX,
-                  e.touches[0].clientY - e.touches[1].clientY,
-                );
-                pinchBaseScaleRef.current = scale;
-              }
-            }}
-            onTouchMove={(e) => {
-              if (e.touches.length === 2 && pinchStartRef.current !== null) {
-                e.stopPropagation();
-                const dist = Math.hypot(
-                  e.touches[0].clientX - e.touches[1].clientX,
-                  e.touches[0].clientY - e.touches[1].clientY,
-                );
-                const newScale = Math.min(5, Math.max(0.25, pinchBaseScaleRef.current * (dist / pinchStartRef.current)));
-                setScale(newScale);
-              }
-            }}
-            onTouchEnd={() => { pinchStartRef.current = null; }}
-          >
-            <img
-              src={src}
-              alt="ЭКГ"
-              decoding="async"
-              style={{ transform: `scale(${scale})`, transformOrigin: 'center center', touchAction: 'none' }}
-              className="transition-transform duration-200 ease-out select-none"
-              onError={() => { void handleImageError(); }}
-              onLoad={() => setLoadFailed(false)}
-              draggable={false}
-            />
-          </div>
-        </div>
+        <ImageModal
+          src={src}
+          onClose={() => setShowModal(false)}
+          onImageError={() => { void handleImageError(); }}
+          onImageLoad={() => setLoadFailed(false)}
+        />
       )}
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Full-screen image viewer with pinch-to-zoom, pan, and double-tap support
+// ---------------------------------------------------------------------------
+
+interface ImageModalProps {
+  src: string;
+  onClose: () => void;
+  onImageError: () => void;
+  onImageLoad: () => void;
+}
+
+function ImageModal({ src, onClose, onImageError, onImageLoad }: ImageModalProps) {
+  const [scale, setScale] = useState(1);
+  const [translate, setTranslate] = useState({ x: 0, y: 0 });
+  const [animating, setAnimating] = useState(false);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Touch state refs (not in state to avoid re-renders during gestures)
+  const pinchStartDist = useRef<number | null>(null);
+  const pinchBaseScale = useRef(1);
+  const panStart = useRef<{ x: number; y: number } | null>(null);
+  const panBaseTranslate = useRef({ x: 0, y: 0 });
+  const lastTapRef = useRef(0);
+
+  // Prevent page scroll while modal is open
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  const resetView = useCallback(() => {
+    setAnimating(true);
+    setScale(1);
+    setTranslate({ x: 0, y: 0 });
+    setTimeout(() => setAnimating(false), 200);
+  }, []);
+
+  const zoomTo = useCallback((newScale: number) => {
+    setAnimating(true);
+    const clamped = Math.min(5, Math.max(0.25, newScale));
+    if (clamped <= 1) {
+      setScale(clamped);
+      setTranslate({ x: 0, y: 0 });
+    } else {
+      setScale(clamped);
+    }
+    setTimeout(() => setAnimating(false), 200);
+  }, []);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      // Pinch start
+      pinchStartDist.current = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY,
+      );
+      pinchBaseScale.current = scale;
+      panStart.current = null; // cancel any pan
+    } else if (e.touches.length === 1) {
+      // Double-tap detection
+      const now = Date.now();
+      if (now - lastTapRef.current < 300) {
+        e.preventDefault();
+        if (scale > 1.1) {
+          resetView();
+        } else {
+          zoomTo(2.5);
+        }
+        lastTapRef.current = 0;
+        return;
+      }
+      lastTapRef.current = now;
+
+      // Pan start (only when zoomed in)
+      if (scale > 1) {
+        panStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        panBaseTranslate.current = { ...translate };
+      }
+    }
+  }, [scale, translate, resetView, zoomTo]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2 && pinchStartDist.current !== null) {
+      // Pinch zoom
+      e.preventDefault();
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY,
+      );
+      const newScale = Math.min(5, Math.max(0.25, pinchBaseScale.current * (dist / pinchStartDist.current)));
+      setAnimating(false);
+      setScale(newScale);
+      if (newScale <= 1) {
+        setTranslate({ x: 0, y: 0 });
+      }
+    } else if (e.touches.length === 1 && panStart.current && scale > 1) {
+      // Pan
+      e.preventDefault();
+      const dx = e.touches[0].clientX - panStart.current.x;
+      const dy = e.touches[0].clientY - panStart.current.y;
+      setAnimating(false);
+      setTranslate({
+        x: panBaseTranslate.current.x + dx,
+        y: panBaseTranslate.current.y + dy,
+      });
+    }
+  }, [scale]);
+
+  const handleTouchEnd = useCallback(() => {
+    pinchStartDist.current = null;
+    panStart.current = null;
+
+    // Snap back to 1x if close enough
+    if (scale < 1) {
+      resetView();
+    }
+  }, [scale, resetView]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm animate-fade-in"
+      onClick={onClose}
+    >
+      {/* Toolbar */}
+      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/60 to-transparent">
+        <span className="text-white/70 text-sm font-medium">
+          {Math.round(scale * 100)}%
+        </span>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={(e) => { e.stopPropagation(); zoomTo(scale - 0.25); }}
+            className="w-9 h-9 rounded-lg bg-white/10 text-white/80 hover:bg-white/20 hover:text-white flex items-center justify-center transition-all backdrop-blur-md"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
+            </svg>
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); resetView(); }}
+            className="h-9 px-3 rounded-lg bg-white/10 text-white/80 hover:bg-white/20 hover:text-white text-xs font-medium transition-all backdrop-blur-md"
+          >
+            Сброс
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); zoomTo(scale + 0.25); }}
+            className="w-9 h-9 rounded-lg bg-white/10 text-white/80 hover:bg-white/20 hover:text-white flex items-center justify-center transition-all backdrop-blur-md"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m-7-7h14" />
+            </svg>
+          </button>
+          <div className="w-px h-5 bg-white/20 mx-1" />
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-lg bg-white/10 text-white/80 hover:bg-red-500/80 hover:text-white flex items-center justify-center transition-all backdrop-blur-md"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Image area */}
+      <div
+        ref={containerRef}
+        className="h-full w-full flex items-center justify-center pt-14"
+        style={{ touchAction: 'none' }}
+        onClick={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          if (scale > 1.1) resetView();
+          else zoomTo(2.5);
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <img
+          src={src}
+          alt="ЭКГ"
+          decoding="async"
+          style={{
+            transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
+            transformOrigin: 'center center',
+            transition: animating ? 'transform 200ms ease-out' : 'none',
+          }}
+          className="max-w-full max-h-full select-none"
+          onError={onImageError}
+          onLoad={onImageLoad}
+          draggable={false}
+        />
+      </div>
+    </div>
   );
 }
