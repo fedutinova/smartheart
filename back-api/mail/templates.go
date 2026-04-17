@@ -5,7 +5,6 @@ import (
 	"html"
 )
 
-// PasswordResetEmail returns the HTML body for a password reset email.
 func PasswordResetEmail(resetLink string) string {
 	safeLink := html.EscapeString(resetLink)
 	return fmt.Sprintf(`<!DOCTYPE html>

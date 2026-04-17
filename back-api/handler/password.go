@@ -6,7 +6,6 @@ import (
 	"github.com/fedutinova/smartheart/back-api/service"
 )
 
-// PasswordHandler handles password reset and change endpoints.
 type PasswordHandler struct {
 	Service service.PasswordService
 }
@@ -25,7 +24,6 @@ type changePasswordRequest struct {
 	NewPassword string `json:"new_password" validate:"required,min=10,max=72"`
 }
 
-// RequestReset handles POST /v1/auth/password-reset.
 func (h *PasswordHandler) RequestReset(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
@@ -44,7 +42,6 @@ func (h *PasswordHandler) RequestReset(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// ConfirmReset handles POST /v1/auth/password-reset/confirm.
 func (h *PasswordHandler) ConfirmReset(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
@@ -63,7 +60,6 @@ func (h *PasswordHandler) ConfirmReset(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// ChangePassword handles POST /v1/auth/password-change (authenticated).
 func (h *PasswordHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 

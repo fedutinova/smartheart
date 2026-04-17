@@ -25,7 +25,6 @@ const (
 	resetTokenTTL   = 15 * time.Minute
 )
 
-// PasswordService handles password reset and change logic.
 type PasswordService interface {
 	RequestReset(ctx context.Context, email string) error
 	ConfirmReset(ctx context.Context, token, newPassword string) error
@@ -39,7 +38,6 @@ type passwordService struct {
 	frontendURL string
 }
 
-// NewPasswordService creates a new PasswordService.
 func NewPasswordService(repo repository.Store, sessions auth.SessionService, mailer *mail.Sender, cfg config.Config) PasswordService {
 	return &passwordService{
 		repo:        repo,
@@ -49,8 +47,7 @@ func NewPasswordService(repo repository.Store, sessions auth.SessionService, mai
 	}
 }
 
-// RequestReset generates a reset token and sends it by email.
-// Always returns nil to prevent email enumeration — errors are logged, not exposed.
+// RequestReset always returns nil to prevent email enumeration.
 func (s *passwordService) RequestReset(ctx context.Context, email string) error {
 	if email == "" {
 		return fmt.Errorf("email is required: %w", apperr.ErrValidation)
@@ -58,9 +55,9 @@ func (s *passwordService) RequestReset(ctx context.Context, email string) error 
 
 	user, err := s.repo.GetUserByEmail(ctx, email)
 	if err != nil {
-		// Don't reveal whether the email exists.
+		// Don't reveal whether the email exists — return nil intentionally.
 		slog.InfoContext(ctx, "Password reset requested for unknown email")
-		return nil
+		return nil //nolint:nilerr // intentional: prevent email enumeration
 	}
 
 	rawToken, err := generateToken()
@@ -71,7 +68,6 @@ func (s *passwordService) RequestReset(ctx context.Context, email string) error 
 
 	tokenHash := auth.HashToken(rawToken)
 
-	// Invalidate any previous unused tokens for this user.
 	if err := s.repo.InvalidateUserPasswordResetTokens(ctx, user.ID); err != nil {
 		slog.ErrorContext(ctx, "Failed to invalidate old reset tokens", "user_id", user.ID, "error", err)
 	}
@@ -97,7 +93,6 @@ func (s *passwordService) RequestReset(ctx context.Context, email string) error 
 	return nil
 }
 
-// ConfirmReset validates the token and sets a new password.
 func (s *passwordService) ConfirmReset(ctx context.Context, rawToken, newPassword string) error {
 	if rawToken == "" || newPassword == "" {
 		return fmt.Errorf("token and new password are required: %w", apperr.ErrValidation)
@@ -132,7 +127,6 @@ func (s *passwordService) ConfirmReset(ctx context.Context, rawToken, newPasswor
 		return apperr.WrapInternal("confirm password reset", err)
 	}
 
-	// Revoke all sessions so user must re-login with the new password.
 	if err := s.sessions.RevokeAllUserTokens(ctx, resetToken.UserID.String()); err != nil {
 		slog.ErrorContext(ctx, "Failed to revoke user sessions after password reset", "user_id", resetToken.UserID, "error", err)
 	}
@@ -143,7 +137,6 @@ func (s *passwordService) ConfirmReset(ctx context.Context, rawToken, newPasswor
 	return nil
 }
 
-// ChangePassword changes the password for an authenticated user.
 func (s *passwordService) ChangePassword(ctx context.Context, userID uuid.UUID, oldPassword, newPassword string) error {
 	if oldPassword == "" || newPassword == "" {
 		return fmt.Errorf("old and new passwords are required: %w", apperr.ErrValidation)
@@ -171,8 +164,6 @@ func (s *passwordService) ChangePassword(ctx context.Context, userID uuid.UUID, 
 		return apperr.WrapInternal("update password", err)
 	}
 
-	// Revoke all sessions so other devices are logged out.
-	// The current session is also revoked — the user must re-login.
 	uidStr := userID.String()
 	if err := s.sessions.RevokeAllUserTokens(ctx, uidStr); err != nil {
 		slog.ErrorContext(ctx, "Failed to revoke user sessions after password change", "user_id", userID, "error", err)
@@ -204,4 +195,3 @@ func validatePassword(password string) error {
 	}
 	return nil
 }
-

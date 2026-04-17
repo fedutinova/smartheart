@@ -111,20 +111,20 @@ type RAGConfig struct {
 }
 
 type Config struct {
-	HTTPAddr  string
-	JWT       JWTConfig
-	Cookie    CookieConfig
-	Queue     QueueConfig
-	DB        DBConfig
-	S3        S3Config
-	Storage   StorageConfig
-	GPT       GPTConfig
-	RedisURL  string
-	CORS      CORSConfig
-	RateLimit RateLimitConfig
-	Quota     QuotaConfig
-	RAG       RAGConfig
-	YooKassa  YooKassaConfig
+	HTTPAddr    string
+	JWT         JWTConfig
+	Cookie      CookieConfig
+	Queue       QueueConfig
+	DB          DBConfig
+	S3          S3Config
+	Storage     StorageConfig
+	GPT         GPTConfig
+	RedisURL    string
+	CORS        CORSConfig
+	RateLimit   RateLimitConfig
+	Quota       QuotaConfig
+	RAG         RAGConfig
+	YooKassa    YooKassaConfig
 	SMTP        SMTPConfig
 	FrontendURL string // base URL of the frontend app (for links in emails)
 	SyncMode    bool   // ECG_SYNC_MODE: process ECG synchronously (for H2 baseline testing)

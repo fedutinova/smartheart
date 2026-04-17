@@ -8,7 +8,6 @@ import (
 	"github.com/fedutinova/smartheart/back-api/config"
 )
 
-// Sender sends emails via SMTP.
 type Sender struct {
 	host string
 	port int
@@ -17,7 +16,6 @@ type Sender struct {
 	from string
 }
 
-// NewSender creates a Sender from SMTP config.
 func NewSender(cfg config.SMTPConfig) *Sender {
 	return &Sender{
 		host: cfg.Host,
@@ -28,7 +26,6 @@ func NewSender(cfg config.SMTPConfig) *Sender {
 	}
 }
 
-// Send sends an HTML email to the given recipient.
 func (s *Sender) Send(to, subject, htmlBody string) error {
 	addr := fmt.Sprintf("%s:%d", s.host, s.port)
 

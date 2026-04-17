@@ -12,7 +12,6 @@ import (
 	"github.com/fedutinova/smartheart/back-api/models"
 )
 
-// CreatePasswordResetToken persists a new password reset token.
 func (r *Repository) CreatePasswordResetToken(ctx context.Context, token *models.PasswordResetToken) error {
 	if token.ID == uuid.Nil {
 		token.ID = uuid.New()
@@ -30,7 +29,6 @@ func (r *Repository) CreatePasswordResetToken(ctx context.Context, token *models
 	return nil
 }
 
-// GetValidPasswordResetToken returns an unused, non-expired token by hash.
 func (r *Repository) GetValidPasswordResetToken(ctx context.Context, tokenHash string) (*models.PasswordResetToken, error) {
 	query := `
 		SELECT id, user_id, token_hash, expires_at, created_at, used_at
@@ -51,7 +49,6 @@ func (r *Repository) GetValidPasswordResetToken(ctx context.Context, tokenHash s
 	return &t, nil
 }
 
-// MarkPasswordResetTokenUsed marks a token as used.
 func (r *Repository) MarkPasswordResetTokenUsed(ctx context.Context, tokenID uuid.UUID) error {
 	query := `UPDATE password_reset_tokens SET used_at = NOW() WHERE id = $1`
 
@@ -62,7 +59,6 @@ func (r *Repository) MarkPasswordResetTokenUsed(ctx context.Context, tokenID uui
 	return nil
 }
 
-// InvalidateUserPasswordResetTokens marks all unused tokens for a user as used.
 func (r *Repository) InvalidateUserPasswordResetTokens(ctx context.Context, userID uuid.UUID) error {
 	query := `UPDATE password_reset_tokens SET used_at = NOW() WHERE user_id = $1 AND used_at IS NULL`
 
@@ -73,7 +69,6 @@ func (r *Repository) InvalidateUserPasswordResetTokens(ctx context.Context, user
 	return nil
 }
 
-// UpdateUserPassword updates a user's password hash.
 func (r *Repository) UpdateUserPassword(ctx context.Context, userID uuid.UUID, passwordHash string) error {
 	query := `UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2`
 

@@ -2,8 +2,11 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/fedutinova/smartheart/back-api/models"
 )
@@ -51,8 +54,8 @@ func (r *Repository) FindCachedAnswer(ctx context.Context, question string, thre
 		&entry.ExpiresAt,
 	)
 	if err != nil {
-		if err.Error() == "no rows in result set" {
-			return nil, nil
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil //nolint:nilnil // no cache hit is not an error
 		}
 		return nil, fmt.Errorf("find cached answer: %w", err)
 	}

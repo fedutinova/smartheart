@@ -58,7 +58,7 @@ export function useEventSource(onEvent: (evt: SSEEvent) => void) {
           const evt: SSEEvent = JSON.parse(e.data);
           callbackRef.current(evt);
         } catch {
-          // Ignore malformed events
+          // skip
         }
       };
 

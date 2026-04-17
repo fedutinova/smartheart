@@ -101,8 +101,8 @@ func TestConfirmReset_DBError_Returns500(t *testing.T) {
 
 	err := svc.ConfirmReset(context.Background(), "badtoken0000000000000000000000000000000000000000000000000000000000", "strongpassword123")
 	require.Error(t, err)
-	assert.ErrorIs(t, err, apperr.ErrInternal)
-	assert.NotErrorIs(t, err, apperr.ErrInvalidToken, "DB errors must not be mapped to ErrInvalidToken")
+	require.ErrorIs(t, err, apperr.ErrInternal)
+	require.NotErrorIs(t, err, apperr.ErrInvalidToken, "DB errors must not be mapped to ErrInvalidToken")
 }
 
 func TestConfirmReset_Success(t *testing.T) {
