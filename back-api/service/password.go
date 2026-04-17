@@ -85,7 +85,7 @@ func (s *passwordService) RequestReset(ctx context.Context, email string) error 
 	resetLink := fmt.Sprintf("%s/reset-password?token=%s", s.frontendURL, rawToken)
 	body := mail.PasswordResetEmail(resetLink)
 
-	if err := s.mailer.Send(email, "SmartHeart — Сброс пароля", body); err != nil {
+	if err := s.mailer.Send(email, "Умное сердце — Сброс пароля", body); err != nil {
 		slog.ErrorContext(ctx, "Failed to send password reset email", "email", email, "error", err)
 		return nil
 	}
