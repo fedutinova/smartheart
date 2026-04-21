@@ -17,6 +17,10 @@ const MAX_RECONNECT_DELAY = 30_000;
  * access token before each reconnect attempt so a stale JWT doesn't cause
  * an infinite reconnect loop.
  *
+ * Uses fetch with Authorization header (instead of EventSource) to avoid
+ * exposing the JWT in the query string, which would be logged and leaked
+ * through browser history, nginx logs, proxies, etc.
+ *
  * The connection stays open while the tab exists — no disconnect on
  * visibility change, so tab switches don't trigger reconnect noise.
  */
@@ -29,53 +33,97 @@ export function useEventSource(onEvent: (evt: SSEEvent) => void) {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    let es: EventSource | null = null;
+    let controller: AbortController | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let attempt = 0;
     let closed = false;
 
     function disconnect() {
-      es?.close();
-      es = null;
+      controller?.abort();
+      controller = null;
       if (reconnectTimer) {
         clearTimeout(reconnectTimer);
         reconnectTimer = null;
       }
     }
 
-    function connect(currentToken: string) {
+    async function connect(currentToken: string) {
       if (closed) return;
 
-      const url = `${API_BASE_URL}/v1/events?token=${encodeURIComponent(currentToken)}`;
-      es = new EventSource(url);
+      controller = new AbortController();
+      const url = `${API_BASE_URL}/v1/events`;
 
-      es.onopen = () => {
-        attempt = 0;
-      };
+      try {
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${currentToken}`,
+          },
+          signal: controller.signal,
+        });
 
-      es.onmessage = (e) => {
-        try {
-          const evt: SSEEvent = JSON.parse(e.data);
-          callbackRef.current(evt);
-        } catch {
-          // skip
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
         }
-      };
 
-      es.onerror = () => {
-        es?.close();
-        es = null;
+        attempt = 0;
+
+        // Read the SSE stream: format is "data: <json>\n\n"
+        const reader = response.body!.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          // Split on double newline (SSE event separator)
+          const events = buffer.split('\n\n');
+          // Keep the last incomplete event in the buffer
+          buffer = events.pop() ?? '';
+
+          for (const event of events) {
+            if (!event.startsWith('data: ')) continue;
+            try {
+              const jsonStr = event.slice(6); // Remove "data: " prefix
+              const evt: SSEEvent = JSON.parse(jsonStr);
+              callbackRef.current(evt);
+            } catch (e) {
+              console.warn('Failed to parse SSE event:', event, e);
+            }
+          }
+        }
+
+        // Connection closed normally, schedule reconnect
+        if (!closed) {
+          scheduleReconnect();
+        }
+      } catch (e) {
+        if (e instanceof Error && e.name === 'AbortError') {
+          // Connection was aborted by cleanup, not an error
+          return;
+        }
+
+        // Connection failed, schedule reconnect with exponential backoff
+        if (!closed) {
+          scheduleReconnect();
+        }
+      }
+    }
+
+    function scheduleReconnect() {
+      if (closed) return;
+      const delay = Math.min(1000 * 2 ** attempt, MAX_RECONNECT_DELAY);
+      attempt++;
+      reconnectTimer = setTimeout(() => {
         if (closed) return;
-
-        const delay = Math.min(1000 * 2 ** attempt, MAX_RECONNECT_DELAY);
-        attempt++;
-        reconnectTimer = setTimeout(() => {
-          if (closed) return;
-          ensureFreshToken(true)
-            .then((freshToken) => connect(freshToken))
-            .catch(() => {});
-        }, delay);
-      };
+        ensureFreshToken(true)
+          .then((freshToken) => connect(freshToken))
+          .catch(() => {
+            // Token refresh failed, will retry on next schedule
+            if (!closed) scheduleReconnect();
+          });
+      }, delay);
     }
 
     const initialToken = useAuthStore.getState().accessToken;

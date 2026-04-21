@@ -51,17 +51,12 @@ func JWTMiddleware(secret, issuer string, opts ...func(*jwtMWConfig)) func(http.
 	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			var tokenStr string
-			if raw := r.Header.Get("Authorization"); raw != "" && strings.HasPrefix(raw, "Bearer ") {
-				tokenStr = strings.TrimPrefix(raw, "Bearer ")
-			} else if q := r.URL.Query().Get("token"); q != "" {
-				// Fallback for SSE: EventSource API cannot set custom headers,
-				// so the client passes the JWT as a query parameter.
-				tokenStr = q
-			} else {
+			raw := r.Header.Get("Authorization")
+			if raw == "" || !strings.HasPrefix(raw, "Bearer ") {
 				writeJSONError(w, http.StatusUnauthorized, "missing bearer token")
 				return
 			}
+			tokenStr := strings.TrimPrefix(raw, "Bearer ")
 
 			parser := jwt.NewParser(jwt.WithValidMethods([]string{"HS256"}))
 			cl := &Claims{}

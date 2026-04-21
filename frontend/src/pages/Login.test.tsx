@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
-import { AUTH_ERROR_KEY, JWT_STORAGE_KEY } from '@/config';
+import { AUTH_ERROR_KEY } from '@/config';
 import { useAuthStore } from '@/store/auth';
 import { Login } from './Login';
 
@@ -85,7 +85,7 @@ describe('Login', () => {
 
     await waitFor(() => {
       expect(useAuthStore.getState().isAuthenticated).toBe(true);
+      expect(useAuthStore.getState().accessToken).toBe('access-token');
     });
-    expect(localStorage.getItem(JWT_STORAGE_KEY)).toBe('access-token');
   });
 });

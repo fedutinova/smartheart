@@ -1,6 +1,4 @@
 import { create } from 'zustand';
-import { JWT_STORAGE_KEY } from '@/config';
-import { storage } from '@/utils/storage';
 
 interface AuthState {
   accessToken: string | null;
@@ -18,7 +16,6 @@ export const useAuthStore = create<AuthState>((set) => ({
   isInitializing: true,
 
   setAccessToken: (token: string) => {
-    storage.set(JWT_STORAGE_KEY, token);
     set({
       accessToken: token,
       isAuthenticated: true,
@@ -26,7 +23,6 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: () => {
-    storage.remove(JWT_STORAGE_KEY);
     set({
       accessToken: null,
       isAuthenticated: false,

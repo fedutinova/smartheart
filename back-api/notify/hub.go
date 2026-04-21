@@ -2,6 +2,7 @@ package notify
 
 import (
 	"encoding/json"
+	"log/slog"
 	"sync"
 
 	"github.com/google/uuid"
@@ -56,6 +57,7 @@ func (h *Hub) Unsubscribe(userID uuid.UUID, ch chan []byte) {
 func (h *Hub) Notify(userID uuid.UUID, evt Event) {
 	data, err := json.Marshal(evt)
 	if err != nil {
+		slog.Error("Failed to marshal SSE event", "user_id", userID, "error", err)
 		return
 	}
 

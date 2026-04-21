@@ -20,8 +20,6 @@ export const ROUTES = {
   TERMS: '/terms',
 };
 
-export const JWT_STORAGE_KEY = 'access_token';
-
 /**
  * Key in sessionStorage for storing the auth error reason
  * so the Login page can display a meaningful message after redirect.

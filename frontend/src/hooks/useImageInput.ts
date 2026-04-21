@@ -149,7 +149,11 @@ export function useImageInput(): UseImageInputReturn {
   const handleCropCancel = useCallback(() => {
     if (previewSrc) {
       setCroppedPreview(previewSrc);
-      srcToBlob(previewSrc).then(setCroppedBlob).catch(() => {});
+      srcToBlob(previewSrc)
+        .then(setCroppedBlob)
+        .catch((err) => {
+          console.warn('Failed to convert image preview to blob', err);
+        });
     }
     setStep('ready');
   }, [previewSrc]);

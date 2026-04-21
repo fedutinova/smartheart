@@ -6,8 +6,6 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import App from './App';
 import { useAuthStore } from './store/auth';
 import { queryClient } from './services/queryClient';
-import { JWT_STORAGE_KEY } from './config';
-import { storage } from './utils/storage';
 import { ensureFreshToken } from './services/api';
 import './index.css';
 
@@ -18,7 +16,7 @@ const INIT_TIMEOUT_MS = 10_000;
 // eslint-disable-next-line react-refresh/only-export-components
 function Root() {
   useEffect(() => {
-    const { setAccessToken, setInitializing } = useAuthStore.getState();
+    const { setInitializing } = useAuthStore.getState();
 
     // Safety net: if the refresh request hangs (e.g. flaky mobile network
     // without a clean timeout from the OS), make sure we always unblock
@@ -29,29 +27,11 @@ function Root() {
       }
     }, INIT_TIMEOUT_MS);
 
-    // If we have an access token cached in localStorage (from the current
-    // session, before a page reload), restore it into memory immediately
-    // so protected routes render without a flash.  Then do a background
-    // silent refresh to keep it fresh.
-    const cached = storage.get(JWT_STORAGE_KEY);
-    if (cached) {
-      setAccessToken(cached);
-      setInitializing(false);
-      clearTimeout(safetyTimer);
-      // Background refresh — don't block rendering.
-      // If the cookie is expired the token will be stale, but the 401
-      // interceptor will trigger a non-silent refresh → logout.
-      ensureFreshToken(true).catch(() => {
-        // Cookie gone — clear the stale cached token so the next 401
-        // doesn't loop. The interceptor will handle the actual logout.
-        storage.remove(JWT_STORAGE_KEY);
-      });
-      return () => { clearTimeout(safetyTimer); };
-    }
-
-    // No cached token — try silent refresh via httpOnly cookie.
+    // Try silent refresh via httpOnly cookie on every page load.
     // silent=true: if the cookie is missing (first visit) we don't want to
     // show "session expired" on the login page.
+    // The token is kept in memory only (never persisted to localStorage
+    // to avoid XSS exposure).
     ensureFreshToken(true)
       .catch(() => {
         // No valid session — user will see the login screen.
