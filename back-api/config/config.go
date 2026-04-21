@@ -70,8 +70,10 @@ type CORSConfig struct {
 
 // RateLimitConfig holds rate limiting settings.
 type RateLimitConfig struct {
-	RPM   int // max requests per minute per IP
-	Burst int // burst size
+	RPM                  int // max requests per minute per IP
+	AnalyzeRPM           int // max ECG analysis requests per minute per user
+	SubscriptionRPM      int // max subscription requests per minute per user
+	PasswordResetRPM     int // max password reset requests per minute per user
 }
 
 // GPTConfig holds OpenAI/GPT settings.
@@ -350,8 +352,10 @@ func Load() Config {
 			Credentials: envBool("CORS_CREDENTIALS", true),
 		},
 		RateLimit: RateLimitConfig{
-			RPM:   envInt("RATE_LIMIT_RPM", 100),
-			Burst: envInt("RATE_LIMIT_BURST", 20),
+			RPM:              envInt("RATE_LIMIT_RPM", 100),
+			AnalyzeRPM:       envInt("RATE_LIMIT_ANALYZE_RPM", 10),
+			SubscriptionRPM:  envInt("RATE_LIMIT_SUBSCRIPTION_RPM", 5),
+			PasswordResetRPM: envInt("RATE_LIMIT_PASSWORD_RESET_RPM", 3),
 		},
 		Quota: QuotaConfig{
 			DailyLimit: envInt("QUOTA_DAILY_LIMIT", 50),

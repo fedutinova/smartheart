@@ -221,9 +221,15 @@ func startHTTPServer(
 		WebhookIP: server.WebhookIPWhitelist(cfg.YooKassa.ShopID),
 	}
 	if cfg.RateLimit.RPM > 0 {
-		mw.AnalyzeRateLimit = server.EndpointRateLimit(10)
-		mw.SubscriptionRateLimit = server.EndpointRateLimit(5)
-		mw.PasswordResetRateLimit = server.EndpointRateLimit(3)
+		if cfg.RateLimit.AnalyzeRPM > 0 {
+			mw.AnalyzeRateLimit = server.EndpointRateLimit(cfg.RateLimit.AnalyzeRPM)
+		}
+		if cfg.RateLimit.SubscriptionRPM > 0 {
+			mw.SubscriptionRateLimit = server.EndpointRateLimit(cfg.RateLimit.SubscriptionRPM)
+		}
+		if cfg.RateLimit.PasswordResetRPM > 0 {
+			mw.PasswordResetRateLimit = server.EndpointRateLimit(cfg.RateLimit.PasswordResetRPM)
+		}
 	}
 	handlers := handler.NewHandler(authSvc, passwordSvc, submissionSvc, requestSvc, paymentSvc, q, repo, sessions, storageService, hub, cfg, mw)
 	if syncWorker != nil {

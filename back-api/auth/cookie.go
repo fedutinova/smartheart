@@ -18,7 +18,7 @@ func SetRefreshTokenCookie(w http.ResponseWriter, token string, maxAge time.Dura
 		MaxAge:   int(maxAge.Seconds()),
 		HttpOnly: true,
 		Secure:   cfg.Secure,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteStrictMode,
 		Domain:   cfg.Domain,
 	})
 }
@@ -32,7 +32,7 @@ func ClearRefreshTokenCookie(w http.ResponseWriter, cfg config.CookieConfig) {
 		MaxAge:   -1,
 		HttpOnly: true,
 		Secure:   cfg.Secure,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteStrictMode,
 		Domain:   cfg.Domain,
 	})
 }

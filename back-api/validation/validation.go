@@ -3,8 +3,9 @@ package validation
 import (
 	"fmt"
 	"mime/multipart"
-	"net/http"
 	"strings"
+
+	"github.com/gabriel-vasile/mimetype"
 )
 
 const (
@@ -107,9 +108,12 @@ func ValidateGPTRequest(textQuery string, files []*multipart.FileHeader) Validat
 		contentType := file.Header.Get("Content-Type")
 		if contentType == "" || contentType == "application/octet-stream" {
 			if f, err := file.Open(); err == nil {
-				buf := make([]byte, 512)
-				n, _ := f.Read(buf)
-				contentType = http.DetectContentType(buf[:n])
+				// Use mimetype for deeper magic-byte inspection than http.DetectContentType
+				if mtype, err := mimetype.DetectReader(f); err == nil {
+					contentType = mtype.String()
+				}
+				// Seek back to start so caller can read the file content
+				_, _ = f.Seek(0, 0)
 				_ = f.Close()
 			}
 		}
