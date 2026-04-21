@@ -1,0 +1,30 @@
+# Allow all bots to crawl the site
+User-agent: *
+Allow: /
+
+# Specific rules for crawlers
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 0
+
+User-agent: Yandexbot
+Allow: /
+Crawl-delay: 0
+
+User-agent: bingbot
+Allow: /
+Crawl-delay: 1
+
+# Block bad bots
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+# Declare sitemaps
+Sitemap: https://smartheart.online/sitemap.xml
+
+# Crawl rate limits
+Request-rate: 1/1s
+Visit-time: 0000-2400

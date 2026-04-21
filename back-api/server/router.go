@@ -25,7 +25,7 @@ func NewRouter(h *handler.Handler, cfg config.Config) http.Handler {
 		AllowCredentials: cfg.CORS.Credentials,
 		MaxAge:           86400,
 	}))
-	r.Use(securityHeaders)
+	r.Use(apiSecurityHeaders)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
@@ -73,8 +73,8 @@ func keyByUserOrIP(r *http.Request) (string, error) {
 	return httprate.KeyByIP(r)
 }
 
-// securityHeaders adds standard security headers to every response.
-func securityHeaders(next http.Handler) http.Handler {
+// apiSecurityHeaders adds standard security headers to API responses.
+func apiSecurityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
