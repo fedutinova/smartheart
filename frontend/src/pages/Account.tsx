@@ -70,12 +70,12 @@ export function Account() {
         {quota && (
           <div className="bg-white shadow rounded-xl p-6 mb-6">
             <h2 className="text-sm font-medium text-gray-400 mb-4">Подписка</h2>
-            {hasActiveSub ? (
+            {hasActiveSub && quota.subscription_expires_at ? (
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-green-700">Активна</p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    до {formatDateLong(quota.subscription_expires_at!)}, безлимитные анализы
+                    до {formatDateLong(quota.subscription_expires_at)}, безлимитные анализы
                   </p>
                 </div>
                 <span className="px-3 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">

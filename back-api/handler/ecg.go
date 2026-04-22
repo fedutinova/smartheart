@@ -2,11 +2,27 @@ package handler
 
 import (
 	"fmt"
+	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
+	"github.com/fedutinova/smartheart/back-api/apperr"
 	"github.com/fedutinova/smartheart/back-api/service"
+)
+
+type dnsEntry struct {
+	ips       []net.IP
+	expiresAt time.Time
+}
+
+var (
+	dnsCache   = make(map[string]*dnsEntry)
+	dnsCacheMu sync.RWMutex
+	dnsCacheTTL = 5 * time.Minute
 )
 
 type ekgAnalyzeRequest struct {
@@ -16,6 +32,77 @@ type ekgAnalyzeRequest struct {
 	PaperSpeedMMS *float64 `json:"paper_speed_mms,omitempty" validate:"omitempty,min=10,max=100"`
 	MmPerMvLimb   *float64 `json:"mm_per_mv_limb,omitempty"  validate:"omitempty,min=1,max=40"`
 	MmPerMvChest  *float64 `json:"mm_per_mv_chest,omitempty" validate:"omitempty,min=1,max=40"`
+}
+
+// resolveHostWithCache performs DNS lookup with caching to avoid blocking on every request.
+// TTL is 5 minutes per hostname.
+func resolveHostWithCache(host string) ([]net.IP, error) {
+	dnsCacheMu.RLock()
+	if entry, ok := dnsCache[host]; ok && time.Now().Before(entry.expiresAt) {
+		dnsCacheMu.RUnlock()
+		return entry.ips, nil
+	}
+	dnsCacheMu.RUnlock()
+
+	// Not in cache or expired; perform DNS lookup
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update cache
+	dnsCacheMu.Lock()
+	dnsCache[host] = &dnsEntry{
+		ips:       ips,
+		expiresAt: time.Now().Add(dnsCacheTTL),
+	}
+	dnsCacheMu.Unlock()
+
+	return ips, nil
+}
+
+// isSSRFSafeURL validates that a URL is safe to fetch (prevents SSRF attacks).
+// This is handler-level validation for user-submitted URLs (requires HTTPS).
+// Note: workers/ecg_handler.go has separate SSRF validation for internal URLs using
+// a custom transport dialer. Both approaches are complementary and serve different purposes.
+// Rejects localhost, private networks, and link-local addresses.
+// Uses cached DNS results to avoid blocking lookups on every request.
+func isSSRFSafeURL(urlStr string) error {
+	u, err := url.Parse(urlStr)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", apperr.ErrValidation)
+	}
+
+	// Require https for security
+	if u.Scheme != "https" {
+		return fmt.Errorf("only HTTPS URLs are allowed: %w", apperr.ErrValidation)
+	}
+
+	// Parse the host (removes port)
+	host := u.Hostname()
+	if host == "" {
+		return fmt.Errorf("URL has no host: %w", apperr.ErrValidation)
+	}
+
+	// Reject localhost and loop back
+	if host == "localhost" || host == "127.0.0.1" || host == "::1" {
+		return fmt.Errorf("localhost not allowed: %w", apperr.ErrValidation)
+	}
+
+	// Resolve and check IP (uses cache to avoid blocking)
+	ips, err := resolveHostWithCache(host)
+	if err != nil {
+		return fmt.Errorf("cannot resolve hostname: %w", apperr.ErrValidation)
+	}
+
+	for _, ip := range ips {
+		// Reject private/internal network ranges
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() {
+			return fmt.Errorf("URL resolves to private/internal network: %w", apperr.ErrValidation)
+		}
+	}
+
+	return nil
 }
 
 // SubmitECGAnalyze handles EKG image analysis submission.
@@ -57,6 +144,12 @@ func (h *ECGHandler) submitECGURL(w http.ResponseWriter, r *http.Request) {
 
 	var req ekgAnalyzeRequest
 	if !decodeAndValidate(w, r, &req) {
+		return
+	}
+
+	// SSRF protection: validate that URL is not to internal networks
+	if err := isSSRFSafeURL(req.ImageTempURL); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid image URL")
 		return
 	}
 

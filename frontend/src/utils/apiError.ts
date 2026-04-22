@@ -5,11 +5,25 @@ interface ApiError {
   message: string;
 }
 
+/**
+ * Extracts error message from various error types (Axios, Error, unknown).
+ * Safely parses API responses without relying on 'any' types.
+ */
 export function getApiError(err: unknown): ApiError {
   if (err instanceof AxiosError) {
+    let message = err.message;
+
+    // Type-safe extraction of error message from response
+    if (err.response?.data && typeof err.response.data === 'object') {
+      const data = err.response.data as Record<string, unknown>;
+      if (typeof data.error === 'string') {
+        message = data.error;
+      }
+    }
+
     return {
       status: err.response?.status,
-      message: err.response?.data?.error ?? err.message,
+      message,
     };
   }
   if (err instanceof Error) {

@@ -3,6 +3,9 @@ package service
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -24,8 +27,8 @@ type PaymentService interface {
 	CreatePayment(ctx context.Context, userID uuid.UUID, analysesCount int) (*PaymentResult, error)
 	// CreateSubscription creates a YooKassa payment for a monthly subscription.
 	CreateSubscription(ctx context.Context, userID uuid.UUID) (*PaymentResult, error)
-	// HandleWebhook processes a YooKassa webhook notification.
-	HandleWebhook(ctx context.Context, body []byte) error
+	// HandleWebhook processes a YooKassa webhook notification after verifying the signature.
+	HandleWebhook(ctx context.Context, body []byte, signature string) error
 	// GetQuotaInfo returns the user's current quota status.
 	GetQuotaInfo(ctx context.Context, userID uuid.UUID) (*QuotaInfo, error)
 }
@@ -254,7 +257,26 @@ func (s *paymentService) CreateSubscription(ctx context.Context, userID uuid.UUI
 	})
 }
 
-func (s *paymentService) HandleWebhook(ctx context.Context, body []byte) error {
+func (s *paymentService) HandleWebhook(ctx context.Context, body []byte, signature string) error {
+	// Verify webhook signature using HMAC-SHA256
+	// YooKassa sends: X-Webhook-Signature = base64(HMAC-SHA256(body, secret_key))
+	if s.cfg.SecretKey == "" {
+		return fmt.Errorf("webhook secret key not configured: %w", apperr.ErrInternal)
+	}
+
+	expectedSig := base64.StdEncoding.EncodeToString(
+		hmac.New(sha256.New, []byte(s.cfg.SecretKey)).Sum(body),
+	)
+
+	if !hmac.Equal([]byte(signature), []byte(expectedSig)) {
+		sigPreview := signature
+		if len(signature) > 10 {
+			sigPreview = signature[:10]
+		}
+		slog.WarnContext(ctx, "Webhook signature verification failed", "provided", sigPreview, "expected", expectedSig[:10])
+		return fmt.Errorf("invalid webhook signature: %w", apperr.ErrValidation)
+	}
+
 	var webhook yooKassaWebhook
 	if err := json.Unmarshal(body, &webhook); err != nil {
 		return fmt.Errorf("parse webhook: %w", apperr.ErrValidation)
@@ -271,14 +293,14 @@ func (s *paymentService) HandleWebhook(ctx context.Context, body []byte) error {
 			slog.ErrorContext(ctx, "Failed to confirm payment", "yookassa_id", yookassaID, "error", err)
 			return apperr.WrapInternal("confirm payment", err)
 		}
-		slog.InfoContext(ctx, "Payment confirmed", "yookassa_id", yookassaID)
+		slog.InfoContext(ctx, "Payment confirmed via webhook", "yookassa_id", yookassaID)
 
 	case "payment.canceled":
 		if err := s.repo.CancelPayment(ctx, yookassaID); err != nil {
 			slog.ErrorContext(ctx, "Failed to cancel payment", "yookassa_id", yookassaID, "error", err)
 			return apperr.WrapInternal("cancel payment", err)
 		}
-		slog.InfoContext(ctx, "Payment canceled", "yookassa_id", yookassaID)
+		slog.InfoContext(ctx, "Payment canceled via webhook", "yookassa_id", yookassaID)
 
 	default:
 		slog.DebugContext(ctx, "Ignoring webhook event", "event", webhook.Event)

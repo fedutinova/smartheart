@@ -41,7 +41,7 @@ func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 }
 
 // Webhook handles YooKassa payment notifications.
-// This endpoint is public (called by YooKassa servers).
+// This endpoint is public (called by YooKassa servers) and requires signature verification.
 func (h *PaymentHandler) Webhook(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 	if err != nil {
@@ -49,7 +49,13 @@ func (h *PaymentHandler) Webhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.Service.HandleWebhook(r.Context(), body); err != nil {
+	signature := r.Header.Get("X-Webhook-Signature")
+	if signature == "" {
+		writeError(w, http.StatusUnauthorized, "missing webhook signature")
+		return
+	}
+
+	if err := h.Service.HandleWebhook(r.Context(), body, signature); err != nil {
 		handleServiceError(w, err)
 		return
 	}

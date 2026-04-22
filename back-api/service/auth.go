@@ -158,17 +158,20 @@ func (s *authService) Refresh(ctx context.Context, refreshToken string) (*auth.T
 		return nil, fmt.Errorf("invalid refresh token: %w", apperr.ErrInvalidToken)
 	}
 
-	// Issue new pair FIRST, then revoke old token
+	// Revoke old token FIRST to prevent concurrent use of both tokens (security best practice)
+	// If revocation fails, we log it but continue to prevent refresh lockout.
+	// The token will eventually expire on its own.
+	if err := s.sessions.RevokeRefreshToken(ctx, tokenHash); err != nil {
+		slog.WarnContext(ctx, "Failed to revoke old refresh token in redis", "error", err)
+	}
+	if err := s.repo.RevokeRefreshToken(ctx, tokenHash); err != nil {
+		slog.WarnContext(ctx, "Failed to revoke old refresh token in db", "error", err)
+	}
+
+	// Issue new pair after revocation
 	tokens, err := s.issueTokenPair(ctx, user)
 	if err != nil {
 		return nil, err
-	}
-
-	if err := s.sessions.RevokeRefreshToken(ctx, tokenHash); err != nil {
-		slog.ErrorContext(ctx, "Failed to revoke old refresh token in redis", "error", err)
-	}
-	if err := s.repo.RevokeRefreshToken(ctx, tokenHash); err != nil {
-		slog.ErrorContext(ctx, "Failed to revoke old refresh token in db", "error", err)
 	}
 
 	return tokens, nil

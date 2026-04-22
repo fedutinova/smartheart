@@ -2,6 +2,9 @@ package service
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"testing"
 	"time"
@@ -16,6 +19,13 @@ import (
 	"github.com/fedutinova/smartheart/back-api/models"
 	repomocks "github.com/fedutinova/smartheart/back-api/repository/mocks"
 )
+
+// computeWebhookSignature generates a valid HMAC-SHA256 signature for testing
+func computeWebhookSignature(secretKey string, body []byte) string {
+	return base64.StdEncoding.EncodeToString(
+		hmac.New(sha256.New, []byte(secretKey)).Sum(body),
+	)
+}
 
 func newPaymentService(t *testing.T) (*paymentService, *repomocks.MockStore) {
 	repo := repomocks.NewMockStore(t)
@@ -95,8 +105,9 @@ func TestHandleWebhook_PaymentSucceeded(t *testing.T) {
 		"event":  "payment.succeeded",
 		"object": map[string]string{"id": "yk-123", "status": "succeeded"},
 	})
+	sig := computeWebhookSignature("test-secret", body)
 
-	err := svc.HandleWebhook(ctx, body)
+	err := svc.HandleWebhook(ctx, body, sig)
 	require.NoError(t, err)
 }
 
@@ -110,15 +121,18 @@ func TestHandleWebhook_PaymentCanceled(t *testing.T) {
 		"event":  "payment.canceled",
 		"object": map[string]string{"id": "yk-456", "status": "canceled"},
 	})
+	sig := computeWebhookSignature("test-secret", body)
 
-	err := svc.HandleWebhook(ctx, body)
+	err := svc.HandleWebhook(ctx, body, sig)
 	require.NoError(t, err)
 }
 
 func TestHandleWebhook_InvalidJSON(t *testing.T) {
 	svc, _ := newPaymentService(t)
+	body := []byte("not json")
+	sig := computeWebhookSignature("test-secret", body)
 
-	err := svc.HandleWebhook(context.Background(), []byte("not json"))
+	err := svc.HandleWebhook(context.Background(), body, sig)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, apperr.ErrValidation)
 }
@@ -130,8 +144,9 @@ func TestHandleWebhook_EmptyPaymentID(t *testing.T) {
 		"event":  "payment.succeeded",
 		"object": map[string]string{"id": "", "status": "succeeded"},
 	})
+	sig := computeWebhookSignature("test-secret", body)
 
-	err := svc.HandleWebhook(context.Background(), body)
+	err := svc.HandleWebhook(context.Background(), body, sig)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, apperr.ErrValidation)
 }
@@ -143,9 +158,23 @@ func TestHandleWebhook_UnknownEvent_Ignored(t *testing.T) {
 		"event":  "refund.succeeded",
 		"object": map[string]string{"id": "yk-789", "status": "succeeded"},
 	})
+	sig := computeWebhookSignature("test-secret", body)
 
-	err := svc.HandleWebhook(context.Background(), body)
+	err := svc.HandleWebhook(context.Background(), body, sig)
 	require.NoError(t, err)
+}
+
+func TestHandleWebhook_InvalidSignature(t *testing.T) {
+	svc, _ := newPaymentService(t)
+
+	body, _ := json.Marshal(map[string]any{
+		"event":  "payment.succeeded",
+		"object": map[string]string{"id": "yk-123", "status": "succeeded"},
+	})
+
+	err := svc.HandleWebhook(context.Background(), body, "invalid-signature")
+	require.Error(t, err)
+	assert.ErrorIs(t, err, apperr.ErrValidation)
 }
 
 // --- CreateSubscription ---

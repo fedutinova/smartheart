@@ -95,7 +95,11 @@ func (h *RAGHandler) Query(w http.ResponseWriter, r *http.Request) {
 
 	// Semantic cache lookup.
 	const cacheThreshold = 0.8
-	if cached, err := h.repo.FindCachedAnswer(r.Context(), req.Question, cacheThreshold); err == nil && cached != nil {
+	cached, err := h.repo.FindCachedAnswer(r.Context(), req.Question, cacheThreshold)
+	if err != nil {
+		slog.WarnContext(r.Context(), "Failed to lookup RAG cache", "request_id", requestID, "error", err)
+	}
+	if cached != nil {
 		slog.Info("KB cache hit",
 			"request_id", requestID,
 			"similarity", cached.Similarity,
@@ -150,8 +154,13 @@ func (h *RAGHandler) Query(w http.ResponseWriter, r *http.Request) {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-		slog.Warn("RAG service returned error", "status", resp.StatusCode, "body", string(respBody))
+		respBody, err := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		if err != nil {
+			slog.WarnContext(r.Context(), "Failed to read RAG error response", "status", resp.StatusCode, "error", err)
+		}
+		if len(respBody) > 0 {
+			slog.WarnContext(r.Context(), "RAG service returned error", "status", resp.StatusCode, "body", string(respBody))
+		}
 		h.markRequestFailed(r, requestID)
 		writeError(w, http.StatusBadGateway, fmt.Sprintf("RAG service error: %d", resp.StatusCode))
 		return

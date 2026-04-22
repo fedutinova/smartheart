@@ -201,17 +201,17 @@ func (_c *MockPaymentService_GetQuotaInfo_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
-// HandleWebhook provides a mock function with given fields: ctx, body
-func (_m *MockPaymentService) HandleWebhook(ctx context.Context, body []byte) error {
-	ret := _m.Called(ctx, body)
+// HandleWebhook provides a mock function with given fields: ctx, body, signature
+func (_m *MockPaymentService) HandleWebhook(ctx context.Context, body []byte, signature string) error {
+	ret := _m.Called(ctx, body, signature)
 
 	if len(ret) == 0 {
 		panic("no return value specified for HandleWebhook")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, []byte) error); ok {
-		r0 = rf(ctx, body)
+	if rf, ok := ret.Get(0).(func(context.Context, []byte, string) error); ok {
+		r0 = rf(ctx, body, signature)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -227,13 +227,14 @@ type MockPaymentService_HandleWebhook_Call struct {
 // HandleWebhook is a helper method to define mock.On call
 //   - ctx context.Context
 //   - body []byte
-func (_e *MockPaymentService_Expecter) HandleWebhook(ctx interface{}, body interface{}) *MockPaymentService_HandleWebhook_Call {
-	return &MockPaymentService_HandleWebhook_Call{Call: _e.mock.On("HandleWebhook", ctx, body)}
+//   - signature string
+func (_e *MockPaymentService_Expecter) HandleWebhook(ctx interface{}, body interface{}, signature interface{}) *MockPaymentService_HandleWebhook_Call {
+	return &MockPaymentService_HandleWebhook_Call{Call: _e.mock.On("HandleWebhook", ctx, body, signature)}
 }
 
-func (_c *MockPaymentService_HandleWebhook_Call) Run(run func(ctx context.Context, body []byte)) *MockPaymentService_HandleWebhook_Call {
+func (_c *MockPaymentService_HandleWebhook_Call) Run(run func(ctx context.Context, body []byte, signature string)) *MockPaymentService_HandleWebhook_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].([]byte))
+		run(args[0].(context.Context), args[1].([]byte), args[2].(string))
 	})
 	return _c
 }
@@ -243,7 +244,7 @@ func (_c *MockPaymentService_HandleWebhook_Call) Return(_a0 error) *MockPaymentS
 	return _c
 }
 
-func (_c *MockPaymentService_HandleWebhook_Call) RunAndReturn(run func(context.Context, []byte) error) *MockPaymentService_HandleWebhook_Call {
+func (_c *MockPaymentService_HandleWebhook_Call) RunAndReturn(run func(context.Context, []byte, string) error) *MockPaymentService_HandleWebhook_Call {
 	_c.Call.Return(run)
 	return _c
 }

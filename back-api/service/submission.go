@@ -120,22 +120,23 @@ func ecgRequest(requestID, userID uuid.UUID, p ECGParams) *models.Request {
 //  3. If daily usage <= dailyLimit → free, allow.
 //  4. If daily usage > dailyLimit but user has paid analyses → decrement paid counter, allow.
 //  5. Otherwise → return ErrPaymentRequired.
+//
+// NOTE: Quota checks fail open (allow request) if database errors occur to prioritize
+// availability. Set alerts on the error logs to detect quota system failures.
 func (s *submissionService) checkQuota(ctx context.Context, userID uuid.UUID) error {
 	if s.dailyLimit <= 0 {
 		return nil // unlimited
 	}
 
-	// Always increment usage counter for accurate "used today" display.
 	count, err := s.repo.IncrementDailyUsage(ctx, userID)
 	if err != nil {
-		slog.WarnContext(ctx, "Failed to check quota, allowing request", "user_id", userID, "error", err)
-		return nil // fail-open
+		slog.ErrorContext(ctx, "QUOTA_BYPASS: Database error during quota check", "user_id", userID, "error", err)
+		return nil // fail-open for availability
 	}
 
-	// Active subscription — unlimited, but usage is tracked above.
 	subExpires, err := s.repo.GetSubscriptionExpiresAt(ctx, userID)
 	if err != nil {
-		slog.WarnContext(ctx, "Failed to check subscription, continuing with quota", "user_id", userID, "error", err)
+		slog.ErrorContext(ctx, "QUOTA_BYPASS: Failed to check subscription status", "user_id", userID, "error", err)
 	} else if subExpires != nil && subExpires.After(time.Now()) {
 		return nil
 	}
