@@ -4,7 +4,7 @@ import { useMutation } from '@tanstack/react-query';
 import { authAPI } from '@/services/api';
 import { useAuthStore } from '@/store/auth';
 import { ROUTES } from '@/config';
-import { getApiError, translatePasswordError } from '@/utils/apiError';
+import { getApiError, translateValidationError, ERR_NETWORK } from '@/utils/apiError';
 import { Layout } from '@/components/Layout';
 
 const passwordAsciiOnly = /^[\x21-\x7E]+$/;
@@ -37,9 +37,9 @@ export function ResetPassword() {
       if (status === 401) {
         setError('Ссылка для сброса пароля недействительна или истекла. Запросите новую');
       } else if (status === 400) {
-        setError(translatePasswordError(message));
+        setError(translateValidationError(message));
       } else if (!status) {
-        setError('Не удалось связаться с сервером. Проверьте подключение к интернету');
+        setError(ERR_NETWORK);
       } else {
         setError(message || 'Ошибка сброса пароля');
       }

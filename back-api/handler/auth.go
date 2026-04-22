@@ -1,14 +1,10 @@
 package handler
 
 import (
-	"errors"
-	"log/slog"
 	"net/http"
 	"strings"
 
-	"github.com/fedutinova/smartheart/back-api/apperr"
 	"github.com/fedutinova/smartheart/back-api/auth"
-	"github.com/fedutinova/smartheart/back-api/service"
 )
 
 const maxBodySize = 1 << 20 // 1 MB
@@ -105,29 +101,4 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 
 	auth.ClearRefreshTokenCookie(w, h.Config.Cookie)
 	writeJSON(w, http.StatusOK, map[string]string{"message": "logged out successfully"})
-}
-
-// handleServiceError maps service-layer errors to HTTP responses.
-func handleServiceError(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, service.ErrTooManyAttempts):
-		writeError(w, http.StatusTooManyRequests, "too many attempts, try again later")
-	case errors.Is(err, apperr.ErrPaymentRequired):
-		writeError(w, http.StatusPaymentRequired, err.Error())
-	case apperr.IsValidation(err):
-		writeError(w, http.StatusBadRequest, err.Error())
-	case errors.Is(err, apperr.ErrInvalidCredentials):
-		writeError(w, http.StatusUnauthorized, "invalid email or password")
-	case errors.Is(err, apperr.ErrInvalidToken):
-		writeError(w, http.StatusUnauthorized, "invalid token")
-	case apperr.IsConflict(err):
-		writeError(w, http.StatusConflict, "already exists")
-	case apperr.IsNotFound(err):
-		writeError(w, http.StatusNotFound, "not found")
-	case apperr.IsForbidden(err):
-		writeError(w, http.StatusForbidden, "forbidden")
-	default:
-		slog.Error("Unhandled service error", "error", err)
-		writeError(w, http.StatusInternalServerError, "internal error")
-	}
 }

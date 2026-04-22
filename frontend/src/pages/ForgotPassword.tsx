@@ -4,7 +4,7 @@ import { useMutation } from '@tanstack/react-query';
 import { authAPI } from '@/services/api';
 import { useAuthStore } from '@/store/auth';
 import { ROUTES } from '@/config';
-import { getApiError } from '@/utils/apiError';
+import { getApiError, ERR_RATE_LIMIT, ERR_NETWORK } from '@/utils/apiError';
 import { Layout } from '@/components/Layout';
 
 export function ForgotPassword() {
@@ -19,9 +19,9 @@ export function ForgotPassword() {
     onError: (err: unknown) => {
       const { status, message } = getApiError(err);
       if (status === 429) {
-        setError('Слишком много попыток. Попробуйте позже');
+        setError(ERR_RATE_LIMIT);
       } else if (!status) {
-        setError('Не удалось связаться с сервером. Проверьте подключение к интернету');
+        setError(ERR_NETWORK);
       } else {
         setError(message || 'Ошибка отправки');
       }

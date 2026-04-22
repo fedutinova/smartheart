@@ -1,30 +1,49 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 
+/** Step in the image input workflow: select file → crop → ready to upload */
 export type ImageStep = 'select' | 'crop' | 'ready';
 
+/** Current state of the image input */
 interface ImageInputState {
+  /** Current workflow step */
   step: ImageStep;
+  /** Object URL of original selected image */
   previewSrc: string | null;
+  /** Blob of the final cropped/processed image */
   croppedBlob: Blob | null;
+  /** Object URL of the cropped image preview */
   croppedPreview: string | null;
 }
 
+/** Action methods for controlling the image input workflow */
 interface ImageInputActions {
+  /** Load a file, optionally compress it, and set as preview */
   handleFileSelect: (file: File) => Promise<void>;
+  /** Accept crop result and set as the cropped image */
   handleCropComplete: (blob: Blob) => void;
+  /** Cancel crop and revert to original preview */
   handleCropCancel: () => void;
+  /** Rotate current image 90° clockwise */
   rotateImage: () => Promise<void>;
+  /** Return to crop step from ready state */
   handleRecrop: () => void;
+  /** Clear all state and return to select step */
   reset: () => void;
+  /** Set error message */
   setError: (msg: string) => void;
 }
 
+/** Return value of useImageInput hook */
 export interface UseImageInputReturn extends ImageInputState, ImageInputActions {
+  /** Current error message, empty string if no error */
   error: string;
 }
 
+/** Maximum pixel dimension for image files (scales down if exceeded) */
 const MAX_IMAGE_DIM = 4096;
+/** JPEG quality (0-1) for compressed images during file selection */
 const COMPRESS_QUALITY = 0.85;
+/** JPEG quality (0-1) for rotated images to preserve detail */
 const ROTATE_QUALITY = 0.92;
 
 function getContext2D(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
@@ -75,6 +94,22 @@ async function srcToBlob(src: string): Promise<Blob> {
   return res.blob();
 }
 
+/**
+ * Manages image input workflow with three states: select → crop → ready
+ *
+ * State machine:
+ * - **select**: Initial state, waiting for file selection
+ * - **crop**: File selected, user can crop/rotate; handleCropComplete or handleCropCancel moves to ready
+ * - **ready**: Image is ready for upload (croppedBlob contains the final image)
+ *
+ * Features:
+ * - Auto-compresses large images (>10MB) to fit MAX_IMAGE_DIM and COMPRESS_QUALITY
+ * - Handles memory cleanup with useRef to track latest object URLs
+ * - Image rotation and re-cropping available in ready state
+ * - Validates file type (images + PDF) and size
+ *
+ * @returns State and action methods to control the image workflow
+ */
 export function useImageInput(): UseImageInputReturn {
   const [step, setStep] = useState<ImageStep>('select');
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
@@ -84,6 +119,7 @@ export function useImageInput(): UseImageInputReturn {
 
   // Track current object URLs in refs so the unmount cleanup always
   // revokes the latest values, not the stale ones from the first render.
+  // Also used to avoid stale closures in handleCropCancel.
   const previewSrcRef = useRef(previewSrc);
   const croppedPreviewRef = useRef(croppedPreview);
   previewSrcRef.current = previewSrc;
@@ -147,16 +183,20 @@ export function useImageInput(): UseImageInputReturn {
   }, []);
 
   const handleCropCancel = useCallback(() => {
-    if (previewSrc) {
-      setCroppedPreview(previewSrc);
-      srcToBlob(previewSrc)
+    const src = previewSrcRef.current;
+    if (src) {
+      setCroppedPreview(src);
+      srcToBlob(src)
         .then(setCroppedBlob)
         .catch((err) => {
           console.warn('Failed to convert image preview to blob', err);
+          setError('Не удалось загрузить изображение');
+          setCroppedBlob(null);
         });
     }
+    setError('');
     setStep('ready');
-  }, [previewSrc]);
+  }, []);
 
   const rotateImage = useCallback(async () => {
     if (!croppedBlob) return;

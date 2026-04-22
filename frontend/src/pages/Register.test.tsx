@@ -147,6 +147,6 @@ describe('Register', () => {
     await user.click(screen.getByRole('checkbox'));
     await user.click(screen.getByRole('button', { name: 'Зарегистрироваться' }));
 
-    expect(await screen.findByText('Не удалось связаться с сервером. Проверьте подключение к интернету')).toBeInTheDocument();
+    expect(await screen.findByText('Не удалось связаться с сервером. Проверьте подключение к интернету.')).toBeInTheDocument();
   });
 });
