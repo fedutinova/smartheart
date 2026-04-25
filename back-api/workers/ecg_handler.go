@@ -256,30 +256,6 @@ func (h *ECGWorker) processEKG(ctx context.Context, j *job.Job, payload *job.ECG
 	return nil
 }
 
-// UploadForSync uploads a file to storage and returns the storage key.
-// Used by the sync baseline handler.
-func (h *ECGWorker) UploadForSync(ctx context.Context, filename string, reader io.Reader, contentType string) (string, error) {
-	result, err := h.storage.UploadFile(ctx, filename, reader, contentType)
-	if err != nil {
-		return "", fmt.Errorf("upload file for sync: %w", err)
-	}
-	return result.Key, nil
-}
-
-// ProcessECGSync processes an ECG analysis synchronously (no queue).
-// Used by the sync baseline handler for H2 hypothesis testing.
-func (h *ECGWorker) ProcessECGSync(ctx context.Context, payload *job.ECGJobPayload) error {
-	j := &job.Job{
-		ID:   uuid.New(),
-		Type: job.TypeECGAnalyze,
-	}
-	err := h.processEKG(ctx, j, payload)
-	if err != nil {
-		h.handleEKGFailure(ctx, payload)
-	}
-	return err
-}
-
 // Close cleans up resources used by the EKG worker.
 func (*ECGWorker) Close() {
 	slog.Debug("EKG worker closed")

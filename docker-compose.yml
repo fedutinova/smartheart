@@ -90,7 +90,6 @@ services:
       YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY:-}
       YOOKASSA_RETURN_URL: ${YOOKASSA_RETURN_URL:-http://localhost:3000/dashboard}
       CORS_ORIGINS: http://localhost:3000,http://localhost:3001,http://localhost:5173
-      ECG_SYNC_MODE: ${ECG_SYNC_MODE:-false}
       RATE_LIMIT_RPM: ${RATE_LIMIT_RPM:-100}
       GPT_MOCK: ${GPT_MOCK:-false}
       GPT_MOCK_DELAY: ${GPT_MOCK_DELAY:-5s}

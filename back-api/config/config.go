@@ -70,10 +70,10 @@ type CORSConfig struct {
 
 // RateLimitConfig holds rate limiting settings.
 type RateLimitConfig struct {
-	RPM                  int // max requests per minute per IP
-	AnalyzeRPM           int // max ECG analysis requests per minute per user
-	SubscriptionRPM      int // max subscription requests per minute per user
-	PasswordResetRPM     int // max password reset requests per minute per user
+	RPM              int // max requests per minute per IP
+	AnalyzeRPM       int // max ECG analysis requests per minute per user
+	SubscriptionRPM  int // max subscription requests per minute per user
+	PasswordResetRPM int // max password reset requests per minute per user
 }
 
 // GPTConfig holds OpenAI/GPT settings.
@@ -130,7 +130,6 @@ type Config struct {
 	YooKassa    YooKassaConfig
 	SMTP        SMTPConfig
 	FrontendURL string // base URL of the frontend app (for links in emails)
-	SyncMode    bool   // ECG_SYNC_MODE: process ECG synchronously (for H2 baseline testing)
 }
 
 // Storage mode constants for compile-time safety.
@@ -379,6 +378,5 @@ func Load() Config {
 			FromName: envString("SMTP_FROM_NAME", ""),
 		},
 		FrontendURL: envString("FRONTEND_URL", "http://localhost:3000"),
-		SyncMode:    envBool("ECG_SYNC_MODE", false),
 	}
 }

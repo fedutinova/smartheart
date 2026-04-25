@@ -56,27 +56,18 @@ func main() {
 
 	hub := notify.NewHub()
 	var gptClient gpt.Processor
-	var mockGPT *gpt.MockProcessor
 	if os.Getenv("GPT_MOCK") == "true" {
 		mockDelay, _ := time.ParseDuration(os.Getenv("GPT_MOCK_DELAY"))
 		if mockDelay == 0 {
 			mockDelay = 5 * time.Second
 		}
 		slog.Warn("GPT_MOCK enabled — using simulated responses", "delay", mockDelay)
-		mockGPT = &gpt.MockProcessor{Delay: mockDelay}
-		gptClient = mockGPT
+		gptClient = &gpt.MockProcessor{Delay: mockDelay}
 	} else {
 		gptClient = gpt.NewClient(cfg.GPT.APIKey, storageService, gpt.WithModel(cfg.GPT.Model))
 	}
 	startWorkers(ctx, cfg, db, q, storageService, repo, hub, gptClient)
-
-	var syncWorker handler.ECGSyncProcessor
-	if cfg.SyncMode {
-		slog.Warn("ECG_SYNC_MODE enabled — ECG requests will be processed synchronously")
-		syncWorker = workers.NewECGWorker(db, q, storageService, repo, gptClient, hub)
-	}
-
-	srv := startHTTPServer(cfg, repo, sessions, storageService, q, hub, syncWorker, mockGPT)
+	srv := startHTTPServer(cfg, repo, sessions, storageService, q, hub)
 
 	// Cancel pending payments older than 1 hour, check every 10 minutes.
 	service.StartStalePaymentCleaner(ctx, repo, 10*time.Minute, 1*time.Hour)
@@ -207,8 +198,6 @@ func startHTTPServer(
 	storageService storage.Storage,
 	q job.Queue,
 	hub *notify.Hub,
-	syncWorker handler.ECGSyncProcessor,
-	mockGPT *gpt.MockProcessor,
 ) *http.Server {
 	authSvc := service.NewAuthService(repo, sessions, cfg.JWT)
 	mailer := mail.NewSender(cfg.SMTP)
@@ -232,10 +221,6 @@ func startHTTPServer(
 		}
 	}
 	handlers := handler.NewHandler(authSvc, passwordSvc, submissionSvc, requestSvc, paymentSvc, q, repo, sessions, storageService, hub, cfg, mw)
-	if syncWorker != nil {
-		handlers.EKGSync = &handler.ECGSyncHandler{Worker: syncWorker}
-	}
-	handlers.MockGPT = mockGPT
 	r := server.NewRouter(handlers, cfg)
 
 	srv := &http.Server{

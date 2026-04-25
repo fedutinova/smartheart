@@ -1,6 +1,6 @@
 # SmartHeart Makefile
 
-.PHONY: help test test-backend test-backend-integration test-rag test-frontend test-admin test-coverage test-race build run clean docker-build docker-run lint fmt vet check-deps loadtest-h2-async loadtest-h2-sync loadtest-h2-stop
+.PHONY: help test test-backend test-backend-integration test-rag test-frontend test-admin test-coverage test-race build run clean docker-build docker-run lint fmt vet check-deps
 
 # Default target
 help:
@@ -19,9 +19,6 @@ help:
 	@echo "  clean             - Clean build artifacts"
 	@echo "  docker-build      - Build Docker image"
 	@echo "  docker-run        - Run Docker container"
-	@echo "  loadtest-h2-async - Start stack and run H2 async load test"
-	@echo "  loadtest-h2-sync  - Restart app in ECG_SYNC_MODE and run H2 sync baseline"
-	@echo "  loadtest-h2-stop  - Stop load-test stack"
 	@echo "  lint              - Run linter"
 	@echo "  fmt               - Format code"
 	@echo "  vet               - Run go vet"
@@ -92,20 +89,6 @@ docker-compose-up:
 
 docker-compose-down:
 	@echo "Stopping services..."
-	docker-compose down
-
-loadtest-h2-async:
-	@echo "Starting stack for H2 async run..."
-	docker-compose up -d --build
-	./tests/loadtest/run_h2_test.sh base async
-
-loadtest-h2-sync:
-	@echo "Restarting app in ECG_SYNC_MODE for H2 sync baseline..."
-	ECG_SYNC_MODE=true docker-compose up -d --build app
-	./tests/loadtest/run_h2_test.sh base sync
-
-loadtest-h2-stop:
-	@echo "Stopping H2 load-test stack..."
 	docker-compose down
 
 # Code quality targets
