@@ -109,13 +109,13 @@ func TestSubmitECGAnalyze_Success(t *testing.T) {
 	userID := uuid.New()
 
 	d.submissionSvc.EXPECT().
-		SubmitECG(mock.Anything, mock.Anything, "http://example.com/ekg.jpg", mock.Anything).
+		SubmitECG(mock.Anything, mock.Anything, "https://8.8.8.8/ekg.jpg", mock.Anything).
 		Return(&service.SubmittedJob{JobID: uuid.New(), RequestID: uuid.New(), Status: "queued"}, nil)
 
 	h := d.handler()
 
 	body, _ := json.Marshal(map[string]string{
-		"image_temp_url": "http://example.com/ekg.jpg",
+		"image_temp_url": "https://8.8.8.8/ekg.jpg",
 	})
 	req := httptest.NewRequest("POST", "/v1/ecg/analyze", bytes.NewReader(body))
 	req = withAuthContext(req, userID, []string{"user"})
@@ -196,7 +196,7 @@ func TestSubmitECGAnalyze_NoAuthContext(t *testing.T) {
 	d := newTestDeps(t)
 	h := d.handler()
 
-	body, _ := json.Marshal(map[string]string{"image_temp_url": "http://example.com/ekg.jpg"})
+	body, _ := json.Marshal(map[string]string{"image_temp_url": "https://8.8.8.8/ekg.jpg"})
 	req := httptest.NewRequest("POST", "/v1/ecg/analyze", bytes.NewReader(body))
 	w := httptest.NewRecorder()
 
@@ -217,7 +217,7 @@ func TestSubmitECGAnalyze_ServiceError(t *testing.T) {
 	h := d.handler()
 	userID := uuid.New()
 
-	body, _ := json.Marshal(map[string]string{"image_temp_url": "http://example.com/ekg.jpg"})
+	body, _ := json.Marshal(map[string]string{"image_temp_url": "https://8.8.8.8/ekg.jpg"})
 	req := httptest.NewRequest("POST", "/v1/ecg/analyze", bytes.NewReader(body))
 	req = withAuthContext(req, userID, []string{"user"})
 	w := httptest.NewRecorder()

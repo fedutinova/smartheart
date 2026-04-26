@@ -139,6 +139,7 @@ paths:
               properties:
                 image_temp_url: { type: string, format: uri }
                 notes: { type: string, maxLength: 2000 }
+                client_meta: { $ref: "#/components/schemas/RequestClientMeta" }
           multipart/form-data:
             schema:
               type: object
@@ -149,6 +150,9 @@ paths:
                   format: binary
                   description: "EKG image file (JPEG, PNG, PDF, max 10MB)"
                 notes: { type: string, maxLength: 2000 }
+                client_meta:
+                  type: string
+                  description: "JSON-stringified RequestClientMeta"
       responses:
         "200":
           description: Job enqueued
@@ -369,10 +373,21 @@ components:
         status: { type: string, enum: [pending, processing, completed, failed] }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+        client_meta: { $ref: "#/components/schemas/RequestClientMeta" }
         files:
           type: array
           items: { $ref: "#/components/schemas/File" }
         response: { $ref: "#/components/schemas/Response" }
+
+    RequestClientMeta:
+      type: object
+      properties:
+        redaction_mode: { type: string, enum: [band, ocr] }
+        redaction_ms: { type: integer, minimum: 0 }
+        boxes_count: { type: integer, minimum: 0 }
+        masked_area_ratio: { type: number, minimum: 0, maximum: 1 }
+        image_width: { type: integer, minimum: 0 }
+        image_height: { type: integer, minimum: 0 }
 
     File:
       type: object

@@ -49,6 +49,7 @@ type ECGParams struct {
 	PaperSpeedMMS float64
 	MmPerMvLimb   float64
 	MmPerMvChest  float64
+	ClientMeta    *models.RequestClientMeta
 }
 
 // SubmissionService handles EKG and GPT job submission business logic.
@@ -94,10 +95,11 @@ func detectContentType(file *UploadedFile) (string, error) {
 // ecgRequest builds a Request model populated with ECG analysis parameters.
 func ecgRequest(requestID, userID uuid.UUID, p ECGParams) *models.Request {
 	req := &models.Request{
-		ID:     requestID,
-		UserID: userID,
-		Status: models.StatusPending,
-		ECGAge: p.Age,
+		ID:         requestID,
+		UserID:     userID,
+		Status:     models.StatusPending,
+		ClientMeta: p.ClientMeta,
+		ECGAge:     p.Age,
 	}
 	if p.Sex != "" {
 		req.ECGSex = &p.Sex

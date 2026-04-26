@@ -32,6 +32,7 @@ export interface ECGAnalysisRequest {
   paper_speed_mms?: number;
   mm_per_mv_limb?: number;
   mm_per_mv_chest?: number;
+  client_meta?: ECGClientMeta;
 }
 
 export interface ECGCalibrationParams {
@@ -40,6 +41,30 @@ export interface ECGCalibrationParams {
   paper_speed_mms: number;
   mm_per_mv_limb: number;
   mm_per_mv_chest: number;
+}
+
+export type RedactionMode = 'band' | 'ocr';
+
+export interface ECGClientMeta {
+  redaction_mode: RedactionMode;
+  redaction_ms: number;
+  boxes_count: number;
+  masked_area_ratio: number;
+  image_width: number;
+  image_height: number;
+}
+
+export interface RedactionBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface BandRedactionConfig {
+  topRatio: number;
+  bottomRatio: number;
+  leftRatio: number;
 }
 
 export interface Job {
@@ -60,6 +85,7 @@ export interface Request {
   status: RequestStatus;
   created_at: string;
   updated_at: string;
+  client_meta?: ECGClientMeta;
   files?: File[];
   response?: Response;
   ecg_age?: number;
@@ -187,4 +213,3 @@ export interface PatientInfo {
   sex?: string;
   age?: number;
 }
-

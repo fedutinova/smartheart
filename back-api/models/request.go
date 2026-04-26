@@ -30,14 +30,15 @@ func ValidRequestStatus(s RequestStatus) bool {
 
 // Request represents an EKG or GPT analysis request.
 type Request struct {
-	ID        uuid.UUID     `json:"id"`
-	UserID    uuid.UUID     `json:"user_id,omitempty"`
-	TextQuery *string       `json:"text_query,omitempty"`
-	Status    RequestStatus `json:"status"`
-	CreatedAt time.Time     `json:"created_at"`
-	UpdatedAt time.Time     `json:"updated_at"`
-	Files     []File        `json:"files,omitempty"`
-	Response  *Response     `json:"response,omitempty"`
+	ID         uuid.UUID          `json:"id"`
+	UserID     uuid.UUID          `json:"user_id,omitempty"`
+	TextQuery  *string            `json:"text_query,omitempty"`
+	Status     RequestStatus      `json:"status"`
+	CreatedAt  time.Time          `json:"created_at"`
+	UpdatedAt  time.Time          `json:"updated_at"`
+	Files      []File             `json:"files,omitempty"`
+	Response   *Response          `json:"response,omitempty"`
+	ClientMeta *RequestClientMeta `json:"client_meta,omitempty"`
 
 	// ECG analysis parameters (nullable — only set for EKG requests)
 	ECGAge           *int     `json:"ecg_age,omitempty"`

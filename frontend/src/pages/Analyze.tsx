@@ -12,7 +12,7 @@ import { useImageInput } from '@/hooks/useImageInput';
 import { usePendingJobs } from '@/hooks/usePendingJobs';
 import { useQuota } from '@/hooks/useQuota';
 import { getApiError } from '@/utils/apiError';
-import type { ECGCalibrationParams } from '@/types';
+import type { ECGCalibrationParams, ECGClientMeta, RedactionBox } from '@/types';
 
 type Mode = 'file' | 'camera' | 'url';
 
@@ -25,7 +25,7 @@ export function Analyze() {
   const { quota, refetch: refetchQuota } = useQuota();
   const queryClient = useQueryClient();
 
-  // Image state (file/camera modes)
+  // Image state with OCR redaction (H2 hypothesis)
   const image = useImageInput();
 
   // Calibration params
@@ -55,7 +55,7 @@ export function Analyze() {
     mutationFn: () => {
       const params = getCalibrationParams();
       if ((mode === 'file' || mode === 'camera') && image.croppedBlob) {
-        return ecgAPI.submitAnalysisFile(image.croppedBlob, undefined, params);
+        return ecgAPI.submitAnalysisFile(image.croppedBlob, undefined, params, image.clientMeta ?? undefined);
       }
       return ecgAPI.submitAnalysis({ image_temp_url: imageUrl, ...params });
     },
@@ -186,10 +186,22 @@ export function Analyze() {
               />
             )}
 
-            {(image.step === 'ready' || image.step === 'crop') && (
+            {(image.step === 'review' || image.step === 'ready' || image.step === 'crop') && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 text-sm text-amber-800">
-                Если на изображении есть персональные данные (ФИО, дата рождения, номер карты), обрежьте эту область перед отправкой
+                Изображение анализируется нейросетью для точного поиска идентификаторов. Проверьте маски и только потом запускайте анализ.
               </div>
+            )}
+
+            {image.step === 'review' && image.croppedPreview && (
+              <ImageRedactionReview
+                src={image.croppedPreview}
+                boxes={image.redactionBoxes}
+                clientMeta={image.clientMeta}
+                onConfirm={image.confirmRedaction}
+                onRecrop={image.handleRecrop}
+                onRotate={image.rotateImage}
+                onReset={image.reset}
+              />
             )}
 
             {image.step === 'ready' && image.croppedPreview && (
@@ -428,6 +440,102 @@ function ImagePreview({ src, onRotate, onRecrop, onReset }: {
         <OverlayButton onClick={onReset} title="Заменить">
           <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
         </OverlayButton>
+      </div>
+    </div>
+  );
+}
+
+function ImageRedactionReview({ src, boxes, clientMeta, onConfirm, onRecrop, onRotate, onReset }: {
+  src: string;
+  boxes: RedactionBox[];
+  clientMeta: ECGClientMeta | null;
+  onConfirm: () => void;
+  onRecrop: () => void;
+  onRotate: () => void;
+  onReset: () => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+        <p className="font-medium">Review-step перед отправкой</p>
+        <p className="mt-1">
+          Автоматический режим <span className="font-medium">{clientMeta?.redaction_mode ?? 'band'}</span> уже наложил непрозрачные маски.
+          Если они задевают калибровку или отведения, вернитесь к обрезке источника.
+        </p>
+        {clientMeta && (
+          <p className="mt-2 text-sky-800">
+            Маскировка заняла {clientMeta.redaction_ms} мс, закрыто {(clientMeta.masked_area_ratio * 100).toFixed(1)}% изображения.
+          </p>
+        )}
+      </div>
+
+      <MaskedImagePreview src={src} boxes={boxes} clientMeta={clientMeta} />
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={onConfirm}
+          className="px-4 py-2.5 bg-rose-600 text-white rounded-xl hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 text-sm font-medium transition-colors"
+        >
+          Подтвердить маски
+        </button>
+        <button
+          type="button"
+          onClick={onRecrop}
+          className="px-4 py-2.5 rounded-xl border border-gray-300 text-sm text-gray-700 hover:border-gray-400 hover:text-gray-900 transition-colors"
+        >
+          Обрезать источник
+        </button>
+        <button
+          type="button"
+          onClick={onRotate}
+          className="px-4 py-2.5 rounded-xl border border-gray-300 text-sm text-gray-700 hover:border-gray-400 hover:text-gray-900 transition-colors"
+        >
+          Повернуть и пересчитать
+        </button>
+        <button
+          type="button"
+          onClick={onReset}
+          className="px-4 py-2.5 rounded-xl border border-gray-300 text-sm text-gray-700 hover:border-gray-400 hover:text-gray-900 transition-colors"
+        >
+          Заменить файл
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function MaskedImagePreview({ src, boxes, clientMeta }: { src: string; boxes: RedactionBox[]; clientMeta: ECGClientMeta | null }) {
+  const viewBoxWidth = clientMeta?.image_width ?? 100;
+  const viewBoxHeight = clientMeta?.image_height ?? 100;
+
+  return (
+    <div className="relative rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
+      <div className="relative inline-block max-w-full">
+        <img src={src} alt="Обезличенная ЭКГ" className="max-w-full h-auto max-h-[50vh] sm:max-h-[500px] mx-auto block" />
+        {boxes.length > 0 && (
+          <svg
+            className="absolute inset-0 h-full w-full pointer-events-none"
+            viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            {boxes.map((box, index) => (
+              <rect
+                key={`${box.x}-${box.y}-${box.width}-${box.height}-${index}`}
+                x={box.x}
+                y={box.y}
+                width={box.width}
+                height={box.height}
+                fill="none"
+                stroke="#38bdf8"
+                strokeWidth="1.2"
+                vectorEffect="non-scaling-stroke"
+                strokeDasharray="4 2"
+              />
+            ))}
+          </svg>
+        )}
       </div>
     </div>
   );

@@ -1,31 +1,41 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import type { ECGClientMeta, RedactionBox } from '@/types';
+import { applyOCRRedaction } from '@/utils/redaction';
 
-/** Step in the image input workflow: select file → crop → ready to upload */
-export type ImageStep = 'select' | 'crop' | 'ready';
+/** Step in the image input workflow: select file → crop → review → ready to upload */
+export type ImageStep = 'select' | 'crop' | 'review' | 'ready';
 
 /** Current state of the image input */
 interface ImageInputState {
   /** Current workflow step */
   step: ImageStep;
-  /** Object URL of original selected image */
+  /** Object URL of the current editable source image */
   previewSrc: string | null;
-  /** Blob of the final cropped/processed image */
+  /** Current source image before redaction */
+  sourceBlob: Blob | null;
+  /** Blob of the final processed image */
   croppedBlob: Blob | null;
-  /** Object URL of the cropped image preview */
+  /** Object URL of the processed image preview */
   croppedPreview: string | null;
+  /** Opaque mask rectangles used in review UI */
+  redactionBoxes: RedactionBox[];
+  /** Client-side metadata collected during redaction */
+  clientMeta: ECGClientMeta | null;
 }
 
 /** Action methods for controlling the image input workflow */
 interface ImageInputActions {
   /** Load a file, optionally compress it, and set as preview */
   handleFileSelect: (file: File) => Promise<void>;
-  /** Accept crop result and set as the cropped image */
-  handleCropComplete: (blob: Blob) => void;
-  /** Cancel crop and revert to original preview */
+  /** Accept crop result and re-run redaction */
+  handleCropComplete: (blob: Blob) => Promise<void>;
+  /** Cancel crop and return to the review step */
   handleCropCancel: () => void;
-  /** Rotate current image 90° clockwise */
+  /** Rotate current source image 90° clockwise */
   rotateImage: () => Promise<void>;
-  /** Return to crop step from ready state */
+  /** Confirm auto-applied redaction masks */
+  confirmRedaction: () => void;
+  /** Return to crop step from review/ready state */
   handleRecrop: () => void;
   /** Clear all state and return to select step */
   reset: () => void;
@@ -89,41 +99,39 @@ function compressImage(file: File): Promise<Blob> {
   });
 }
 
-async function srcToBlob(src: string): Promise<Blob> {
-  const res = await fetch(src);
-  return res.blob();
-}
-
 /**
- * Manages image input workflow with three states: select → crop → ready
+ * Manages image input workflow with four states: select → crop → review → ready.
  *
  * State machine:
  * - **select**: Initial state, waiting for file selection
- * - **crop**: File selected, user can crop/rotate; handleCropComplete or handleCropCancel moves to ready
- * - **ready**: Image is ready for upload (croppedBlob contains the final image)
+ * - **crop**: User adjusts the current source image
+ * - **review**: Automatic OCR-based masks are shown before upload
+ * - **ready**: Redacted image is confirmed and ready for upload
  *
  * Features:
  * - Auto-compresses large images (>10MB) to fit MAX_IMAGE_DIM and COMPRESS_QUALITY
- * - Handles memory cleanup with useRef to track latest object URLs
- * - Image rotation and re-cropping available in ready state
- * - Validates file type (images + PDF) and size
+ * - Re-applies OCR-based redaction after file select, crop, and rotation
+ * - Keeps redaction metadata for the upload request
+ * - Handles memory cleanup with useRef to track the latest object URLs
  *
  * @returns State and action methods to control the image workflow
  */
 export function useImageInput(): UseImageInputReturn {
   const [step, setStep] = useState<ImageStep>('select');
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
+  const [sourceBlob, setSourceBlob] = useState<Blob | null>(null);
   const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null);
   const [croppedPreview, setCroppedPreview] = useState<string | null>(null);
+  const [redactionBoxes, setRedactionBoxes] = useState<RedactionBox[]>([]);
+  const [clientMeta, setClientMeta] = useState<ECGClientMeta | null>(null);
   const [error, setError] = useState('');
 
-  // Track current object URLs in refs so the unmount cleanup always
-  // revokes the latest values, not the stale ones from the first render.
-  // Also used to avoid stale closures in handleCropCancel.
   const previewSrcRef = useRef(previewSrc);
   const croppedPreviewRef = useRef(croppedPreview);
+  const sourceBlobRef = useRef(sourceBlob);
   previewSrcRef.current = previewSrc;
   croppedPreviewRef.current = croppedPreview;
+  sourceBlobRef.current = sourceBlob;
 
   useEffect(() => {
     return () => {
@@ -134,27 +142,72 @@ export function useImageInput(): UseImageInputReturn {
     };
   }, []);
 
-  const handleFileSelect = useCallback(async (file: File) => {
-    // Revoke previous object URLs to avoid memory leaks on re-select
-    if (previewSrcRef.current) URL.revokeObjectURL(previewSrcRef.current);
+  const revokeDerivedPreview = useCallback(() => {
     if (croppedPreviewRef.current && croppedPreviewRef.current !== previewSrcRef.current) {
       URL.revokeObjectURL(croppedPreviewRef.current);
     }
+  }, []);
+
+  const resetDerivedState = useCallback(() => {
+    revokeDerivedPreview();
+    setCroppedBlob(null);
+    setCroppedPreview(null);
+    setRedactionBoxes([]);
+    setClientMeta(null);
+  }, [revokeDerivedPreview]);
+
+  const setSourcePreview = useCallback((blob: Blob) => {
+    if (previewSrcRef.current) {
+      URL.revokeObjectURL(previewSrcRef.current);
+    }
+    setPreviewSrc(URL.createObjectURL(blob));
+  }, []);
+
+  const applyRedaction = useCallback(async (blob: Blob) => {
+    if (!blob.type.startsWith('image/')) {
+      revokeDerivedPreview();
+      setCroppedBlob(blob);
+      setCroppedPreview(previewSrcRef.current);
+      setRedactionBoxes([]);
+      setClientMeta(null);
+      setStep('ready');
+      return;
+    }
+
+    const result = await applyOCRRedaction(blob);
+    revokeDerivedPreview();
+    setCroppedBlob(result.blob);
+    setCroppedPreview(URL.createObjectURL(result.blob));
+    setRedactionBoxes(result.boxes);
+    setClientMeta(result.clientMeta);
+    setStep('review');
+  }, [revokeDerivedPreview]);
+
+  const updateSourceAndRedaction = useCallback(async (blob: Blob) => {
+    setSourceBlob(blob);
+    setSourcePreview(blob);
+    await applyRedaction(blob);
+  }, [applyRedaction, setSourcePreview]);
+
+  const handleFileSelect = useCallback(async (file: File) => {
+    if (previewSrcRef.current) URL.revokeObjectURL(previewSrcRef.current);
+    revokeDerivedPreview();
+    setPreviewSrc(null);
+    setSourceBlob(null);
+    setStep('select');
+    setError('');
+    resetDerivedState();
 
     if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
       setError('Поддерживаются только изображения и PDF');
       return;
     }
+
     if (file.size > 10 * 1024 * 1024) {
       if (file.type.startsWith('image/')) {
         try {
           const blob = await compressImage(file);
-          const url = URL.createObjectURL(blob);
-          setError('');
-          setPreviewSrc(url);
-          setCroppedBlob(blob);
-          setCroppedPreview(url);
-          setStep('ready');
+          await updateSourceAndRedaction(blob);
         } catch {
           setError('Не удалось сжать изображение');
         }
@@ -163,48 +216,31 @@ export function useImageInput(): UseImageInputReturn {
       setError('Файл слишком большой (макс. 10MB)');
       return;
     }
-    setError('');
-    const url = URL.createObjectURL(file);
-    setPreviewSrc(url);
-    const blob = new Blob([file], { type: file.type });
-    setCroppedBlob(blob);
-    setCroppedPreview(url);
-    setStep('ready');
-  }, []);
 
-  const handleCropComplete = useCallback((blob: Blob) => {
-    if (croppedPreviewRef.current && croppedPreviewRef.current !== previewSrcRef.current) {
-      URL.revokeObjectURL(croppedPreviewRef.current);
-    }
-    setCroppedBlob(blob);
-    const url = URL.createObjectURL(blob);
-    setCroppedPreview(url);
-    setStep('ready');
-  }, []);
+    const blob = new Blob([file], { type: file.type });
+    await updateSourceAndRedaction(blob);
+  }, [resetDerivedState, revokeDerivedPreview, updateSourceAndRedaction]);
+
+  const handleCropComplete = useCallback(async (blob: Blob) => {
+    setError('');
+    await updateSourceAndRedaction(blob);
+  }, [updateSourceAndRedaction]);
 
   const handleCropCancel = useCallback(() => {
-    const src = previewSrcRef.current;
-    if (src) {
-      setCroppedPreview(src);
-      srcToBlob(src)
-        .then(setCroppedBlob)
-        .catch((err) => {
-          console.warn('Failed to convert image preview to blob', err);
-          setError('Не удалось загрузить изображение');
-          setCroppedBlob(null);
-        });
-    }
     setError('');
-    setStep('ready');
+    setStep('review');
   }, []);
 
   const rotateImage = useCallback(async () => {
-    if (!croppedBlob) return;
+    const currentSourceBlob = sourceBlobRef.current;
+    if (!currentSourceBlob || !currentSourceBlob.type.startsWith('image/')) return;
+
     const img = new Image();
-    const url = URL.createObjectURL(croppedBlob);
+    const url = URL.createObjectURL(currentSourceBlob);
     img.src = url;
     await new Promise<void>((resolve) => { img.onload = () => resolve(); });
     URL.revokeObjectURL(url);
+
     const canvas = document.createElement('canvas');
     canvas.width = img.height;
     canvas.height = img.width;
@@ -212,32 +248,49 @@ export function useImageInput(): UseImageInputReturn {
     ctx.translate(canvas.width / 2, canvas.height / 2);
     ctx.rotate(Math.PI / 2);
     ctx.drawImage(img, -img.width / 2, -img.height / 2);
+
     const blob = await canvasToBlob(canvas, 'image/jpeg', ROTATE_QUALITY);
-    if (croppedPreview) URL.revokeObjectURL(croppedPreview);
-    setCroppedBlob(blob);
-    setCroppedPreview(URL.createObjectURL(blob));
-  }, [croppedBlob, croppedPreview]);
+    await updateSourceAndRedaction(blob);
+  }, [updateSourceAndRedaction]);
+
+  const confirmRedaction = useCallback(() => {
+    setStep('ready');
+  }, []);
 
   const handleRecrop = useCallback(() => {
-    if (croppedPreview && croppedPreview !== previewSrc) URL.revokeObjectURL(croppedPreview);
-    setCroppedBlob(null);
-    setCroppedPreview(null);
+    resetDerivedState();
     setStep('crop');
-  }, [croppedPreview, previewSrc]);
+  }, [resetDerivedState]);
 
   const reset = useCallback(() => {
-    if (previewSrc) URL.revokeObjectURL(previewSrc);
-    if (croppedPreview) URL.revokeObjectURL(croppedPreview);
+    if (previewSrcRef.current) URL.revokeObjectURL(previewSrcRef.current);
+    revokeDerivedPreview();
     setPreviewSrc(null);
+    setSourceBlob(null);
     setCroppedBlob(null);
     setCroppedPreview(null);
+    setRedactionBoxes([]);
+    setClientMeta(null);
     setStep('select');
     setError('');
-  }, [previewSrc, croppedPreview]);
+  }, [revokeDerivedPreview]);
 
   return {
-    step, previewSrc, croppedBlob, croppedPreview, error,
-    handleFileSelect, handleCropComplete, handleCropCancel,
-    rotateImage, handleRecrop, reset, setError,
+    step,
+    previewSrc,
+    sourceBlob,
+    croppedBlob,
+    croppedPreview,
+    redactionBoxes,
+    clientMeta,
+    error,
+    handleFileSelect,
+    handleCropComplete,
+    handleCropCancel,
+    rotateImage,
+    confirmRedaction,
+    handleRecrop,
+    reset,
+    setError,
   };
 }

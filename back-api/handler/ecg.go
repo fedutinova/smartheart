@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/fedutinova/smartheart/back-api/apperr"
+	"github.com/fedutinova/smartheart/back-api/models"
 	"github.com/fedutinova/smartheart/back-api/service"
 )
 
@@ -20,18 +22,19 @@ type dnsEntry struct {
 }
 
 var (
-	dnsCache   = make(map[string]*dnsEntry)
-	dnsCacheMu sync.RWMutex
+	dnsCache    = make(map[string]*dnsEntry)
+	dnsCacheMu  sync.RWMutex
 	dnsCacheTTL = 5 * time.Minute
 )
 
 type ekgAnalyzeRequest struct {
-	ImageTempURL  string   `json:"image_temp_url"            validate:"required,url"`
-	Age           *int     `json:"age,omitempty"             validate:"omitempty,min=1,max=150"`
-	Sex           string   `json:"sex,omitempty"             validate:"omitempty,oneof=male female"`
-	PaperSpeedMMS *float64 `json:"paper_speed_mms,omitempty" validate:"omitempty,min=10,max=100"`
-	MmPerMvLimb   *float64 `json:"mm_per_mv_limb,omitempty"  validate:"omitempty,min=1,max=40"`
-	MmPerMvChest  *float64 `json:"mm_per_mv_chest,omitempty" validate:"omitempty,min=1,max=40"`
+	ImageTempURL  string                    `json:"image_temp_url"            validate:"required,url"`
+	Age           *int                      `json:"age,omitempty"             validate:"omitempty,min=1,max=150"`
+	Sex           string                    `json:"sex,omitempty"             validate:"omitempty,oneof=male female"`
+	PaperSpeedMMS *float64                  `json:"paper_speed_mms,omitempty" validate:"omitempty,min=10,max=100"`
+	MmPerMvLimb   *float64                  `json:"mm_per_mv_limb,omitempty"  validate:"omitempty,min=1,max=40"`
+	MmPerMvChest  *float64                  `json:"mm_per_mv_chest,omitempty" validate:"omitempty,min=1,max=40"`
+	ClientMeta    *models.RequestClientMeta `json:"client_meta,omitempty"`
 }
 
 // resolveHostWithCache performs DNS lookup with caching to avoid blocking on every request.
@@ -135,6 +138,7 @@ func ecgParamsFromRequest(req *ekgAnalyzeRequest) service.ECGParams {
 	if req.MmPerMvChest != nil {
 		p.MmPerMvChest = *req.MmPerMvChest
 	}
+	p.ClientMeta = req.ClientMeta
 	return p
 }
 
@@ -145,6 +149,12 @@ func (h *ECGHandler) submitECGURL(w http.ResponseWriter, r *http.Request) {
 	var req ekgAnalyzeRequest
 	if !decodeAndValidate(w, r, &req) {
 		return
+	}
+	if req.ClientMeta != nil {
+		if err := req.ClientMeta.Validate(); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid client_meta")
+			return
+		}
 	}
 
 	// SSRF protection: validate that URL is not to internal networks
@@ -198,6 +208,18 @@ func (h *ECGHandler) submitECGFile(w http.ResponseWriter, r *http.Request) {
 		PaperSpeedMMS: 25,
 		MmPerMvLimb:   10,
 		MmPerMvChest:  10,
+	}
+	if rawClientMeta := r.FormValue("client_meta"); rawClientMeta != "" {
+		var clientMeta models.RequestClientMeta
+		if err := json.Unmarshal([]byte(rawClientMeta), &clientMeta); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid client_meta")
+			return
+		}
+		if err := clientMeta.Validate(); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid client_meta")
+			return
+		}
+		params.ClientMeta = &clientMeta
 	}
 	if v := r.FormValue("age"); v != "" {
 		if age, err := strconv.Atoi(v); err == nil && age > 0 && age <= 150 {

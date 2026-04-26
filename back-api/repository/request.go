@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -18,13 +19,17 @@ func (r *Repository) CreateRequest(ctx context.Context, req *models.Request) err
 	if req.ID == uuid.Nil {
 		req.ID = uuid.New()
 	}
+	clientMeta, err := marshalClientMeta(req.ClientMeta)
+	if err != nil {
+		return fmt.Errorf("failed to marshal client meta: %w", err)
+	}
 
 	query := `
-		INSERT INTO requests (id, user_id, text_query, status, ecg_age, ecg_sex, ecg_paper_speed_mms, ecg_mm_per_mv_limb, ecg_mm_per_mv_chest, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+		INSERT INTO requests (id, user_id, text_query, status, client_meta, ecg_age, ecg_sex, ecg_paper_speed_mms, ecg_mm_per_mv_limb, ecg_mm_per_mv_chest, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
 	`
 
-	_, err := r.querier.Exec(ctx, query, req.ID, req.UserID, req.TextQuery, req.Status,
+	_, err = r.querier.Exec(ctx, query, req.ID, req.UserID, req.TextQuery, req.Status, clientMeta,
 		req.ECGAge, req.ECGSex, req.ECGPaperSpeedMMS, req.ECGMmPerMvLimb, req.ECGMmPerMvChest)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
@@ -36,7 +41,7 @@ func (r *Repository) CreateRequest(ctx context.Context, req *models.Request) err
 // for the request + response, and a separate query for files.
 func (r *Repository) GetRequestByID(ctx context.Context, id uuid.UUID) (*models.Request, error) {
 	query := `
-		SELECT r.id, r.user_id, r.text_query, r.status, r.created_at, r.updated_at,
+		SELECT r.id, r.user_id, r.text_query, r.status, r.created_at, r.updated_at, r.client_meta,
 		       r.ecg_age, r.ecg_sex, r.ecg_paper_speed_mms, r.ecg_mm_per_mv_limb, r.ecg_mm_per_mv_chest,
 		       resp.id, resp.request_id, resp.content, resp.model,
 		       resp.tokens_used, resp.processing_time_ms, resp.created_at
@@ -54,9 +59,10 @@ func (r *Repository) GetRequestByID(ctx context.Context, id uuid.UUID) (*models.
 	var respContent, respModel *string
 	var respTokens, respTimeMs *int
 	var respCreatedAt *time.Time
+	var clientMetaBytes []byte
 
 	err := r.querier.QueryRow(ctx, query, id).Scan(
-		&req.ID, &req.UserID, &req.TextQuery, &req.Status, &req.CreatedAt, &req.UpdatedAt,
+		&req.ID, &req.UserID, &req.TextQuery, &req.Status, &req.CreatedAt, &req.UpdatedAt, &clientMetaBytes,
 		&req.ECGAge, &req.ECGSex, &req.ECGPaperSpeedMMS, &req.ECGMmPerMvLimb, &req.ECGMmPerMvChest,
 		&respID, &respReqID, &respContent, &respModel,
 		&respTokens, &respTimeMs, &respCreatedAt,
@@ -66,6 +72,9 @@ func (r *Repository) GetRequestByID(ctx context.Context, id uuid.UUID) (*models.
 			return nil, apperr.ErrRequestNotFound
 		}
 		return nil, fmt.Errorf("failed to get request: %w", err)
+	}
+	if req.ClientMeta, err = unmarshalClientMeta(clientMetaBytes); err != nil {
+		return nil, fmt.Errorf("failed to decode client meta: %w", err)
 	}
 
 	// Assemble response if the JOIN returned data
@@ -97,7 +106,7 @@ func (r *Repository) GetRequestByID(ctx context.Context, id uuid.UUID) (*models.
 // GetRequestsByUserID retrieves requests for a user with pagination.
 func (r *Repository) GetRequestsByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]models.Request, error) {
 	query := `
-		SELECT id, user_id, text_query, status, created_at, updated_at,
+		SELECT id, user_id, text_query, status, created_at, updated_at, client_meta,
 		       ecg_age, ecg_sex, ecg_paper_speed_mms, ecg_mm_per_mv_limb, ecg_mm_per_mv_chest
 		FROM requests
 		WHERE user_id = $1 AND ecg_paper_speed_mms IS NOT NULL
@@ -114,6 +123,7 @@ func (r *Repository) GetRequestsByUserID(ctx context.Context, userID uuid.UUID, 
 	var requests []models.Request
 	for rows.Next() {
 		var req models.Request
+		var clientMetaBytes []byte
 		err := rows.Scan(
 			&req.ID,
 			&req.UserID,
@@ -121,6 +131,7 @@ func (r *Repository) GetRequestsByUserID(ctx context.Context, userID uuid.UUID, 
 			&req.Status,
 			&req.CreatedAt,
 			&req.UpdatedAt,
+			&clientMetaBytes,
 			&req.ECGAge,
 			&req.ECGSex,
 			&req.ECGPaperSpeedMMS,
@@ -129,6 +140,10 @@ func (r *Repository) GetRequestsByUserID(ctx context.Context, userID uuid.UUID, 
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan request: %w", err)
+		}
+		req.ClientMeta, err = unmarshalClientMeta(clientMetaBytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode request client meta: %w", err)
 		}
 
 		requests = append(requests, req)
@@ -144,7 +159,7 @@ func (r *Repository) GetRequestsByUserID(ctx context.Context, userID uuid.UUID, 
 // latest response eagerly loaded, avoiding N+1 queries in fallback logic.
 func (r *Repository) GetRecentRequestsWithResponses(ctx context.Context, userID uuid.UUID, limit int) ([]models.Request, error) {
 	query := `
-		SELECT r.id, r.user_id, r.text_query, r.status, r.created_at, r.updated_at,
+		SELECT r.id, r.user_id, r.text_query, r.status, r.created_at, r.updated_at, r.client_meta,
 		       r.ecg_age, r.ecg_sex, r.ecg_paper_speed_mms, r.ecg_mm_per_mv_limb, r.ecg_mm_per_mv_chest,
 		       resp.id, resp.request_id, resp.content, resp.model,
 		       resp.tokens_used, resp.processing_time_ms, resp.created_at
@@ -170,15 +185,20 @@ func (r *Repository) GetRecentRequestsWithResponses(ctx context.Context, userID 
 		var respContent, respModel *string
 		var respTokens, respTimeMs *int
 		var respCreatedAt *time.Time
+		var clientMetaBytes []byte
 
 		err := rows.Scan(
-			&req.ID, &req.UserID, &req.TextQuery, &req.Status, &req.CreatedAt, &req.UpdatedAt,
+			&req.ID, &req.UserID, &req.TextQuery, &req.Status, &req.CreatedAt, &req.UpdatedAt, &clientMetaBytes,
 			&req.ECGAge, &req.ECGSex, &req.ECGPaperSpeedMMS, &req.ECGMmPerMvLimb, &req.ECGMmPerMvChest,
 			&respID, &respReqID, &respContent, &respModel,
 			&respTokens, &respTimeMs, &respCreatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan request with response: %w", err)
+		}
+		req.ClientMeta, err = unmarshalClientMeta(clientMetaBytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode request client meta: %w", err)
 		}
 
 		if respID != nil {
@@ -236,4 +256,22 @@ func (r *Repository) UpdateRequestStatus(ctx context.Context, requestID uuid.UUI
 		return apperr.ErrRequestNotFound
 	}
 	return nil
+}
+
+func marshalClientMeta(meta *models.RequestClientMeta) ([]byte, error) {
+	if meta == nil {
+		return nil, nil
+	}
+	return json.Marshal(meta)
+}
+
+func unmarshalClientMeta(raw []byte) (*models.RequestClientMeta, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	var meta models.RequestClientMeta
+	if err := json.Unmarshal(raw, &meta); err != nil {
+		return nil, err
+	}
+	return &meta, nil
 }

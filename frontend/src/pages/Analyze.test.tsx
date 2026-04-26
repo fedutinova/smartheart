@@ -13,15 +13,19 @@ const { mockAddJob, mockSetError, mockSubmitAnalysis, mockSubmitAnalysisFile } =
 }));
 
 const mockImageState = {
-  step: 'select' as 'select' | 'crop' | 'ready',
+  step: 'select' as 'select' | 'crop' | 'review' | 'ready',
   previewSrc: null as string | null,
+  sourceBlob: null as Blob | null,
   croppedBlob: null as Blob | null,
   croppedPreview: null as string | null,
+  redactionBoxes: [],
+  clientMeta: null,
   error: '',
   handleFileSelect: vi.fn(),
   handleCropComplete: vi.fn(),
   handleCropCancel: vi.fn(),
   rotateImage: vi.fn(),
+  confirmRedaction: vi.fn(),
   handleRecrop: vi.fn(),
   reset: vi.fn(),
   setError: mockSetError,
@@ -103,8 +107,11 @@ describe('Analyze', () => {
 
     mockImageState.step = 'select';
     mockImageState.previewSrc = null;
+    mockImageState.sourceBlob = null;
     mockImageState.croppedBlob = null;
     mockImageState.croppedPreview = null;
+    mockImageState.redactionBoxes = [];
+    mockImageState.clientMeta = null;
     mockImageState.error = '';
     sessionStorage.clear();
   });
@@ -164,5 +171,46 @@ describe('Analyze', () => {
     });
     expect(mockAddJob).toHaveBeenCalledWith('req-123');
     expect(await screen.findByText('Результат анализа')).toBeInTheDocument();
+  });
+
+  it('submits redacted file analysis with client_meta', async () => {
+    const user = userEvent.setup();
+    mockImageState.step = 'ready';
+    mockImageState.croppedBlob = new Blob(['ekg'], { type: 'image/jpeg' });
+    mockImageState.clientMeta = {
+      redaction_mode: 'band',
+      redaction_ms: 84,
+      boxes_count: 3,
+      masked_area_ratio: 0.12,
+      image_width: 1440,
+      image_height: 1024,
+    };
+    mockSubmitAnalysisFile.mockResolvedValue({
+      request_id: 'req-file-123',
+      job_id: 'job-file-123',
+      status: 'pending',
+      message: 'queued',
+    });
+
+    renderAnalyze();
+
+    await user.click(screen.getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: 'Запустить анализ' }));
+
+    await waitFor(() => {
+      expect(mockSubmitAnalysisFile).toHaveBeenCalledWith(
+        mockImageState.croppedBlob,
+        undefined,
+        {
+          age: undefined,
+          sex: undefined,
+          paper_speed_mms: 25,
+          mm_per_mv_limb: 10,
+          mm_per_mv_chest: 10,
+        },
+        mockImageState.clientMeta,
+      );
+    });
+    expect(mockAddJob).toHaveBeenCalledWith('req-file-123');
   });
 });
