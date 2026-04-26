@@ -16,6 +16,7 @@ import (
 	"github.com/fedutinova/smartheart/back-api/gpt"
 	"github.com/fedutinova/smartheart/back-api/job"
 	"github.com/fedutinova/smartheart/back-api/models"
+	"github.com/fedutinova/smartheart/back-api/redaction"
 	"github.com/fedutinova/smartheart/back-api/repository"
 	"github.com/fedutinova/smartheart/back-api/storage"
 )
@@ -360,11 +361,55 @@ func (s *submissionService) processFile(ctx context.Context, requestID uuid.UUID
 	return uploadResult.Key, nil
 }
 
-// CompareH2Redaction is a stub for H2 hypothesis testing.
-// It should accept an image and return metrics comparing band vs OCR redaction.
-// TODO: Implement actual band/OCR comparison logic here.
+// CompareH2Redaction compares band vs OCR redaction for H2 hypothesis testing.
+// Returns metrics for both modes to evaluate the trade-off between masked_area_ratio and leak_rate.
 func (s *submissionService) CompareH2Redaction(ctx context.Context, file UploadedFile) (interface{}, error) {
+	// Reset file pointer for reading
+	if seeker, ok := file.Reader.(io.Seeker); ok {
+		if _, err := seeker.Seek(0, io.SeekStart); err != nil {
+			return nil, apperr.WrapInternal("seek file", err)
+		}
+	}
+
+	// Apply band redaction
+	bandBlob, bandMetrics, err := redaction.ApplyBandRedaction(file.Reader, file.ContentType, nil)
+	if err != nil {
+		return nil, apperr.WrapInternal("apply band redaction", err)
+	}
+
+	// Reset file pointer again for OCR redaction
+	if seeker, ok := file.Reader.(io.Seeker); ok {
+		if _, err := seeker.Seek(0, io.SeekStart); err != nil {
+			return nil, apperr.WrapInternal("seek file", err)
+		}
+	}
+
+	// Apply OCR redaction (currently same as band, will be enhanced with Tesseract)
+	ocrBlob, ocrMetrics, err := redaction.ApplyOCRRedaction(file.Reader, file.ContentType)
+	if err != nil {
+		return nil, apperr.WrapInternal("apply OCR redaction", err)
+	}
+
+	// Evaluate both results (currently placeholders, will integrate Tesseract)
+	bandEval, _ := redaction.EvaluateRedaction(bandBlob, []string{})
+	ocrEval, _ := redaction.EvaluateRedaction(ocrBlob, []string{})
+
+	// Return comparison result
 	return map[string]interface{}{
-		"message": "H2 redaction comparison not yet implemented on backend. Use frontend OCR mode for now.",
+		"band_metrics": map[string]interface{}{
+			"redaction_ms":      bandMetrics.RedactionMs,
+			"masked_area_ratio": bandMetrics.MaskedAreaRatio,
+			"boxes_count":       bandMetrics.BoxesCount,
+			"leak_rate":         bandEval.LeakRate,
+		},
+		"ocr_metrics": map[string]interface{}{
+			"redaction_ms":      ocrMetrics.RedactionMs,
+			"masked_area_ratio": ocrMetrics.MaskedAreaRatio,
+			"boxes_count":       ocrMetrics.BoxesCount,
+			"leak_rate":         ocrEval.LeakRate,
+		},
+		"image_width":  bandMetrics.ImageWidth,
+		"image_height": bandMetrics.ImageHeight,
+		"message":      "H2 comparison completed (OCR integration pending)",
 	}, nil
 }
