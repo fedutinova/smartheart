@@ -134,6 +134,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 			ekgMiddleware = append(ekgMiddleware, h.MW.AnalyzeRateLimit)
 		}
 		r.With(ekgMiddleware...).Post("/v1/ecg/analyze", h.EKG.SubmitECGAnalyze)
+		r.With(ekgMiddleware...).Post("/v1/ecg/analyze-h2-compare", h.EKG.CompareH2Redaction)
 		r.With(ekgMiddleware...).Post("/v1/gpt/process", h.GPT.SubmitGPTRequest)
 
 		r.With(auth.RequirePerm(auth.PermJobReadOwn)).Get("/v1/jobs/{id}", h.Request.GetJob)

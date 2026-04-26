@@ -57,6 +57,7 @@ type SubmissionService interface {
 	SubmitECG(ctx context.Context, userID uuid.UUID, imageURL string, params ECGParams) (*SubmittedJob, error)
 	SubmitECGFile(ctx context.Context, userID uuid.UUID, file UploadedFile, params ECGParams) (*SubmittedJob, error)
 	SubmitGPT(ctx context.Context, userID uuid.UUID, textQuery string, files []UploadedFile) (*GPTSubmitResult, error)
+	CompareH2Redaction(ctx context.Context, file UploadedFile) (interface{}, error)
 }
 
 type submissionService struct {
@@ -357,4 +358,13 @@ func (s *submissionService) processFile(ctx context.Context, requestID uuid.UUID
 	}
 
 	return uploadResult.Key, nil
+}
+
+// CompareH2Redaction is a stub for H2 hypothesis testing.
+// It should accept an image and return metrics comparing band vs OCR redaction.
+// TODO: Implement actual band/OCR comparison logic here.
+func (s *submissionService) CompareH2Redaction(ctx context.Context, file UploadedFile) (interface{}, error) {
+	return map[string]interface{}{
+		"message": "H2 redaction comparison not yet implemented on backend. Use frontend OCR mode for now.",
+	}, nil
 }
