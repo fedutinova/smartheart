@@ -6,6 +6,7 @@ import { requestAPI } from '@/services/api';
 import { formatDate, formatStatus, getStatusColor, formatECGParams } from '@/utils/format';
 import { Layout } from '@/components/Layout';
 import { RequestImage } from '@/components/RequestImage';
+import { ECGChat } from '@/components/ECGChat';
 import { useEventSource } from '@/hooks/useEventSource';
 import { usePendingJobs } from '@/hooks/usePendingJobs';
 import type { ECGAnalysisResult, ECGStructuredResult, InterpretationItem } from '@/types';
@@ -230,6 +231,11 @@ export function Results() {
             <h2 className="text-sm font-medium text-gray-400 mb-2">Примечания</h2>
             <p className="text-sm text-gray-600">{ecgResult.notes}</p>
           </div>
+        )}
+
+        {/* ECG-contextual chat */}
+        {request?.status === 'completed' && id && (
+          <ECGChat requestId={id} structuredResult={ecgResult?.structured_result} />
         )}
 
         <p className="mt-6 text-xs text-gray-500 text-center leading-relaxed">

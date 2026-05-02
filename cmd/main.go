@@ -205,6 +205,7 @@ func startHTTPServer(
 	submissionSvc := service.NewSubmissionService(repo, q, storageService, cfg.Quota)
 	requestSvc := service.NewRequestService(repo, q)
 	paymentSvc := service.NewPaymentService(repo, cfg.YooKassa, cfg.Quota.DailyLimit)
+	ecgChatSvc := service.NewECGChatService(repo, cfg.RAG.URL)
 
 	mw := handler.Middlewares{
 		WebhookIP: server.WebhookIPWhitelist(cfg.YooKassa.ShopID),
@@ -220,7 +221,7 @@ func startHTTPServer(
 			mw.PasswordResetRateLimit = server.EndpointRateLimit(cfg.RateLimit.PasswordResetRPM)
 		}
 	}
-	handlers := handler.NewHandler(authSvc, passwordSvc, submissionSvc, requestSvc, paymentSvc, q, repo, sessions, storageService, hub, cfg, mw)
+	handlers := handler.NewHandler(authSvc, passwordSvc, submissionSvc, requestSvc, paymentSvc, ecgChatSvc, q, repo, sessions, storageService, hub, cfg, mw)
 	r := server.NewRouter(handlers, cfg)
 
 	srv := &http.Server{

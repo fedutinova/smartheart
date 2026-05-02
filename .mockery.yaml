@@ -11,6 +11,7 @@ packages:
       RequestService:
       PaymentService:
       PasswordService:
+      ECGChatService:
   github.com/fedutinova/smartheart/back-api/repository:
     interfaces:
       Store:

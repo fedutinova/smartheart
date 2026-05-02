@@ -66,6 +66,12 @@ type KBCacheRepo interface {
 	SaveCacheEntry(ctx context.Context, question, answer, sourceMeta string) error
 }
 
+// ECGChatRepo provides storage for contextual chat messages anchored to an ECG analysis.
+type ECGChatRepo interface {
+	CreateECGChatMessage(ctx context.Context, msg *models.ECGChatMessage) error
+	GetECGChatMessages(ctx context.Context, requestID, userID uuid.UUID) ([]models.ECGChatMessage, error)
+}
+
 // PasswordResetRepo provides password reset token data access.
 type PasswordResetRepo interface {
 	CreatePasswordResetToken(ctx context.Context, token *models.PasswordResetToken) error
@@ -104,6 +110,7 @@ type Store interface {
 	QuotaRepo
 	RAGFeedbackRepo
 	KBCacheRepo
+	ECGChatRepo
 	PaymentRepo
 	PasswordResetRepo
 	AdminRepo

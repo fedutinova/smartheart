@@ -282,6 +282,53 @@ func (_c *MockStore_CountRequestsByUserID_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
+// CreateECGChatMessage provides a mock function with given fields: ctx, msg
+func (_m *MockStore) CreateECGChatMessage(ctx context.Context, msg *models.ECGChatMessage) error {
+	ret := _m.Called(ctx, msg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateECGChatMessage")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *models.ECGChatMessage) error); ok {
+		r0 = rf(ctx, msg)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockStore_CreateECGChatMessage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateECGChatMessage'
+type MockStore_CreateECGChatMessage_Call struct {
+	*mock.Call
+}
+
+// CreateECGChatMessage is a helper method to define mock.On call
+//   - ctx context.Context
+//   - msg *models.ECGChatMessage
+func (_e *MockStore_Expecter) CreateECGChatMessage(ctx interface{}, msg interface{}) *MockStore_CreateECGChatMessage_Call {
+	return &MockStore_CreateECGChatMessage_Call{Call: _e.mock.On("CreateECGChatMessage", ctx, msg)}
+}
+
+func (_c *MockStore_CreateECGChatMessage_Call) Run(run func(ctx context.Context, msg *models.ECGChatMessage)) *MockStore_CreateECGChatMessage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*models.ECGChatMessage))
+	})
+	return _c
+}
+
+func (_c *MockStore_CreateECGChatMessage_Call) Return(_a0 error) *MockStore_CreateECGChatMessage_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockStore_CreateECGChatMessage_Call) RunAndReturn(run func(context.Context, *models.ECGChatMessage) error) *MockStore_CreateECGChatMessage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateFile provides a mock function with given fields: ctx, file
 func (_m *MockStore) CreateFile(ctx context.Context, file *models.File) error {
 	ret := _m.Called(ctx, file)
@@ -933,6 +980,66 @@ func (_c *MockStore_GetDailyUsage_Call) Return(_a0 int, _a1 error) *MockStore_Ge
 }
 
 func (_c *MockStore_GetDailyUsage_Call) RunAndReturn(run func(context.Context, uuid.UUID) (int, error)) *MockStore_GetDailyUsage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetECGChatMessages provides a mock function with given fields: ctx, requestID, userID
+func (_m *MockStore) GetECGChatMessages(ctx context.Context, requestID uuid.UUID, userID uuid.UUID) ([]models.ECGChatMessage, error) {
+	ret := _m.Called(ctx, requestID, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetECGChatMessages")
+	}
+
+	var r0 []models.ECGChatMessage
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) ([]models.ECGChatMessage, error)); ok {
+		return rf(ctx, requestID, userID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) []models.ECGChatMessage); ok {
+		r0 = rf(ctx, requestID, userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.ECGChatMessage)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r1 = rf(ctx, requestID, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStore_GetECGChatMessages_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetECGChatMessages'
+type MockStore_GetECGChatMessages_Call struct {
+	*mock.Call
+}
+
+// GetECGChatMessages is a helper method to define mock.On call
+//   - ctx context.Context
+//   - requestID uuid.UUID
+//   - userID uuid.UUID
+func (_e *MockStore_Expecter) GetECGChatMessages(ctx interface{}, requestID interface{}, userID interface{}) *MockStore_GetECGChatMessages_Call {
+	return &MockStore_GetECGChatMessages_Call{Call: _e.mock.On("GetECGChatMessages", ctx, requestID, userID)}
+}
+
+func (_c *MockStore_GetECGChatMessages_Call) Run(run func(ctx context.Context, requestID uuid.UUID, userID uuid.UUID)) *MockStore_GetECGChatMessages_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(uuid.UUID), args[2].(uuid.UUID))
+	})
+	return _c
+}
+
+func (_c *MockStore_GetECGChatMessages_Call) Return(_a0 []models.ECGChatMessage, _a1 error) *MockStore_GetECGChatMessages_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStore_GetECGChatMessages_Call) RunAndReturn(run func(context.Context, uuid.UUID, uuid.UUID) ([]models.ECGChatMessage, error)) *MockStore_GetECGChatMessages_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -58,6 +58,7 @@ type Handler struct {
 	Healthz  *HealthHandler
 	Events   *EventsHandler
 	RAG      *RAGHandler
+	ECGChat  *ECGChatHandler
 	Payment  *PaymentHandler
 	Profile  *ProfileHandler
 	Admin    *AdminHandler
@@ -71,6 +72,7 @@ func NewHandler(
 	submissionSvc service.SubmissionService,
 	requestSvc service.RequestService,
 	paymentSvc service.PaymentService,
+	ecgChatSvc service.ECGChatService,
 	queue job.Queue,
 	repo repository.Store,
 	sessions auth.SessionService,
@@ -88,6 +90,7 @@ func NewHandler(
 		Healthz:  &HealthHandler{Queue: queue, Repo: repo, Sessions: sessions, Storage: storageService},
 		Events:   &EventsHandler{Hub: hub},
 		RAG:      NewRAGHandler(cfg.RAG.URL, repo),
+		ECGChat:  &ECGChatHandler{Service: ecgChatSvc},
 		Payment:  &PaymentHandler{Service: paymentSvc},
 		Profile:  &ProfileHandler{Repo: repo},
 		Admin:    &AdminHandler{Repo: repo},
@@ -147,6 +150,9 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 
 		r.Post("/v1/rag/query", h.RAG.Query)
 		r.Post("/v1/rag/feedback", h.RAG.Feedback)
+
+		r.With(auth.RequirePerm(auth.PermJobReadOwn)).Get("/v1/ecg/{id}/chat", h.ECGChat.GetMessages)
+		r.With(auth.RequirePerm(auth.PermJobReadOwn)).Post("/v1/ecg/{id}/chat/messages", h.ECGChat.PostMessage)
 
 		r.Get("/v1/me", h.Profile.GetMe)
 

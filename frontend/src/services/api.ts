@@ -266,6 +266,39 @@ export const ragAPI = {
   },
 };
 
+export interface ECGChatCitation {
+  title: string;
+  source: string;
+  excerpt: string;
+}
+
+export interface ECGChatMessage {
+  id: string;
+  request_id: string;
+  user_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  citations?: ECGChatCitation[];
+  created_at: string;
+}
+
+export const ecgChatAPI = {
+  getMessages: async (requestId: string) => {
+    const response = await api.get<{ messages: ECGChatMessage[] | null }>(
+      `/v1/ecg/${requestId}/chat`,
+    );
+    return response.data.messages ?? [];
+  },
+  sendMessage: async (requestId: string, content: string) => {
+    const response = await api.post<ECGChatMessage>(
+      `/v1/ecg/${requestId}/chat/messages`,
+      { content },
+      { timeout: API_TIMEOUT_RAG },
+    );
+    return response.data;
+  },
+};
+
 export const paymentAPI = {
   getQuota: async () => {
     const response = await api.get<QuotaInfo>('/v1/quota');
