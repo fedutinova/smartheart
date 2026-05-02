@@ -1,86 +1,88 @@
-/**
- * H2 Hypothesis Verification Dataset
- *
- * Synthetic ECG test set for measuring:
- * - Image suitability for automatic analysis
- * - Masked area ratio (baseline vs OCR mode)
- * - Direct_identifier_leak_rate (residual PII after redaction)
- * - P95 image preparation time
- *
- * Dataset structure:
- * - Each sample is a synthetic ECG image with known identifiers in standard locations
- * - Test cases cover: different paper speeds, different patient ID formats, different image qualities
- */
+/// <reference types="node" />
+
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+interface H2ManifestEntry {
+  id: string;
+  image_file: string;
+  image_path: string;
+  full_name: string;
+  birth_date: string;
+  patient_id: string;
+  record_no: string;
+  sex: string;
+  ecg_date: string;
+  expected_identifiers: string[];
+  overlay_position: {
+    left_x: string;
+    left_y: string;
+    right_x: string;
+    right_y: string;
+    font_size: string;
+  };
+}
 
 export interface H2TestCase {
   id: string;
   name: string;
   description: string;
-  imageBase64: string; // Placeholder - will be populated with actual test images
-  expectedIdentifiers: string[]; // Known PII that should be detected and masked
+  imagePath: string;
+  expectedIdentifiers: string[];
   metadata: {
-    paperSpeed: number; // mm/s
-    quality: 'good' | 'degraded' | 'low';
-    identifierLocations: Array<{ text: string; position: 'top' | 'bottom' | 'left' | 'right' }>;
+    fullName: string;
+    birthDate: string;
+    patientId: string;
+    recordNo: string;
+    sex: string;
+    ecgDate: string;
+    overlayPosition: H2ManifestEntry['overlay_position'];
+    source: 'with-test-data';
   };
 }
 
-/**
- * TODO: Generate synthetic ECG test cases
- *
- * Requirements:
- * 1. At least 10 test images with varying:
- *    - Paper speeds (25, 50 mm/s)
- *    - Quality levels (good scan, slightly degraded, low contrast)
- *    - Patient ID formats (Cyrillic names, numeric IDs, dates)
- *
- * 2. Each image should:
- *    - Be a valid PNG/JPEG
- *    - Contain ECG waveform (can be synthetic)
- *    - Have identifiable text in known locations
- *    - Have resolution ~1200x800px (standard ECG scan size)
- *
- * 3. Known identifiers to embed:
- *    - Patient name (e.g., "Иван Петров")
- *    - Patient ID (e.g., "12345678")
- *    - Date/time (e.g., "25.04.2026 14:30")
- *    - Doctor name (optional, if present should be masked)
- */
-export const H2_TEST_CASES: H2TestCase[] = [
-  // Placeholder - to be populated
-  {
-    id: 'h2_001_good_quality_standard',
-    name: 'Good Quality ECG - Standard Format',
-    description: 'High-quality scan, Cyrillic patient name at top, ID at bottom-left',
-    imageBase64: 'placeholder_base64_string',
-    expectedIdentifiers: ['Иван Петров', '12345678', '25.04.2026'],
-    metadata: {
-      paperSpeed: 25,
-      quality: 'good',
-      identifierLocations: [
-        { text: 'Иван Петров', position: 'top' },
-        { text: '12345678', position: 'bottom' },
-        { text: '25.04.2026', position: 'bottom' },
-      ],
-    },
+function resolveRepoPath(relativeToRepoRoot: string): string {
+  const fromFrontendDir = resolve(process.cwd(), '..', relativeToRepoRoot);
+  if (existsSync(fromFrontendDir)) {
+    return fromFrontendDir;
+  }
+
+  return resolve(process.cwd(), relativeToRepoRoot);
+}
+
+const manifestPath = resolveRepoPath('h2/with-test-data-manifest.json');
+
+const manifest = JSON.parse(
+  readFileSync(manifestPath, 'utf-8'),
+) as H2ManifestEntry[];
+
+export const H2_TEST_CASES: H2TestCase[] = manifest.map((entry) => ({
+  id: entry.id,
+  name: entry.image_file,
+  description: `ECG photo with synthetic identifiers (${entry.image_file})`,
+  imagePath: entry.image_path,
+  expectedIdentifiers: entry.expected_identifiers,
+  metadata: {
+    fullName: entry.full_name,
+    birthDate: entry.birth_date,
+    patientId: entry.patient_id,
+    recordNo: entry.record_no,
+    sex: entry.sex,
+    ecgDate: entry.ecg_date,
+    overlayPosition: entry.overlay_position,
+    source: 'with-test-data',
   },
-  // Add more test cases following the same pattern
-];
+}));
 
-/**
- * Utility to load test case and decode base64 to blob
- */
-export async function loadTestCase(testCaseId: string): Promise<Blob> {
-  const testCase = H2_TEST_CASES.find((tc) => tc.id === testCaseId);
+export async function loadTestCase(id: string): Promise<Blob> {
+  const testCase = H2_TEST_CASES.find((candidate) => candidate.id === id);
   if (!testCase) {
-    throw new Error(`Test case not found: ${testCaseId}`);
+    throw new Error(`H2 test case not found: ${id}`);
   }
 
-  const binary = atob(testCase.imageBase64);
-  const array = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    array[i] = binary.charCodeAt(i);
-  }
-
-  return new Blob([array], { type: 'image/png' });
+  const preferredImagePath = resolveRepoPath(testCase.imagePath);
+  const fallbackImagePath = resolveRepoPath(`h2/${testCase.name}`);
+  const sourcePath = existsSync(preferredImagePath) ? preferredImagePath : fallbackImagePath;
+  const imageBuffer = readFileSync(sourcePath);
+  return new Blob([imageBuffer], { type: 'image/png' });
 }

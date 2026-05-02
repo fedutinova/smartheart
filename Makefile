@@ -1,6 +1,6 @@
 # SmartHeart Makefile
 
-.PHONY: help test test-backend test-backend-integration test-rag test-frontend test-admin test-coverage test-race build run clean docker-build docker-run lint fmt vet check-deps
+.PHONY: help test test-backend test-backend-integration test-rag test-frontend test-admin test-coverage test-race build run clean docker-build docker-run lint fmt vet check-deps verify-h2-ground-truth
 
 # Default target
 help:
@@ -14,6 +14,7 @@ help:
 	@echo "  test-admin        - Run admin typecheck, tests, and production build"
 	@echo "  test-coverage     - Run backend tests with coverage report"
 	@echo "  test-race         - Run tests with race detection"
+	@echo "  verify-h2-ground-truth - Run H2 ECG redaction validation on h2/with-test-data"
 	@echo "  build             - Build the application"
 	@echo "  run               - Run the application"
 	@echo "  clean             - Clean build artifacts"
@@ -50,6 +51,10 @@ test-frontend:
 test-admin:
 	@echo "Running admin typecheck, tests, and build..."
 	cd admin && npm run typecheck && npm run test && npm run build
+
+verify-h2-ground-truth:
+	@echo "Running H2 ground-truth validation..."
+	python3 scripts/verify_h2_ground_truth.py
 
 test-coverage:
 	@echo "Running backend tests with coverage..."

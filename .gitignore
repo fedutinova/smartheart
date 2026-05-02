@@ -33,6 +33,7 @@ bin/
 # Local file uploads
 uploads/
 docs/
+h2/
 
 # Node.js
 node_modules/
