@@ -228,18 +228,36 @@ func TestExtractECGSummary_PrefersTextSummary(t *testing.T) {
 	assert.Equal(t, "Норма", extractECGSummary(content))
 }
 
-func TestExtractECGSummary_FallsBackToHRAndAbnormal(t *testing.T) {
+func TestExtractECGSummary_ComprehensiveData(t *testing.T) {
 	content := `{
 		"analysis_type":"ekg_structured_v1",
 		"structured_result":{
-			"rhythm":{"HR_bpm":73,"QRS_ms":110},
-			"interpretation":{"summary":[{"label":"ГЛЖ","value":"Признаки","status":"positive"}]}
+			"rhythm":{"HR_bpm":73,"QRS_ms":110,"RR_ms":820},
+			"axis_qrs":{"axis_deg":45,"classification":"normal"},
+			"indices":{"sokolow_lyon_mV":42.5,"cornell_voltage_mV":38.2},
+			"rvh":{"RV1_mV":4.2,"R_over_S_V1":0.8},
+			"measurements":{"RII":15.2,"SIII":8.5,"RaVL":12.1,"RV5":25.3,"SV1":28.0},
+			"interpretation":{
+				"items":[
+					{"label":"ГЛЖ","value":"Признаки","status":"positive","threshold":"35 мВ","group":"lvh"},
+					{"label":"Ритм","value":"Синусовый","status":"normal","group":"rhythm"}
+				]
+			},
+			"transition_zone_lead":"V3"
 		}
 	}`
 	got := extractECGSummary(content)
 	assert.Contains(t, got, "ЧСС 73 уд/мин")
+	assert.Contains(t, got, "RR 820 мс")
 	assert.Contains(t, got, "QRS 110 мс")
-	assert.Contains(t, got, "ГЛЖ: Признаки")
+	assert.Contains(t, got, "Ось QRS: 45°")
+	assert.Contains(t, got, "Классификация оси: normal")
+	assert.Contains(t, got, "Соколов-Лайон: 42.5 мВ")
+	assert.Contains(t, got, "Cornell: 38.2 мВ")
+	assert.Contains(t, got, "RV1: 4.2 мВ")
+	assert.Contains(t, got, "RII: 15.2 мВ")
+	assert.Contains(t, got, "Зона переходности: V3")
+	assert.Contains(t, got, "пороговое: 35 мВ")
 }
 
 func TestExtractECGSummary_InvalidJSON(t *testing.T) {

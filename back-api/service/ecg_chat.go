@@ -246,24 +246,48 @@ func buildECGContextBlock(req *models.Request) string {
 	return sb.String()
 }
 
-// extractECGSummary parses the response JSON and pulls out a short summary line.
+// extractECGSummary parses the response JSON and builds a comprehensive ECG summary
+// for LLM context. Prioritizes text_summary if available, otherwise builds a structured
+// summary from measurements, indices, axis, rhythm, and interpretation items.
 // Returns an empty string if the response is not structured ECG data.
 func extractECGSummary(content string) string {
 	var parsed struct {
 		AnalysisType   string `json:"analysis_type"`
 		StructuredData *struct {
-			Interpretation *struct {
-				TextSummary string `json:"text_summary"`
-				Summary     []struct {
-					Label  string `json:"label"`
-					Value  string `json:"value"`
-					Status string `json:"status"`
-				} `json:"summary"`
-			} `json:"interpretation"`
+			Measurements map[string]*float64 `json:"measurements"`
+			Indices      *struct {
+				SokolowLyon     *float64 `json:"sokolow_lyon_mV"`
+				CornellVoltage  *float64 `json:"cornell_voltage_mV"`
+				PegueroLoPresti *float64 `json:"peguero_lo_presti_mV"`
+				Gubner          *float64 `json:"gubner_mV"`
+				Lewis           *float64 `json:"lewis_mV"`
+			} `json:"indices"`
+			RVH *struct {
+				RV1mV      *float64 `json:"RV1_mV"`
+				ROverSV1   *float64 `json:"R_over_S_V1"`
+				RV1PlusSV5 *float64 `json:"RV1_plus_SV5_mV"`
+				RV1PlusSV6 *float64 `json:"RV1_plus_SV6_mV"`
+			} `json:"rvh"`
+			Axis *struct {
+				AxisDeg        *float64 `json:"axis_deg"`
+				Classification string   `json:"classification"`
+			} `json:"axis_qrs"`
 			Rhythm *struct {
 				HRBpm *float64 `json:"HR_bpm"`
 				QRSMs *float64 `json:"QRS_ms"`
+				RRms  *float64 `json:"RR_ms"`
 			} `json:"rhythm"`
+			Transition *string `json:"transition_zone_lead"`
+			Interpretation *struct {
+				Items       []struct {
+					Label     string `json:"label"`
+					Value     string `json:"value"`
+					Threshold string `json:"threshold"`
+					Status    string `json:"status"`
+					Group     string `json:"group"`
+				} `json:"items"`
+				TextSummary string `json:"text_summary"`
+			} `json:"interpretation"`
 		} `json:"structured_result"`
 	}
 	if err := json.Unmarshal([]byte(content), &parsed); err != nil {
@@ -273,25 +297,89 @@ func extractECGSummary(content string) string {
 		return ""
 	}
 
-	if interp := parsed.StructuredData.Interpretation; interp != nil && interp.TextSummary != "" {
-		return interp.TextSummary
+	sd := parsed.StructuredData
+	if sd.Interpretation != nil && sd.Interpretation.TextSummary != "" {
+		return sd.Interpretation.TextSummary
 	}
 
 	var parts []string
-	if parsed.StructuredData.Rhythm != nil {
-		if hr := parsed.StructuredData.Rhythm.HRBpm; hr != nil {
+
+	if sd.Rhythm != nil {
+		if hr := sd.Rhythm.HRBpm; hr != nil {
 			parts = append(parts, fmt.Sprintf("ЧСС %.0f уд/мин", *hr))
 		}
-		if qrs := parsed.StructuredData.Rhythm.QRSMs; qrs != nil {
+		if rr := sd.Rhythm.RRms; rr != nil {
+			parts = append(parts, fmt.Sprintf("RR %.0f мс", *rr))
+		}
+		if qrs := sd.Rhythm.QRSMs; qrs != nil {
 			parts = append(parts, fmt.Sprintf("QRS %.0f мс", *qrs))
 		}
 	}
-	if interp := parsed.StructuredData.Interpretation; interp != nil {
-		for _, s := range interp.Summary {
-			if s.Status == "positive" || s.Status == "abnormal" {
-				parts = append(parts, fmt.Sprintf("%s: %s", s.Label, s.Value))
+
+	if sd.Axis != nil && sd.Axis.AxisDeg != nil {
+		parts = append(parts, fmt.Sprintf("Ось QRS: %.0f°", *sd.Axis.AxisDeg))
+		if sd.Axis.Classification != "" {
+			parts = append(parts, fmt.Sprintf("Классификация оси: %s", sd.Axis.Classification))
+		}
+	}
+
+	if sd.Indices != nil {
+		var idxParts []string
+		if sl := sd.Indices.SokolowLyon; sl != nil {
+			idxParts = append(idxParts, fmt.Sprintf("Соколов-Лайон: %.1f мВ", *sl))
+		}
+		if cv := sd.Indices.CornellVoltage; cv != nil {
+			idxParts = append(idxParts, fmt.Sprintf("Cornell: %.1f мВ", *cv))
+		}
+		if plp := sd.Indices.PegueroLoPresti; plp != nil {
+			idxParts = append(idxParts, fmt.Sprintf("Peguero-Lo-Presti: %.1f мВ", *plp))
+		}
+		if idxParts != nil {
+			parts = append(parts, "Индексы ГЛЖ: "+strings.Join(idxParts, "; "))
+		}
+	}
+
+	if sd.RVH != nil {
+		var rvhParts []string
+		if rv1 := sd.RVH.RV1mV; rv1 != nil {
+			rvhParts = append(rvhParts, fmt.Sprintf("RV1: %.1f мВ", *rv1))
+		}
+		if ros := sd.RVH.ROverSV1; ros != nil {
+			rvhParts = append(rvhParts, fmt.Sprintf("R/S V1: %.2f", *ros))
+		}
+		if rvhParts != nil {
+			parts = append(parts, "Маркеры ГПЖ: "+strings.Join(rvhParts, "; "))
+		}
+	}
+
+	if sd.Measurements != nil {
+		var measParts []string
+		leads := []string{"RII", "SIII", "RaVL", "RV5", "RV6", "SV1", "SV2"}
+		for _, lead := range leads {
+			if v, ok := sd.Measurements[lead]; ok && v != nil {
+				measParts = append(measParts, fmt.Sprintf("%s: %.1f мВ", lead, *v))
+			}
+		}
+		if measParts != nil {
+			parts = append(parts, "Ключевые отведения: "+strings.Join(measParts, "; "))
+		}
+	}
+
+	if sd.Interpretation != nil {
+		for _, item := range sd.Interpretation.Items {
+			if item.Status == "positive" || item.Status == "abnormal" {
+				if item.Threshold != "" {
+					parts = append(parts, fmt.Sprintf("%s: %s (пороговое: %s)", item.Label, item.Value, item.Threshold))
+				} else {
+					parts = append(parts, fmt.Sprintf("%s: %s", item.Label, item.Value))
+				}
 			}
 		}
 	}
+
+	if sd.Transition != nil && *sd.Transition != "" {
+		parts = append(parts, fmt.Sprintf("Зона переходности: %s", *sd.Transition))
+	}
+
 	return strings.Join(parts, "; ")
 }
