@@ -143,10 +143,14 @@ func (h *ECGWorker) processEKG(ctx context.Context, j *job.Job, payload *job.ECG
 	}
 
 	// Parse GPT JSON response
+	slog.DebugContext(ctx, "GPT response received", "job_id", j.ID, "content_len", len(gptResult.Content))
 	rawMeasurements, err := gpt.ParseECGMeasurementJSON(gptResult.Content)
 	if err != nil {
 		slog.ErrorContext(ctx, "Failed to parse GPT ECG JSON", "job_id", j.ID, "error", err)
 		return fmt.Errorf("parse GPT response: %w", err)
+	}
+	if rawMeasurements != nil && len(rawMeasurements.Leads) == 0 {
+		slog.WarnContext(ctx, "GPT returned no measurements", "job_id", j.ID)
 	}
 
 	// Post-process: convert small squares to mm/ms

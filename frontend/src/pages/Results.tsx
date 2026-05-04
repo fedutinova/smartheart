@@ -250,10 +250,13 @@ export function Results() {
 // --- Structured Result Components ---
 
 function StructuredResultView({ result }: { result: ECGStructuredResult }) {
+  const hasInterpretation = result.interpretation && (result.interpretation.items?.length || result.interpretation.summary?.length);
+  const hasMeasurements = Object.values(result.measurements).some((v) => v != null);
+
   return (
     <>
       {/* Interpretation */}
-      {result.interpretation && (result.interpretation.items?.length || result.interpretation.summary?.length) ? (
+      {hasInterpretation ? (
         <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-bold text-gray-900">Интерпретация</h2>
@@ -280,6 +283,24 @@ function StructuredResultView({ result }: { result: ECGStructuredResult }) {
           {result.interpretation.items && result.interpretation.items.length > 0 && (
             <InterpretationItems items={result.interpretation.items} />
           )}
+        </div>
+      ) : !hasMeasurements ? (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+          <h2 className="text-lg font-bold text-gray-900 mb-2">Анализ ЭКГ</h2>
+          <div className="text-sm text-yellow-800 space-y-2">
+            <p>Система не смогла автоматически обработать изображение. Это может быть из-за:</p>
+            <ul className="list-disc list-inside ml-2">
+              <li>Низкого качества изображения или размытости</li>
+              <li>Плохого контраста сетки ЭКГ</li>
+              <li>Повреждённого или неполного изображения</li>
+            </ul>
+            <p className="mt-2">Рекомендации:</p>
+            <ul className="list-disc list-inside ml-2">
+              <li>Используйте высокое разрешение при сканировании</li>
+              <li>Убедитесь что сетка четко видна</li>
+              <li>Попробуйте загрузить заново</li>
+            </ul>
+          </div>
         </div>
       ) : null}
 
