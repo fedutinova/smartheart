@@ -13,14 +13,18 @@ function buildSuggestions(result?: ECGStructuredResult | null): string[] {
   const interpretationItems = result?.interpretation?.items ?? [];
 
   const hasLVH = interpretationItems.some((it) => it.group === 'lvh' && it.status === 'positive');
+  const hasRVH = interpretationItems.some((it) => it.group === 'rvh' && it.status === 'positive');
   const hasRhythm = interpretationItems.some((it) => it.group === 'rhythm' && it.status === 'abnormal');
+  const hasAbnormalAxis = result?.axis_qrs?.classification && result.axis_qrs.classification !== 'normal';
 
   if (hasLVH) suggestions.push('Что такое гипертрофия левого желудочка?');
-  if (hasRhythm) suggestions.push('Опасна ли AV-блокада 1 степени?');
+  if (hasRVH) suggestions.push('Что означает гипертрофия правого желудочка?');
+  if (hasRhythm) suggestions.push('Опасна ли нарушение ритма на моей ЭКГ?');
+  if (hasAbnormalAxis) suggestions.push('Что значит отклонение оси ЭКГ?');
 
-  suggestions.push('Что такое индекс Соколова-Лайона?');
-  if (result?.rhythm?.HR_bpm) suggestions.push('Какая ЧСС считается нормой в покое?');
-  if (suggestions.length < 3) suggestions.push('Объясните измерения по отведениям');
+  if (suggestions.length < 3) suggestions.push('Что такое индекс Соколова-Лайона?');
+  if (result?.rhythm?.HR_bpm && suggestions.length < 4) suggestions.push('Какая ЧСС считается нормой в покое?');
+  if (suggestions.length < 4) suggestions.push('Объясните основные параметры ЭКГ');
 
   return suggestions.slice(0, 4);
 }

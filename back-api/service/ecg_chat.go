@@ -161,7 +161,7 @@ type ragResponse struct {
 }
 
 // askRAG sends the question (with ECG context prepended) to the RAG service
-// and parses the answer plus citations.
+// and parses the answer plus citations. Logs request size and processing time.
 func (s *ecgChatService) askRAG(ctx context.Context, ecgContext, question string) (string, []models.ECGChatCitation, error) {
 	if s.ragURL == "" {
 		return "", nil, fmt.Errorf("rag service not configured")
@@ -175,6 +175,10 @@ func (s *ecgChatService) askRAG(ctx context.Context, ecgContext, question string
 	if err != nil {
 		return "", nil, fmt.Errorf("marshal rag query: %w", err)
 	}
+
+	contextSize := len(ecgContext)
+	questionSize := len(question)
+	start := time.Now()
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, s.ragURL+"/query", bytes.NewReader(body))
 	if err != nil {
@@ -196,6 +200,13 @@ func (s *ecgChatService) askRAG(ctx context.Context, ecgContext, question string
 		return "", nil, fmt.Errorf("read rag response: %w", err)
 	}
 
+	elapsed := time.Since(start)
+	slog.DebugContext(ctx, "ecg chat rag call completed",
+		"context_bytes", contextSize,
+		"question_bytes", questionSize,
+		"response_bytes", len(respBytes),
+		"elapsed_ms", elapsed.Milliseconds())
+
 	var parsed ragResponse
 	if err := json.Unmarshal(respBytes, &parsed); err != nil {
 		return "", nil, fmt.Errorf("parse rag response: %w", err)
@@ -212,9 +223,9 @@ func (s *ecgChatService) askRAG(ctx context.Context, ecgContext, question string
 	return parsed.Answer, citations, nil
 }
 
-// buildECGContextBlock extracts a compact textual summary of the patient's ECG
-// from the request + its latest response. Used as the system context for the
-// chat assistant. Falls back gracefully when fields are missing.
+// buildECGContextBlock extracts a comprehensive textual summary of the patient's ECG
+// including demographics, measurements, indices, axis, rhythm, and key findings.
+// Used as the system context for the RAG pipeline. Falls back gracefully when fields are missing.
 func buildECGContextBlock(req *models.Request) string {
 	var sb strings.Builder
 	sb.WriteString("Контекст: пользователь обсуждает результаты своей ЭКГ.")
