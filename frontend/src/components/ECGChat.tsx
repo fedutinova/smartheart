@@ -19,7 +19,7 @@ function buildSuggestions(result?: ECGStructuredResult | null): string[] {
 
   if (hasLVH) suggestions.push('Что такое гипертрофия левого желудочка?');
   if (hasRVH) suggestions.push('Что означает гипертрофия правого желудочка?');
-  if (hasRhythm) suggestions.push('Опасна ли нарушение ритма на моей ЭКГ?');
+  if (hasRhythm) suggestions.push('Опасно ли нарушение ритма на моей ЭКГ?');
   if (hasAbnormalAxis) suggestions.push('Что значит отклонение оси ЭКГ?');
 
   if (suggestions.length < 3) suggestions.push('Что такое индекс Соколова-Лайона?');

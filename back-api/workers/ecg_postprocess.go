@@ -78,6 +78,7 @@ func robustList(vals []float64) []float64 {
 
 // finalizeFromCounts converts raw GPT small-square measurements to mm and ms.
 // Vertical: 1 small square = 1 mm. Horizontal: msPerSq = 1000 / paperSpeedMMS.
+// Returns nil for physiologically invalid measurements (e.g. QRS > 6 squares).
 func finalizeFromCounts(raw *gpt.RawECGMeasurement, msPerSq float64) map[string]*float64 {
 	result := make(map[string]*float64)
 
@@ -109,6 +110,12 @@ func finalizeFromCounts(raw *gpt.RawECGMeasurement, msPerSq float64) map[string]
 		cleaned := robustList(vals)
 		med := robustMedian(cleaned)
 		if med != nil {
+			// Sanity check: QRS should be 0.5-6 small squares at most
+			// (60-240 ms range covers all physiological possibilities)
+			if key == "QRS" && (*med < 0.5 || *med > 6.0) {
+				// GPT measurement seems invalid, skip it
+				continue
+			}
 			ms := *med * msPerSq
 			result[key+"_ms"] = &ms
 		}
