@@ -24,15 +24,14 @@ CREATE INDEX IF NOT EXISTS idx_payments_user_status ON payments(user_id, status)
 -- For ECG analysis - filter by status quickly
 CREATE INDEX IF NOT EXISTS idx_ecg_chat_messages_user_request ON ecg_chat_messages(user_id, request_id);
 
--- Partial index for active refresh tokens (most common case)
+-- Index for refresh token lookups by user and expiry
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_active
-  ON refresh_tokens(user_id, expires_at DESC)
-  WHERE expires_at > NOW();
+  ON refresh_tokens(user_id, expires_at DESC);
 
--- Partial index for pending password resets
+-- Index for password reset token lookups
 CREATE INDEX IF NOT EXISTS idx_password_reset_active
-  ON password_reset_tokens(token_hash)
-  WHERE expires_at > NOW() AND used_at IS NULL;
+  ON password_reset_tokens(token_hash, expires_at)
+  WHERE used_at IS NULL;
 
 -- For RAG feedback queries - find recent feedback efficiently
 CREATE INDEX IF NOT EXISTS idx_rag_feedback_user_created ON rag_feedback(user_id, created_at DESC);
