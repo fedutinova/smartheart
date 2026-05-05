@@ -126,8 +126,8 @@ export interface PaginatedResponse<T> {
 }
 
 export interface QuotaInfo {
-  daily_limit: number;
-  used_today: number;
+  free_limit: number;
+  free_analyses_used: number;
   free_remaining: number;
   paid_analyses_remaining: number;
   needs_payment: boolean;

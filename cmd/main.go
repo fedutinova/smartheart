@@ -204,7 +204,7 @@ func startHTTPServer(
 	passwordSvc := service.NewPasswordService(repo, sessions, mailer, cfg)
 	submissionSvc := service.NewSubmissionService(repo, q, storageService, cfg.Quota)
 	requestSvc := service.NewRequestService(repo, q)
-	paymentSvc := service.NewPaymentService(repo, cfg.YooKassa, cfg.Quota.DailyLimit)
+	paymentSvc := service.NewPaymentService(repo, cfg.YooKassa, cfg.Quota.FreeLimit)
 	ecgChatSvc := service.NewECGChatService(repo, cfg.RAG.URL)
 
 	mw := handler.Middlewares{

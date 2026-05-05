@@ -64,7 +64,7 @@ func TestGetRefreshToken_WrapsUnexpectedQueryRowError(t *testing.T) {
 	assert.NotErrorIs(t, err, apperr.ErrInvalidToken)
 }
 
-func TestGetDailyUsage_ReturnsZeroOnNoRows(t *testing.T) {
+func TestGetFreeAnalysesUsed_ReturnsErrorOnNoRows(t *testing.T) {
 	repo := NewTxScoped(stubQuerier{
 		queryRowFn: func(context.Context, string, ...any) pgx.Row {
 			return stubRow{
@@ -75,8 +75,8 @@ func TestGetDailyUsage_ReturnsZeroOnNoRows(t *testing.T) {
 		},
 	})
 
-	count, err := repo.GetDailyUsage(context.Background(), uuid.New())
-	require.NoError(t, err)
+	count, err := repo.GetFreeAnalysesUsed(context.Background(), uuid.New())
+	require.Error(t, err)
 	assert.Equal(t, 0, count)
 }
 

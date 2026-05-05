@@ -46,16 +46,15 @@ func TestGetQuotaInfo_NoSubscription(t *testing.T) {
 	ctx := context.Background()
 	userID := uuid.New()
 
-	repo.EXPECT().GetDailyUsage(mock.Anything, userID).Return(2, nil)
-	repo.EXPECT().GetPaidAnalysesRemaining(mock.Anything, userID).Return(5, nil)
+	repo.EXPECT().GetFreeAnalysesUsed(mock.Anything, userID).Return(2, nil)
 	repo.EXPECT().GetSubscriptionExpiresAt(mock.Anything, userID).Return(nil, nil)
 
 	info, err := svc.GetQuotaInfo(ctx, userID)
 	require.NoError(t, err)
-	assert.Equal(t, 3, info.DailyLimit)
-	assert.Equal(t, 2, info.UsedToday)
+	assert.Equal(t, 3, info.FreeLimit)
+	assert.Equal(t, 2, info.FreeAnalysesUsed)
 	assert.Equal(t, 1, info.FreeRemaining)
-	assert.Equal(t, 5, info.PaidAnalysesRemaining)
+	assert.Equal(t, 0, info.PaidAnalysesRemaining)
 	assert.False(t, info.NeedsPayment)
 	assert.Nil(t, info.SubscriptionExpiresAt)
 	assert.Equal(t, 29900, info.SubscriptionPriceKopecks)
@@ -67,8 +66,7 @@ func TestGetQuotaInfo_ActiveSubscription(t *testing.T) {
 	userID := uuid.New()
 	expires := time.Now().Add(15 * 24 * time.Hour)
 
-	repo.EXPECT().GetDailyUsage(mock.Anything, userID).Return(10, nil)
-	repo.EXPECT().GetPaidAnalysesRemaining(mock.Anything, userID).Return(0, nil)
+	repo.EXPECT().GetFreeAnalysesUsed(mock.Anything, userID).Return(2, nil)
 	repo.EXPECT().GetSubscriptionExpiresAt(mock.Anything, userID).Return(&expires, nil)
 
 	info, err := svc.GetQuotaInfo(ctx, userID)
@@ -83,8 +81,7 @@ func TestGetQuotaInfo_ExpiredSubscription_NeedPayment(t *testing.T) {
 	userID := uuid.New()
 	expired := time.Now().Add(-24 * time.Hour)
 
-	repo.EXPECT().GetDailyUsage(mock.Anything, userID).Return(5, nil)
-	repo.EXPECT().GetPaidAnalysesRemaining(mock.Anything, userID).Return(0, nil)
+	repo.EXPECT().GetFreeAnalysesUsed(mock.Anything, userID).Return(3, nil)
 	repo.EXPECT().GetSubscriptionExpiresAt(mock.Anything, userID).Return(&expired, nil)
 
 	info, err := svc.GetQuotaInfo(ctx, userID)
@@ -211,12 +208,11 @@ func TestCreateSubscription_AllowsExpiredSubscription(t *testing.T) {
 
 func TestCheckQuota_ActiveSubscription_Unlimited(t *testing.T) {
 	repo := repomocks.NewMockStore(t)
-	svc := &submissionService{repo: repo, dailyLimit: 3}
+	svc := &submissionService{repo: repo, freeLimit: 3}
 	ctx := context.Background()
 	userID := uuid.New()
 	expires := time.Now().Add(15 * 24 * time.Hour)
 
-	repo.EXPECT().IncrementDailyUsage(mock.Anything, userID).Return(10, nil)
 	repo.EXPECT().GetSubscriptionExpiresAt(mock.Anything, userID).Return(&expires, nil)
 
 	err := svc.checkQuota(ctx, userID)
@@ -225,13 +221,13 @@ func TestCheckQuota_ActiveSubscription_Unlimited(t *testing.T) {
 
 func TestCheckQuota_ExpiredSubscription_FallsToFreeQuota(t *testing.T) {
 	repo := repomocks.NewMockStore(t)
-	svc := &submissionService{repo: repo, dailyLimit: 3}
+	svc := &submissionService{repo: repo, freeLimit: 3}
 	ctx := context.Background()
 	userID := uuid.New()
 	expired := time.Now().Add(-24 * time.Hour)
 
 	repo.EXPECT().GetSubscriptionExpiresAt(mock.Anything, userID).Return(&expired, nil)
-	repo.EXPECT().IncrementDailyUsage(mock.Anything, userID).Return(1, nil)
+	repo.EXPECT().IncrementFreeAnalysesUsed(mock.Anything, userID).Return(1, nil)
 
 	err := svc.checkQuota(ctx, userID)
 	require.NoError(t, err)
@@ -239,13 +235,13 @@ func TestCheckQuota_ExpiredSubscription_FallsToFreeQuota(t *testing.T) {
 
 func TestCheckQuota_NoSubscription_QuotaExceeded_NoPaid(t *testing.T) {
 	repo := repomocks.NewMockStore(t)
-	svc := &submissionService{repo: repo, dailyLimit: 3}
+	svc := &submissionService{repo: repo, freeLimit: 3}
 	ctx := context.Background()
 	userID := uuid.New()
 
 	repo.EXPECT().GetSubscriptionExpiresAt(mock.Anything, userID).Return(nil, nil)
-	repo.EXPECT().IncrementDailyUsage(mock.Anything, userID).Return(4, nil)
-	repo.EXPECT().DecrementPaidAnalyses(mock.Anything, userID).Return(0, assert.AnError)
+	repo.EXPECT().IncrementFreeAnalysesUsed(mock.Anything, userID).Return(4, nil)
+	repo.EXPECT().DecrementFreeAnalysesUsed(mock.Anything, userID).Return(nil)
 
 	err := svc.checkQuota(ctx, userID)
 	require.Error(t, err)

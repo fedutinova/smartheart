@@ -470,6 +470,53 @@ func (_c *MockStore_CreatePayment_Call) RunAndReturn(run func(context.Context, *
 	return _c
 }
 
+// CreatePromoCode provides a mock function with given fields: ctx, promo
+func (_m *MockStore) CreatePromoCode(ctx context.Context, promo *models.PromoCode) error {
+	ret := _m.Called(ctx, promo)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreatePromoCode")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *models.PromoCode) error); ok {
+		r0 = rf(ctx, promo)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockStore_CreatePromoCode_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreatePromoCode'
+type MockStore_CreatePromoCode_Call struct {
+	*mock.Call
+}
+
+// CreatePromoCode is a helper method to define mock.On call
+//   - ctx context.Context
+//   - promo *models.PromoCode
+func (_e *MockStore_Expecter) CreatePromoCode(ctx interface{}, promo interface{}) *MockStore_CreatePromoCode_Call {
+	return &MockStore_CreatePromoCode_Call{Call: _e.mock.On("CreatePromoCode", ctx, promo)}
+}
+
+func (_c *MockStore_CreatePromoCode_Call) Run(run func(ctx context.Context, promo *models.PromoCode)) *MockStore_CreatePromoCode_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*models.PromoCode))
+	})
+	return _c
+}
+
+func (_c *MockStore_CreatePromoCode_Call) Return(_a0 error) *MockStore_CreatePromoCode_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockStore_CreatePromoCode_Call) RunAndReturn(run func(context.Context, *models.PromoCode) error) *MockStore_CreatePromoCode_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateRAGFeedback provides a mock function with given fields: ctx, feedback
 func (_m *MockStore) CreateRAGFeedback(ctx context.Context, feedback *models.RAGFeedback) error {
 	ret := _m.Called(ctx, feedback)
@@ -705,12 +752,12 @@ func (_c *MockStore_CreateUser_Call) RunAndReturn(run func(context.Context, *mod
 	return _c
 }
 
-// DecrementDailyUsage provides a mock function with given fields: ctx, userID
-func (_m *MockStore) DecrementDailyUsage(ctx context.Context, userID uuid.UUID) error {
+// DecrementFreeAnalysesUsed provides a mock function with given fields: ctx, userID
+func (_m *MockStore) DecrementFreeAnalysesUsed(ctx context.Context, userID uuid.UUID) error {
 	ret := _m.Called(ctx, userID)
 
 	if len(ret) == 0 {
-		panic("no return value specified for DecrementDailyUsage")
+		panic("no return value specified for DecrementFreeAnalysesUsed")
 	}
 
 	var r0 error
@@ -723,88 +770,31 @@ func (_m *MockStore) DecrementDailyUsage(ctx context.Context, userID uuid.UUID) 
 	return r0
 }
 
-// MockStore_DecrementDailyUsage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DecrementDailyUsage'
-type MockStore_DecrementDailyUsage_Call struct {
+// MockStore_DecrementFreeAnalysesUsed_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DecrementFreeAnalysesUsed'
+type MockStore_DecrementFreeAnalysesUsed_Call struct {
 	*mock.Call
 }
 
-// DecrementDailyUsage is a helper method to define mock.On call
+// DecrementFreeAnalysesUsed is a helper method to define mock.On call
 //   - ctx context.Context
 //   - userID uuid.UUID
-func (_e *MockStore_Expecter) DecrementDailyUsage(ctx interface{}, userID interface{}) *MockStore_DecrementDailyUsage_Call {
-	return &MockStore_DecrementDailyUsage_Call{Call: _e.mock.On("DecrementDailyUsage", ctx, userID)}
+func (_e *MockStore_Expecter) DecrementFreeAnalysesUsed(ctx interface{}, userID interface{}) *MockStore_DecrementFreeAnalysesUsed_Call {
+	return &MockStore_DecrementFreeAnalysesUsed_Call{Call: _e.mock.On("DecrementFreeAnalysesUsed", ctx, userID)}
 }
 
-func (_c *MockStore_DecrementDailyUsage_Call) Run(run func(ctx context.Context, userID uuid.UUID)) *MockStore_DecrementDailyUsage_Call {
+func (_c *MockStore_DecrementFreeAnalysesUsed_Call) Run(run func(ctx context.Context, userID uuid.UUID)) *MockStore_DecrementFreeAnalysesUsed_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(uuid.UUID))
 	})
 	return _c
 }
 
-func (_c *MockStore_DecrementDailyUsage_Call) Return(_a0 error) *MockStore_DecrementDailyUsage_Call {
+func (_c *MockStore_DecrementFreeAnalysesUsed_Call) Return(_a0 error) *MockStore_DecrementFreeAnalysesUsed_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockStore_DecrementDailyUsage_Call) RunAndReturn(run func(context.Context, uuid.UUID) error) *MockStore_DecrementDailyUsage_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// DecrementPaidAnalyses provides a mock function with given fields: ctx, userID
-func (_m *MockStore) DecrementPaidAnalyses(ctx context.Context, userID uuid.UUID) (int, error) {
-	ret := _m.Called(ctx, userID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for DecrementPaidAnalyses")
-	}
-
-	var r0 int
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (int, error)); ok {
-		return rf(ctx, userID)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) int); ok {
-		r0 = rf(ctx, userID)
-	} else {
-		r0 = ret.Get(0).(int)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
-		r1 = rf(ctx, userID)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockStore_DecrementPaidAnalyses_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DecrementPaidAnalyses'
-type MockStore_DecrementPaidAnalyses_Call struct {
-	*mock.Call
-}
-
-// DecrementPaidAnalyses is a helper method to define mock.On call
-//   - ctx context.Context
-//   - userID uuid.UUID
-func (_e *MockStore_Expecter) DecrementPaidAnalyses(ctx interface{}, userID interface{}) *MockStore_DecrementPaidAnalyses_Call {
-	return &MockStore_DecrementPaidAnalyses_Call{Call: _e.mock.On("DecrementPaidAnalyses", ctx, userID)}
-}
-
-func (_c *MockStore_DecrementPaidAnalyses_Call) Run(run func(ctx context.Context, userID uuid.UUID)) *MockStore_DecrementPaidAnalyses_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(uuid.UUID))
-	})
-	return _c
-}
-
-func (_c *MockStore_DecrementPaidAnalyses_Call) Return(_a0 int, _a1 error) *MockStore_DecrementPaidAnalyses_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockStore_DecrementPaidAnalyses_Call) RunAndReturn(run func(context.Context, uuid.UUID) (int, error)) *MockStore_DecrementPaidAnalyses_Call {
+func (_c *MockStore_DecrementFreeAnalysesUsed_Call) RunAndReturn(run func(context.Context, uuid.UUID) error) *MockStore_DecrementFreeAnalysesUsed_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -923,63 +913,6 @@ func (_c *MockStore_GetAdminStats_Call) Return(_a0 *repository.AdminStats, _a1 e
 }
 
 func (_c *MockStore_GetAdminStats_Call) RunAndReturn(run func(context.Context) (*repository.AdminStats, error)) *MockStore_GetAdminStats_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetDailyUsage provides a mock function with given fields: ctx, userID
-func (_m *MockStore) GetDailyUsage(ctx context.Context, userID uuid.UUID) (int, error) {
-	ret := _m.Called(ctx, userID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetDailyUsage")
-	}
-
-	var r0 int
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (int, error)); ok {
-		return rf(ctx, userID)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) int); ok {
-		r0 = rf(ctx, userID)
-	} else {
-		r0 = ret.Get(0).(int)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
-		r1 = rf(ctx, userID)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockStore_GetDailyUsage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetDailyUsage'
-type MockStore_GetDailyUsage_Call struct {
-	*mock.Call
-}
-
-// GetDailyUsage is a helper method to define mock.On call
-//   - ctx context.Context
-//   - userID uuid.UUID
-func (_e *MockStore_Expecter) GetDailyUsage(ctx interface{}, userID interface{}) *MockStore_GetDailyUsage_Call {
-	return &MockStore_GetDailyUsage_Call{Call: _e.mock.On("GetDailyUsage", ctx, userID)}
-}
-
-func (_c *MockStore_GetDailyUsage_Call) Run(run func(ctx context.Context, userID uuid.UUID)) *MockStore_GetDailyUsage_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(uuid.UUID))
-	})
-	return _c
-}
-
-func (_c *MockStore_GetDailyUsage_Call) Return(_a0 int, _a1 error) *MockStore_GetDailyUsage_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockStore_GetDailyUsage_Call) RunAndReturn(run func(context.Context, uuid.UUID) (int, error)) *MockStore_GetDailyUsage_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1103,12 +1036,12 @@ func (_c *MockStore_GetFilesByRequestID_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
-// GetPaidAnalysesRemaining provides a mock function with given fields: ctx, userID
-func (_m *MockStore) GetPaidAnalysesRemaining(ctx context.Context, userID uuid.UUID) (int, error) {
+// GetFreeAnalysesUsed provides a mock function with given fields: ctx, userID
+func (_m *MockStore) GetFreeAnalysesUsed(ctx context.Context, userID uuid.UUID) (int, error) {
 	ret := _m.Called(ctx, userID)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetPaidAnalysesRemaining")
+		panic("no return value specified for GetFreeAnalysesUsed")
 	}
 
 	var r0 int
@@ -1131,31 +1064,31 @@ func (_m *MockStore) GetPaidAnalysesRemaining(ctx context.Context, userID uuid.U
 	return r0, r1
 }
 
-// MockStore_GetPaidAnalysesRemaining_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPaidAnalysesRemaining'
-type MockStore_GetPaidAnalysesRemaining_Call struct {
+// MockStore_GetFreeAnalysesUsed_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetFreeAnalysesUsed'
+type MockStore_GetFreeAnalysesUsed_Call struct {
 	*mock.Call
 }
 
-// GetPaidAnalysesRemaining is a helper method to define mock.On call
+// GetFreeAnalysesUsed is a helper method to define mock.On call
 //   - ctx context.Context
 //   - userID uuid.UUID
-func (_e *MockStore_Expecter) GetPaidAnalysesRemaining(ctx interface{}, userID interface{}) *MockStore_GetPaidAnalysesRemaining_Call {
-	return &MockStore_GetPaidAnalysesRemaining_Call{Call: _e.mock.On("GetPaidAnalysesRemaining", ctx, userID)}
+func (_e *MockStore_Expecter) GetFreeAnalysesUsed(ctx interface{}, userID interface{}) *MockStore_GetFreeAnalysesUsed_Call {
+	return &MockStore_GetFreeAnalysesUsed_Call{Call: _e.mock.On("GetFreeAnalysesUsed", ctx, userID)}
 }
 
-func (_c *MockStore_GetPaidAnalysesRemaining_Call) Run(run func(ctx context.Context, userID uuid.UUID)) *MockStore_GetPaidAnalysesRemaining_Call {
+func (_c *MockStore_GetFreeAnalysesUsed_Call) Run(run func(ctx context.Context, userID uuid.UUID)) *MockStore_GetFreeAnalysesUsed_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(uuid.UUID))
 	})
 	return _c
 }
 
-func (_c *MockStore_GetPaidAnalysesRemaining_Call) Return(_a0 int, _a1 error) *MockStore_GetPaidAnalysesRemaining_Call {
+func (_c *MockStore_GetFreeAnalysesUsed_Call) Return(_a0 int, _a1 error) *MockStore_GetFreeAnalysesUsed_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockStore_GetPaidAnalysesRemaining_Call) RunAndReturn(run func(context.Context, uuid.UUID) (int, error)) *MockStore_GetPaidAnalysesRemaining_Call {
+func (_c *MockStore_GetFreeAnalysesUsed_Call) RunAndReturn(run func(context.Context, uuid.UUID) (int, error)) *MockStore_GetFreeAnalysesUsed_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1215,6 +1148,65 @@ func (_c *MockStore_GetPaymentsByUserID_Call) Return(_a0 []models.Payment, _a1 e
 }
 
 func (_c *MockStore_GetPaymentsByUserID_Call) RunAndReturn(run func(context.Context, uuid.UUID) ([]models.Payment, error)) *MockStore_GetPaymentsByUserID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetPromoCodeByCode provides a mock function with given fields: ctx, code
+func (_m *MockStore) GetPromoCodeByCode(ctx context.Context, code string) (*models.PromoCode, error) {
+	ret := _m.Called(ctx, code)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPromoCodeByCode")
+	}
+
+	var r0 *models.PromoCode
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*models.PromoCode, error)); ok {
+		return rf(ctx, code)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) *models.PromoCode); ok {
+		r0 = rf(ctx, code)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.PromoCode)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, code)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStore_GetPromoCodeByCode_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPromoCodeByCode'
+type MockStore_GetPromoCodeByCode_Call struct {
+	*mock.Call
+}
+
+// GetPromoCodeByCode is a helper method to define mock.On call
+//   - ctx context.Context
+//   - code string
+func (_e *MockStore_Expecter) GetPromoCodeByCode(ctx interface{}, code interface{}) *MockStore_GetPromoCodeByCode_Call {
+	return &MockStore_GetPromoCodeByCode_Call{Call: _e.mock.On("GetPromoCodeByCode", ctx, code)}
+}
+
+func (_c *MockStore_GetPromoCodeByCode_Call) Run(run func(ctx context.Context, code string)) *MockStore_GetPromoCodeByCode_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockStore_GetPromoCodeByCode_Call) Return(_a0 *models.PromoCode, _a1 error) *MockStore_GetPromoCodeByCode_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStore_GetPromoCodeByCode_Call) RunAndReturn(run func(context.Context, string) (*models.PromoCode, error)) *MockStore_GetPromoCodeByCode_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1870,12 +1862,12 @@ func (_c *MockStore_HasPendingPayment_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
-// IncrementDailyUsage provides a mock function with given fields: ctx, userID
-func (_m *MockStore) IncrementDailyUsage(ctx context.Context, userID uuid.UUID) (int, error) {
+// IncrementFreeAnalysesUsed provides a mock function with given fields: ctx, userID
+func (_m *MockStore) IncrementFreeAnalysesUsed(ctx context.Context, userID uuid.UUID) (int, error) {
 	ret := _m.Called(ctx, userID)
 
 	if len(ret) == 0 {
-		panic("no return value specified for IncrementDailyUsage")
+		panic("no return value specified for IncrementFreeAnalysesUsed")
 	}
 
 	var r0 int
@@ -1898,31 +1890,31 @@ func (_m *MockStore) IncrementDailyUsage(ctx context.Context, userID uuid.UUID) 
 	return r0, r1
 }
 
-// MockStore_IncrementDailyUsage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IncrementDailyUsage'
-type MockStore_IncrementDailyUsage_Call struct {
+// MockStore_IncrementFreeAnalysesUsed_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IncrementFreeAnalysesUsed'
+type MockStore_IncrementFreeAnalysesUsed_Call struct {
 	*mock.Call
 }
 
-// IncrementDailyUsage is a helper method to define mock.On call
+// IncrementFreeAnalysesUsed is a helper method to define mock.On call
 //   - ctx context.Context
 //   - userID uuid.UUID
-func (_e *MockStore_Expecter) IncrementDailyUsage(ctx interface{}, userID interface{}) *MockStore_IncrementDailyUsage_Call {
-	return &MockStore_IncrementDailyUsage_Call{Call: _e.mock.On("IncrementDailyUsage", ctx, userID)}
+func (_e *MockStore_Expecter) IncrementFreeAnalysesUsed(ctx interface{}, userID interface{}) *MockStore_IncrementFreeAnalysesUsed_Call {
+	return &MockStore_IncrementFreeAnalysesUsed_Call{Call: _e.mock.On("IncrementFreeAnalysesUsed", ctx, userID)}
 }
 
-func (_c *MockStore_IncrementDailyUsage_Call) Run(run func(ctx context.Context, userID uuid.UUID)) *MockStore_IncrementDailyUsage_Call {
+func (_c *MockStore_IncrementFreeAnalysesUsed_Call) Run(run func(ctx context.Context, userID uuid.UUID)) *MockStore_IncrementFreeAnalysesUsed_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(uuid.UUID))
 	})
 	return _c
 }
 
-func (_c *MockStore_IncrementDailyUsage_Call) Return(_a0 int, _a1 error) *MockStore_IncrementDailyUsage_Call {
+func (_c *MockStore_IncrementFreeAnalysesUsed_Call) Return(_a0 int, _a1 error) *MockStore_IncrementFreeAnalysesUsed_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockStore_IncrementDailyUsage_Call) RunAndReturn(run func(context.Context, uuid.UUID) (int, error)) *MockStore_IncrementDailyUsage_Call {
+func (_c *MockStore_IncrementFreeAnalysesUsed_Call) RunAndReturn(run func(context.Context, uuid.UUID) (int, error)) *MockStore_IncrementFreeAnalysesUsed_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2327,6 +2319,53 @@ func (_c *MockStore_Ping_Call) RunAndReturn(run func(context.Context) error) *Mo
 	return _c
 }
 
+// RecordPromoCodeUsage provides a mock function with given fields: ctx, usage
+func (_m *MockStore) RecordPromoCodeUsage(ctx context.Context, usage *models.PromoCodeUsage) error {
+	ret := _m.Called(ctx, usage)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RecordPromoCodeUsage")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *models.PromoCodeUsage) error); ok {
+		r0 = rf(ctx, usage)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockStore_RecordPromoCodeUsage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RecordPromoCodeUsage'
+type MockStore_RecordPromoCodeUsage_Call struct {
+	*mock.Call
+}
+
+// RecordPromoCodeUsage is a helper method to define mock.On call
+//   - ctx context.Context
+//   - usage *models.PromoCodeUsage
+func (_e *MockStore_Expecter) RecordPromoCodeUsage(ctx interface{}, usage interface{}) *MockStore_RecordPromoCodeUsage_Call {
+	return &MockStore_RecordPromoCodeUsage_Call{Call: _e.mock.On("RecordPromoCodeUsage", ctx, usage)}
+}
+
+func (_c *MockStore_RecordPromoCodeUsage_Call) Run(run func(ctx context.Context, usage *models.PromoCodeUsage)) *MockStore_RecordPromoCodeUsage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*models.PromoCodeUsage))
+	})
+	return _c
+}
+
+func (_c *MockStore_RecordPromoCodeUsage_Call) Return(_a0 error) *MockStore_RecordPromoCodeUsage_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockStore_RecordPromoCodeUsage_Call) RunAndReturn(run func(context.Context, *models.PromoCodeUsage) error) *MockStore_RecordPromoCodeUsage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RevokeAllUserRefreshTokens provides a mock function with given fields: ctx, userID
 func (_m *MockStore) RevokeAllUserRefreshTokens(ctx context.Context, userID uuid.UUID) error {
 	ret := _m.Called(ctx, userID)
@@ -2513,6 +2552,53 @@ func (_c *MockStore_SaveCacheEntry_Call) Return(_a0 error) *MockStore_SaveCacheE
 }
 
 func (_c *MockStore_SaveCacheEntry_Call) RunAndReturn(run func(context.Context, string, string, string) error) *MockStore_SaveCacheEntry_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdatePromoCodeUsedCount provides a mock function with given fields: ctx, promoCodeID
+func (_m *MockStore) UpdatePromoCodeUsedCount(ctx context.Context, promoCodeID uuid.UUID) error {
+	ret := _m.Called(ctx, promoCodeID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdatePromoCodeUsedCount")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = rf(ctx, promoCodeID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockStore_UpdatePromoCodeUsedCount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdatePromoCodeUsedCount'
+type MockStore_UpdatePromoCodeUsedCount_Call struct {
+	*mock.Call
+}
+
+// UpdatePromoCodeUsedCount is a helper method to define mock.On call
+//   - ctx context.Context
+//   - promoCodeID uuid.UUID
+func (_e *MockStore_Expecter) UpdatePromoCodeUsedCount(ctx interface{}, promoCodeID interface{}) *MockStore_UpdatePromoCodeUsedCount_Call {
+	return &MockStore_UpdatePromoCodeUsedCount_Call{Call: _e.mock.On("UpdatePromoCodeUsedCount", ctx, promoCodeID)}
+}
+
+func (_c *MockStore_UpdatePromoCodeUsedCount_Call) Run(run func(ctx context.Context, promoCodeID uuid.UUID)) *MockStore_UpdatePromoCodeUsedCount_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(uuid.UUID))
+	})
+	return _c
+}
+
+func (_c *MockStore_UpdatePromoCodeUsedCount_Call) Return(_a0 error) *MockStore_UpdatePromoCodeUsedCount_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockStore_UpdatePromoCodeUsedCount_Call) RunAndReturn(run func(context.Context, uuid.UUID) error) *MockStore_UpdatePromoCodeUsedCount_Call {
 	_c.Call.Return(run)
 	return _c
 }

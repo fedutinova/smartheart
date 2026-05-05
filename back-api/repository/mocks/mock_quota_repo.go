@@ -23,12 +23,12 @@ func (_m *MockQuotaRepo) EXPECT() *MockQuotaRepo_Expecter {
 	return &MockQuotaRepo_Expecter{mock: &_m.Mock}
 }
 
-// DecrementDailyUsage provides a mock function with given fields: ctx, userID
-func (_m *MockQuotaRepo) DecrementDailyUsage(ctx context.Context, userID uuid.UUID) error {
+// DecrementFreeAnalysesUsed provides a mock function with given fields: ctx, userID
+func (_m *MockQuotaRepo) DecrementFreeAnalysesUsed(ctx context.Context, userID uuid.UUID) error {
 	ret := _m.Called(ctx, userID)
 
 	if len(ret) == 0 {
-		panic("no return value specified for DecrementDailyUsage")
+		panic("no return value specified for DecrementFreeAnalysesUsed")
 	}
 
 	var r0 error
@@ -41,41 +41,41 @@ func (_m *MockQuotaRepo) DecrementDailyUsage(ctx context.Context, userID uuid.UU
 	return r0
 }
 
-// MockQuotaRepo_DecrementDailyUsage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DecrementDailyUsage'
-type MockQuotaRepo_DecrementDailyUsage_Call struct {
+// MockQuotaRepo_DecrementFreeAnalysesUsed_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DecrementFreeAnalysesUsed'
+type MockQuotaRepo_DecrementFreeAnalysesUsed_Call struct {
 	*mock.Call
 }
 
-// DecrementDailyUsage is a helper method to define mock.On call
+// DecrementFreeAnalysesUsed is a helper method to define mock.On call
 //   - ctx context.Context
 //   - userID uuid.UUID
-func (_e *MockQuotaRepo_Expecter) DecrementDailyUsage(ctx interface{}, userID interface{}) *MockQuotaRepo_DecrementDailyUsage_Call {
-	return &MockQuotaRepo_DecrementDailyUsage_Call{Call: _e.mock.On("DecrementDailyUsage", ctx, userID)}
+func (_e *MockQuotaRepo_Expecter) DecrementFreeAnalysesUsed(ctx interface{}, userID interface{}) *MockQuotaRepo_DecrementFreeAnalysesUsed_Call {
+	return &MockQuotaRepo_DecrementFreeAnalysesUsed_Call{Call: _e.mock.On("DecrementFreeAnalysesUsed", ctx, userID)}
 }
 
-func (_c *MockQuotaRepo_DecrementDailyUsage_Call) Run(run func(ctx context.Context, userID uuid.UUID)) *MockQuotaRepo_DecrementDailyUsage_Call {
+func (_c *MockQuotaRepo_DecrementFreeAnalysesUsed_Call) Run(run func(ctx context.Context, userID uuid.UUID)) *MockQuotaRepo_DecrementFreeAnalysesUsed_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(uuid.UUID))
 	})
 	return _c
 }
 
-func (_c *MockQuotaRepo_DecrementDailyUsage_Call) Return(_a0 error) *MockQuotaRepo_DecrementDailyUsage_Call {
+func (_c *MockQuotaRepo_DecrementFreeAnalysesUsed_Call) Return(_a0 error) *MockQuotaRepo_DecrementFreeAnalysesUsed_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockQuotaRepo_DecrementDailyUsage_Call) RunAndReturn(run func(context.Context, uuid.UUID) error) *MockQuotaRepo_DecrementDailyUsage_Call {
+func (_c *MockQuotaRepo_DecrementFreeAnalysesUsed_Call) RunAndReturn(run func(context.Context, uuid.UUID) error) *MockQuotaRepo_DecrementFreeAnalysesUsed_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// GetDailyUsage provides a mock function with given fields: ctx, userID
-func (_m *MockQuotaRepo) GetDailyUsage(ctx context.Context, userID uuid.UUID) (int, error) {
+// GetFreeAnalysesUsed provides a mock function with given fields: ctx, userID
+func (_m *MockQuotaRepo) GetFreeAnalysesUsed(ctx context.Context, userID uuid.UUID) (int, error) {
 	ret := _m.Called(ctx, userID)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetDailyUsage")
+		panic("no return value specified for GetFreeAnalysesUsed")
 	}
 
 	var r0 int
@@ -98,41 +98,41 @@ func (_m *MockQuotaRepo) GetDailyUsage(ctx context.Context, userID uuid.UUID) (i
 	return r0, r1
 }
 
-// MockQuotaRepo_GetDailyUsage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetDailyUsage'
-type MockQuotaRepo_GetDailyUsage_Call struct {
+// MockQuotaRepo_GetFreeAnalysesUsed_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetFreeAnalysesUsed'
+type MockQuotaRepo_GetFreeAnalysesUsed_Call struct {
 	*mock.Call
 }
 
-// GetDailyUsage is a helper method to define mock.On call
+// GetFreeAnalysesUsed is a helper method to define mock.On call
 //   - ctx context.Context
 //   - userID uuid.UUID
-func (_e *MockQuotaRepo_Expecter) GetDailyUsage(ctx interface{}, userID interface{}) *MockQuotaRepo_GetDailyUsage_Call {
-	return &MockQuotaRepo_GetDailyUsage_Call{Call: _e.mock.On("GetDailyUsage", ctx, userID)}
+func (_e *MockQuotaRepo_Expecter) GetFreeAnalysesUsed(ctx interface{}, userID interface{}) *MockQuotaRepo_GetFreeAnalysesUsed_Call {
+	return &MockQuotaRepo_GetFreeAnalysesUsed_Call{Call: _e.mock.On("GetFreeAnalysesUsed", ctx, userID)}
 }
 
-func (_c *MockQuotaRepo_GetDailyUsage_Call) Run(run func(ctx context.Context, userID uuid.UUID)) *MockQuotaRepo_GetDailyUsage_Call {
+func (_c *MockQuotaRepo_GetFreeAnalysesUsed_Call) Run(run func(ctx context.Context, userID uuid.UUID)) *MockQuotaRepo_GetFreeAnalysesUsed_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(uuid.UUID))
 	})
 	return _c
 }
 
-func (_c *MockQuotaRepo_GetDailyUsage_Call) Return(_a0 int, _a1 error) *MockQuotaRepo_GetDailyUsage_Call {
+func (_c *MockQuotaRepo_GetFreeAnalysesUsed_Call) Return(_a0 int, _a1 error) *MockQuotaRepo_GetFreeAnalysesUsed_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockQuotaRepo_GetDailyUsage_Call) RunAndReturn(run func(context.Context, uuid.UUID) (int, error)) *MockQuotaRepo_GetDailyUsage_Call {
+func (_c *MockQuotaRepo_GetFreeAnalysesUsed_Call) RunAndReturn(run func(context.Context, uuid.UUID) (int, error)) *MockQuotaRepo_GetFreeAnalysesUsed_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// IncrementDailyUsage provides a mock function with given fields: ctx, userID
-func (_m *MockQuotaRepo) IncrementDailyUsage(ctx context.Context, userID uuid.UUID) (int, error) {
+// IncrementFreeAnalysesUsed provides a mock function with given fields: ctx, userID
+func (_m *MockQuotaRepo) IncrementFreeAnalysesUsed(ctx context.Context, userID uuid.UUID) (int, error) {
 	ret := _m.Called(ctx, userID)
 
 	if len(ret) == 0 {
-		panic("no return value specified for IncrementDailyUsage")
+		panic("no return value specified for IncrementFreeAnalysesUsed")
 	}
 
 	var r0 int
@@ -155,31 +155,31 @@ func (_m *MockQuotaRepo) IncrementDailyUsage(ctx context.Context, userID uuid.UU
 	return r0, r1
 }
 
-// MockQuotaRepo_IncrementDailyUsage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IncrementDailyUsage'
-type MockQuotaRepo_IncrementDailyUsage_Call struct {
+// MockQuotaRepo_IncrementFreeAnalysesUsed_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IncrementFreeAnalysesUsed'
+type MockQuotaRepo_IncrementFreeAnalysesUsed_Call struct {
 	*mock.Call
 }
 
-// IncrementDailyUsage is a helper method to define mock.On call
+// IncrementFreeAnalysesUsed is a helper method to define mock.On call
 //   - ctx context.Context
 //   - userID uuid.UUID
-func (_e *MockQuotaRepo_Expecter) IncrementDailyUsage(ctx interface{}, userID interface{}) *MockQuotaRepo_IncrementDailyUsage_Call {
-	return &MockQuotaRepo_IncrementDailyUsage_Call{Call: _e.mock.On("IncrementDailyUsage", ctx, userID)}
+func (_e *MockQuotaRepo_Expecter) IncrementFreeAnalysesUsed(ctx interface{}, userID interface{}) *MockQuotaRepo_IncrementFreeAnalysesUsed_Call {
+	return &MockQuotaRepo_IncrementFreeAnalysesUsed_Call{Call: _e.mock.On("IncrementFreeAnalysesUsed", ctx, userID)}
 }
 
-func (_c *MockQuotaRepo_IncrementDailyUsage_Call) Run(run func(ctx context.Context, userID uuid.UUID)) *MockQuotaRepo_IncrementDailyUsage_Call {
+func (_c *MockQuotaRepo_IncrementFreeAnalysesUsed_Call) Run(run func(ctx context.Context, userID uuid.UUID)) *MockQuotaRepo_IncrementFreeAnalysesUsed_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(uuid.UUID))
 	})
 	return _c
 }
 
-func (_c *MockQuotaRepo_IncrementDailyUsage_Call) Return(_a0 int, _a1 error) *MockQuotaRepo_IncrementDailyUsage_Call {
+func (_c *MockQuotaRepo_IncrementFreeAnalysesUsed_Call) Return(_a0 int, _a1 error) *MockQuotaRepo_IncrementFreeAnalysesUsed_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockQuotaRepo_IncrementDailyUsage_Call) RunAndReturn(run func(context.Context, uuid.UUID) (int, error)) *MockQuotaRepo_IncrementDailyUsage_Call {
+func (_c *MockQuotaRepo_IncrementFreeAnalysesUsed_Call) RunAndReturn(run func(context.Context, uuid.UUID) (int, error)) *MockQuotaRepo_IncrementFreeAnalysesUsed_Call {
 	_c.Call.Return(run)
 	return _c
 }

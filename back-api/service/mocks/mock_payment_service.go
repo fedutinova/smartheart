@@ -23,66 +23,6 @@ func (_m *MockPaymentService) EXPECT() *MockPaymentService_Expecter {
 	return &MockPaymentService_Expecter{mock: &_m.Mock}
 }
 
-// CreatePayment provides a mock function with given fields: ctx, userID, analysesCount
-func (_m *MockPaymentService) CreatePayment(ctx context.Context, userID uuid.UUID, analysesCount int) (*service.PaymentResult, error) {
-	ret := _m.Called(ctx, userID, analysesCount)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CreatePayment")
-	}
-
-	var r0 *service.PaymentResult
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, int) (*service.PaymentResult, error)); ok {
-		return rf(ctx, userID, analysesCount)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, int) *service.PaymentResult); ok {
-		r0 = rf(ctx, userID, analysesCount)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*service.PaymentResult)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, int) error); ok {
-		r1 = rf(ctx, userID, analysesCount)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockPaymentService_CreatePayment_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreatePayment'
-type MockPaymentService_CreatePayment_Call struct {
-	*mock.Call
-}
-
-// CreatePayment is a helper method to define mock.On call
-//   - ctx context.Context
-//   - userID uuid.UUID
-//   - analysesCount int
-func (_e *MockPaymentService_Expecter) CreatePayment(ctx interface{}, userID interface{}, analysesCount interface{}) *MockPaymentService_CreatePayment_Call {
-	return &MockPaymentService_CreatePayment_Call{Call: _e.mock.On("CreatePayment", ctx, userID, analysesCount)}
-}
-
-func (_c *MockPaymentService_CreatePayment_Call) Run(run func(ctx context.Context, userID uuid.UUID, analysesCount int)) *MockPaymentService_CreatePayment_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(uuid.UUID), args[2].(int))
-	})
-	return _c
-}
-
-func (_c *MockPaymentService_CreatePayment_Call) Return(_a0 *service.PaymentResult, _a1 error) *MockPaymentService_CreatePayment_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockPaymentService_CreatePayment_Call) RunAndReturn(run func(context.Context, uuid.UUID, int) (*service.PaymentResult, error)) *MockPaymentService_CreatePayment_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // CreateSubscription provides a mock function with given fields: ctx, userID
 func (_m *MockPaymentService) CreateSubscription(ctx context.Context, userID uuid.UUID) (*service.PaymentResult, error) {
 	ret := _m.Called(ctx, userID)
@@ -245,6 +185,66 @@ func (_c *MockPaymentService_HandleWebhook_Call) Return(_a0 error) *MockPaymentS
 }
 
 func (_c *MockPaymentService_HandleWebhook_Call) RunAndReturn(run func(context.Context, []byte, string) error) *MockPaymentService_HandleWebhook_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ValidatePromoCode provides a mock function with given fields: ctx, userID, code
+func (_m *MockPaymentService) ValidatePromoCode(ctx context.Context, userID uuid.UUID, code string) (*service.PromoDiscountInfo, error) {
+	ret := _m.Called(ctx, userID, code)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ValidatePromoCode")
+	}
+
+	var r0 *service.PromoDiscountInfo
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) (*service.PromoDiscountInfo, error)); ok {
+		return rf(ctx, userID, code)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) *service.PromoDiscountInfo); ok {
+		r0 = rf(ctx, userID, code)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*service.PromoDiscountInfo)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, string) error); ok {
+		r1 = rf(ctx, userID, code)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockPaymentService_ValidatePromoCode_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ValidatePromoCode'
+type MockPaymentService_ValidatePromoCode_Call struct {
+	*mock.Call
+}
+
+// ValidatePromoCode is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID uuid.UUID
+//   - code string
+func (_e *MockPaymentService_Expecter) ValidatePromoCode(ctx interface{}, userID interface{}, code interface{}) *MockPaymentService_ValidatePromoCode_Call {
+	return &MockPaymentService_ValidatePromoCode_Call{Call: _e.mock.On("ValidatePromoCode", ctx, userID, code)}
+}
+
+func (_c *MockPaymentService_ValidatePromoCode_Call) Run(run func(ctx context.Context, userID uuid.UUID, code string)) *MockPaymentService_ValidatePromoCode_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(uuid.UUID), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockPaymentService_ValidatePromoCode_Call) Return(_a0 *service.PromoDiscountInfo, _a1 error) *MockPaymentService_ValidatePromoCode_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockPaymentService_ValidatePromoCode_Call) RunAndReturn(run func(context.Context, uuid.UUID, string) (*service.PromoDiscountInfo, error)) *MockPaymentService_ValidatePromoCode_Call {
 	_c.Call.Return(run)
 	return _c
 }

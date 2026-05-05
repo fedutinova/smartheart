@@ -2,54 +2,47 @@ package repository
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 )
 
-// IncrementDailyUsage atomically increments the user's daily submission count
-// and returns the new count. Uses an upsert to handle the first submission of the day.
-func (r *Repository) IncrementDailyUsage(ctx context.Context, userID uuid.UUID) (int, error) {
+// IncrementFreeAnalysesUsed atomically increments the user's lifetime free analyses
+// counter and returns the new count.
+func (r *Repository) IncrementFreeAnalysesUsed(ctx context.Context, userID uuid.UUID) (int, error) {
 	var count int
 	err := r.querier.QueryRow(ctx, `
-		INSERT INTO user_daily_usage (user_id, usage_date, count)
-		VALUES ($1, CURRENT_DATE, 1)
-		ON CONFLICT (user_id, usage_date) DO UPDATE SET count = user_daily_usage.count + 1
-		RETURNING count
+		UPDATE users SET free_analyses_used = free_analyses_used + 1
+		WHERE id = $1
+		RETURNING free_analyses_used
 	`, userID).Scan(&count)
 	if err != nil {
-		return 0, fmt.Errorf("increment daily usage: %w", err)
+		return 0, fmt.Errorf("increment free analyses used: %w", err)
 	}
 	return count, nil
 }
 
-// DecrementDailyUsage decreases the user's daily submission count by 1 (min 0).
+// DecrementFreeAnalysesUsed decreases the user's lifetime counter by 1 (floor at 0).
 // Used to "refund" a count when an analysis fails.
-func (r *Repository) DecrementDailyUsage(ctx context.Context, userID uuid.UUID) error {
+func (r *Repository) DecrementFreeAnalysesUsed(ctx context.Context, userID uuid.UUID) error {
 	_, err := r.querier.Exec(ctx, `
-		UPDATE user_daily_usage SET count = GREATEST(count - 1, 0)
-		WHERE user_id = $1 AND usage_date = CURRENT_DATE
+		UPDATE users SET free_analyses_used = GREATEST(free_analyses_used - 1, 0)
+		WHERE id = $1
 	`, userID)
 	if err != nil {
-		return fmt.Errorf("decrement daily usage: %w", err)
+		return fmt.Errorf("decrement free analyses used: %w", err)
 	}
 	return nil
 }
 
-// GetDailyUsage returns the current daily submission count for a user.
-func (r *Repository) GetDailyUsage(ctx context.Context, userID uuid.UUID) (int, error) {
+// GetFreeAnalysesUsed returns the user's lifetime free analyses count.
+func (r *Repository) GetFreeAnalysesUsed(ctx context.Context, userID uuid.UUID) (int, error) {
 	var count int
 	err := r.querier.QueryRow(ctx, `
-		SELECT COALESCE(count, 0) FROM user_daily_usage
-		WHERE user_id = $1 AND usage_date = CURRENT_DATE
+		SELECT free_analyses_used FROM users WHERE id = $1
 	`, userID).Scan(&count)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return 0, nil
-		}
-		return 0, fmt.Errorf("get daily usage: %w", err)
+		return 0, fmt.Errorf("get free analyses used: %w", err)
 	}
 	return count, nil
 }

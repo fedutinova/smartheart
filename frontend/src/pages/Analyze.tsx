@@ -271,7 +271,7 @@ export function Analyze() {
 
 // --- Sub-components (page-local, not reusable) ---
 
-function QuotaBanner({ quota }: { quota: { needs_payment: boolean; subscription_expires_at?: string; used_today: number; free_remaining: number; daily_limit: number; paid_analyses_remaining: number } }) {
+function QuotaBanner({ quota }: { quota: QuotaInfo }) {
   const hasActiveSub = quota.subscription_expires_at && new Date(quota.subscription_expires_at) > new Date();
   return (
     <div className="mb-4 flex items-center justify-between text-sm">
@@ -279,14 +279,11 @@ function QuotaBanner({ quota }: { quota: { needs_payment: boolean; subscription_
         <span className="flex items-center gap-1.5">
           <span className={`inline-block w-1.5 h-1.5 rounded-full ${quota.needs_payment ? 'bg-amber-400' : 'bg-green-400'}`} />
           {hasActiveSub
-            ? `${quota.used_today} выполнено сегодня`
+            ? 'Безлимитный доступ'
             : quota.needs_payment
-              ? 'Лимит исчерпан'
-              : `${quota.free_remaining} из ${quota.daily_limit} бесплатных`}
+              ? 'Бесплатные анализы исчерпаны'
+              : `${quota.free_remaining} из ${quota.free_limit} бесплатных`}
         </span>
-        {!hasActiveSub && quota.paid_analyses_remaining > 0 && (
-          <span className="text-rose-500">+{quota.paid_analyses_remaining} оплач.</span>
-        )}
       </div>
     </div>
   );
@@ -297,7 +294,7 @@ function PaymentPrompt({ onShowPayment }: { onShowPayment: () => void }) {
     <div className="rounded-xl bg-gradient-to-r from-rose-50 to-purple-50 border border-rose-200 p-5">
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         <div className="flex-1 min-w-0">
-          <p className="text-base font-semibold text-gray-900">Бесплатные анализы на сегодня закончились</p>
+          <p className="text-base font-semibold text-gray-900">Бесплатные анализы закончились</p>
           <p className="text-sm text-gray-500 mt-1">
             Оформите подписку: безлимитные анализы ЭКГ и доступ ко всем функциям
           </p>

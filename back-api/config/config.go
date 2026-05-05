@@ -84,7 +84,8 @@ type GPTConfig struct {
 
 // QuotaConfig holds per-user submission quota settings.
 type QuotaConfig struct {
-	DailyLimit int // max submissions per user per day (0 = unlimited)
+	DailyLimit int // kept for backward compat during deploys; no longer used at runtime
+	FreeLimit  int // lifetime free analyses per user (0 = unlimited)
 }
 
 // YooKassaConfig holds YooKassa payment settings.
@@ -358,6 +359,7 @@ func Load() Config {
 		},
 		Quota: QuotaConfig{
 			DailyLimit: envInt("QUOTA_DAILY_LIMIT", 50),
+			FreeLimit:  envInt("QUOTA_FREE_LIMIT", 3),
 		},
 		RAG: RAGConfig{
 			URL: envString("RAG_URL", "http://localhost:8000"),

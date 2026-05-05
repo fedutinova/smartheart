@@ -34,11 +34,11 @@ type RequestRepo interface {
 	GetResponseByRequestID(ctx context.Context, requestID uuid.UUID) (*models.Response, error)
 }
 
-// QuotaRepo provides daily usage quota data access.
+// QuotaRepo provides lifetime free analyses quota data access.
 type QuotaRepo interface {
-	IncrementDailyUsage(ctx context.Context, userID uuid.UUID) (int, error)
-	DecrementDailyUsage(ctx context.Context, userID uuid.UUID) error
-	GetDailyUsage(ctx context.Context, userID uuid.UUID) (int, error)
+	IncrementFreeAnalysesUsed(ctx context.Context, userID uuid.UUID) (int, error)
+	DecrementFreeAnalysesUsed(ctx context.Context, userID uuid.UUID) error
+	GetFreeAnalysesUsed(ctx context.Context, userID uuid.UUID) (int, error)
 }
 
 // TokenRepo provides refresh-token data access.
@@ -87,8 +87,6 @@ type PaymentRepo interface {
 	ConfirmPayment(ctx context.Context, yookassaID string) error
 	CancelPayment(ctx context.Context, yookassaID string) error
 	CancelStalePayments(ctx context.Context, olderThan time.Duration) (int, error)
-	GetPaidAnalysesRemaining(ctx context.Context, userID uuid.UUID) (int, error)
-	DecrementPaidAnalyses(ctx context.Context, userID uuid.UUID) (int, error)
 	GetSubscriptionExpiresAt(ctx context.Context, userID uuid.UUID) (*time.Time, error)
 	GetPaymentsByUserID(ctx context.Context, userID uuid.UUID) ([]models.Payment, error)
 }
@@ -99,6 +97,14 @@ type AdminRepo interface {
 	ListUsers(ctx context.Context, limit, offset int, search string) ([]AdminUserRow, int, error)
 	ListPayments(ctx context.Context, limit, offset int) ([]AdminPaymentRow, int, error)
 	ListRAGFeedback(ctx context.Context, limit, offset int) ([]AdminFeedbackRow, int, error)
+}
+
+// PromoCodeRepo provides promo code data access.
+type PromoCodeRepo interface {
+	GetPromoCodeByCode(ctx context.Context, code string) (*models.PromoCode, error)
+	CreatePromoCode(ctx context.Context, promo *models.PromoCode) error
+	UpdatePromoCodeUsedCount(ctx context.Context, promoCodeID uuid.UUID) error
+	RecordPromoCodeUsage(ctx context.Context, usage *models.PromoCodeUsage) error
 }
 
 // Store is the composite interface that embeds all focused interfaces.
@@ -114,6 +120,7 @@ type Store interface {
 	PaymentRepo
 	PasswordResetRepo
 	AdminRepo
+	PromoCodeRepo
 
 	// Transaction support
 	RunTx(ctx context.Context, fn func(tx pgx.Tx) error) error

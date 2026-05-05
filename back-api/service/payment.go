@@ -23,14 +23,14 @@ import (
 
 // PaymentService handles payment creation and webhook processing.
 type PaymentService interface {
-	// CreatePayment creates a YooKassa payment for analysis packs and returns the confirmation URL.
-	CreatePayment(ctx context.Context, userID uuid.UUID, analysesCount int) (*PaymentResult, error)
 	// CreateSubscription creates a YooKassa payment for a monthly subscription.
 	CreateSubscription(ctx context.Context, userID uuid.UUID) (*PaymentResult, error)
 	// HandleWebhook processes a YooKassa webhook notification after verifying the signature.
 	HandleWebhook(ctx context.Context, body []byte, signature string) error
 	// GetQuotaInfo returns the user's current quota status.
 	GetQuotaInfo(ctx context.Context, userID uuid.UUID) (*QuotaInfo, error)
+	// ValidatePromoCode checks if a promo code is valid and returns discount info.
+	ValidatePromoCode(ctx context.Context, userID uuid.UUID, code string) (*PromoDiscountInfo, error)
 }
 
 // PaymentResult is returned after creating a payment.
@@ -40,16 +40,24 @@ type PaymentResult struct {
 	AmountRub       string    `json:"amount_rub"`
 }
 
-// QuotaInfo describes the user's current quota state.
+// QuotaInfo describes the user's current quota state (lifetime free analyses).
 type QuotaInfo struct {
-	DailyLimit               int     `json:"daily_limit"`
-	UsedToday                int     `json:"used_today"`
+	FreeLimit                int     `json:"free_limit"`
+	FreeAnalysesUsed         int     `json:"free_analyses_used"`
 	FreeRemaining            int     `json:"free_remaining"`
 	PaidAnalysesRemaining    int     `json:"paid_analyses_remaining"`
 	NeedsPayment             bool    `json:"needs_payment"`
 	PricePerAnalysisKopecks  int     `json:"price_per_analysis_kopecks"`
 	SubscriptionExpiresAt    *string `json:"subscription_expires_at,omitempty"`
 	SubscriptionPriceKopecks int     `json:"subscription_price_kopecks"`
+}
+
+// PromoDiscountInfo contains information about a valid promo code discount.
+type PromoDiscountInfo struct {
+	Code            string `json:"code"`
+	DiscountPercent int    `json:"discount_percent"`
+	IsValid         bool   `json:"is_valid"`
+	Reason          string `json:"reason,omitempty"` // if not valid
 }
 
 type paymentService struct {
@@ -199,27 +207,6 @@ func (s *paymentService) createYooKassaPayment(ctx context.Context, payment *mod
 	}, nil
 }
 
-func (s *paymentService) CreatePayment(ctx context.Context, userID uuid.UUID, analysesCount int) (*PaymentResult, error) {
-	if analysesCount < 1 || analysesCount > 100 {
-		return nil, fmt.Errorf("analyses count must be 1-100: %w", apperr.ErrValidation)
-	}
-
-	totalKopecks := s.cfg.PriceKopecks * analysesCount
-	paymentID := uuid.New()
-
-	return s.createYooKassaPayment(ctx, &models.Payment{
-		ID:            paymentID,
-		UserID:        userID,
-		AmountKopecks: totalKopecks,
-		Description:   fmt.Sprintf("Умное сердце: %d анализ(ов) ЭКГ", analysesCount),
-		AnalysesCount: analysesCount,
-		PaymentType:   models.PaymentTypeAnalyses,
-	}, map[string]string{
-		"payment_id": paymentID.String(),
-		"user_id":    userID.String(),
-	})
-}
-
 func (s *paymentService) CreateSubscription(ctx context.Context, userID uuid.UUID) (*PaymentResult, error) {
 	// Reject if user already has an active subscription.
 	subExpires, err := s.repo.GetSubscriptionExpiresAt(ctx, userID)
@@ -310,16 +297,10 @@ func (s *paymentService) HandleWebhook(ctx context.Context, body []byte, signatu
 }
 
 func (s *paymentService) GetQuotaInfo(ctx context.Context, userID uuid.UUID) (*QuotaInfo, error) {
-	usedToday, err := s.repo.GetDailyUsage(ctx, userID)
+	freeUsed, err := s.repo.GetFreeAnalysesUsed(ctx, userID)
 	if err != nil {
-		slog.ErrorContext(ctx, "Failed to get daily usage", "user_id", userID, "error", err)
-		usedToday = 0
-	}
-
-	paidRemaining, err := s.repo.GetPaidAnalysesRemaining(ctx, userID)
-	if err != nil {
-		slog.WarnContext(ctx, "Failed to get paid analyses", "user_id", userID, "error", err)
-		paidRemaining = 0
+		slog.ErrorContext(ctx, "Failed to get free analyses used", "user_id", userID, "error", err)
+		freeUsed = 0
 	}
 
 	subExpiresAt, err := s.repo.GetSubscriptionExpiresAt(ctx, userID)
@@ -329,15 +310,15 @@ func (s *paymentService) GetQuotaInfo(ctx context.Context, userID uuid.UUID) (*Q
 
 	hasActiveSubscription := subExpiresAt != nil && subExpiresAt.After(time.Now())
 
-	freeRemaining := max(s.freeLimit-usedToday, 0)
+	freeRemaining := max(s.freeLimit-freeUsed, 0)
 
-	needsPayment := !hasActiveSubscription && freeRemaining == 0 && paidRemaining == 0
+	needsPayment := !hasActiveSubscription && freeRemaining == 0
 
 	info := &QuotaInfo{
-		DailyLimit:               s.freeLimit,
-		UsedToday:                usedToday,
+		FreeLimit:                s.freeLimit,
+		FreeAnalysesUsed:         freeUsed,
 		FreeRemaining:            freeRemaining,
-		PaidAnalysesRemaining:    paidRemaining,
+		PaidAnalysesRemaining:    0,
 		NeedsPayment:             needsPayment,
 		PricePerAnalysisKopecks:  s.cfg.PriceKopecks,
 		SubscriptionPriceKopecks: s.cfg.SubscriptionPriceKopecks,
@@ -349,4 +330,30 @@ func (s *paymentService) GetQuotaInfo(ctx context.Context, userID uuid.UUID) (*Q
 	}
 
 	return info, nil
+}
+
+func (s *paymentService) ValidatePromoCode(ctx context.Context, userID uuid.UUID, code string) (*PromoDiscountInfo, error) {
+	result := &PromoDiscountInfo{
+		Code:    code,
+		IsValid: false,
+	}
+
+	promoCode, err := s.repo.GetPromoCodeByCode(ctx, code)
+	if err != nil {
+		result.Reason = "Промокод не найден"
+		return result, nil
+	}
+
+	if !promoCode.IsValid() {
+		if promoCode.ExpiresAt != nil && time.Now().After(*promoCode.ExpiresAt) {
+			result.Reason = "Промокод истёк"
+		} else if promoCode.MaxUses > 0 && promoCode.UsedCount >= promoCode.MaxUses {
+			result.Reason = "Промокод использован максимальное количество раз"
+		}
+		return result, nil
+	}
+
+	result.IsValid = true
+	result.DiscountPercent = promoCode.DiscountPercent
+	return result, nil
 }

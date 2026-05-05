@@ -14,8 +14,35 @@ export function PaymentModal({ quota, onClose }: PaymentModalProps) {
   const hasActiveSub = quota.subscription_expires_at && new Date(quota.subscription_expires_at) > new Date();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [promoCode, setPromoCode] = useState('');
+  const [promoDiscount, setPromoDiscount] = useState<number | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
 
   const subscriptionPrice = quota.subscription_price_kopecks || 0;
+  const finalPrice = promoDiscount !== null ? Math.max(0, subscriptionPrice - (subscriptionPrice * promoDiscount) / 100) : subscriptionPrice;
+
+  const handleApplyPromoCode = async () => {
+    if (!promoCode.trim()) {
+      setPromoError('Введите промокод');
+      return;
+    }
+    setPromoError(null);
+    try {
+      const response = await fetch('/api/v1/promo/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: promoCode }),
+      });
+      const data = await response.json();
+      if (data.is_valid) {
+        setPromoDiscount(data.discount_percent);
+      } else {
+        setPromoError(data.reason || 'Неверный промокод');
+      }
+    } catch {
+      setPromoError('Ошибка при проверке промокода');
+    }
+  };
 
   const handleSubscribe = async () => {
     setIsLoading(true);
@@ -56,7 +83,17 @@ export function PaymentModal({ quota, onClose }: PaymentModalProps) {
             <div className="p-5 border-2 border-rose-200 bg-rose-50/50 rounded-xl mb-4">
               <div className="flex items-baseline justify-between mb-2">
                 <span className="text-lg font-bold text-gray-900">30 дней</span>
-                <span className="text-2xl font-bold text-rose-600">{formatPrice(subscriptionPrice)} &#8381;</span>
+                <div className="text-right">
+                  {promoDiscount ? (
+                    <>
+                      <span className="text-sm text-gray-500 line-through">{formatPrice(subscriptionPrice)} &#8381;</span>
+                      <span className="block text-2xl font-bold text-rose-600">{formatPrice(finalPrice)} &#8381;</span>
+                      <span className="text-xs text-green-600">Скидка {promoDiscount}%</span>
+                    </>
+                  ) : (
+                    <span className="text-2xl font-bold text-rose-600">{formatPrice(subscriptionPrice)} &#8381;</span>
+                  )}
+                </div>
               </div>
               <ul className="space-y-1.5 text-sm text-gray-600">
                 <li className="flex items-center gap-2">
@@ -79,12 +116,50 @@ export function PaymentModal({ quota, onClose }: PaymentModalProps) {
                 </li>
               </ul>
             </div>
+
+            <div className="mb-4 p-4 border border-gray-200 rounded-lg">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Промокод (опционально)</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={promoCode}
+                  onChange={(e) => {
+                    setPromoCode(e.target.value.toUpperCase());
+                    setPromoError(null);
+                  }}
+                  placeholder="Введите код"
+                  disabled={promoDiscount !== null}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 disabled:bg-gray-50"
+                />
+                <button
+                  onClick={handleApplyPromoCode}
+                  disabled={promoDiscount !== null || !promoCode.trim()}
+                  className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-300 disabled:opacity-50 transition-colors"
+                >
+                  Применить
+                </button>
+                {promoDiscount !== null && (
+                  <button
+                    onClick={() => {
+                      setPromoCode('');
+                      setPromoDiscount(null);
+                      setPromoError(null);
+                    }}
+                    className="px-2 py-2 text-gray-600 hover:text-gray-800"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              {promoError && <p className="text-xs text-red-600 mt-1">{promoError}</p>}
+            </div>
+
             <button
               onClick={handleSubscribe}
               disabled={isLoading}
               className="w-full py-3 bg-rose-600 text-white rounded-lg font-medium hover:bg-rose-700 disabled:opacity-50 transition-colors"
             >
-              {isLoading ? 'Переход к оплате...' : `Оформить: ${formatPrice(subscriptionPrice)} \u20BD`}
+              {isLoading ? 'Переход к оплате...' : `Оформить: ${formatPrice(finalPrice)} ₽`}
             </button>
           </>
         )}

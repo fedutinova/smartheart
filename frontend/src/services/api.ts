@@ -304,12 +304,12 @@ export const paymentAPI = {
     const response = await api.get<QuotaInfo>('/v1/quota');
     return response.data;
   },
-  createPayment: async (analysesCount: number) => {
-    const response = await api.post<PaymentResult>('/v1/payments', { analyses_count: analysesCount });
-    return response.data;
-  },
   createSubscription: async () => {
     const response = await api.post<PaymentResult>('/v1/subscriptions');
+    return response.data;
+  },
+  validatePromoCode: async (code: string) => {
+    const response = await api.post<{ code: string; discount_percent: number; is_valid: boolean; reason?: string }>('/v1/promo/validate', { code });
     return response.data;
   },
 };

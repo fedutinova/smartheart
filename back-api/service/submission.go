@@ -62,16 +62,16 @@ type SubmissionService interface {
 }
 
 type submissionService struct {
-	repo       repository.Store
-	queue      job.Queue
-	storage    storage.Storage
-	dailyLimit int
+	repo      repository.Store
+	queue     job.Queue
+	storage   storage.Storage
+	freeLimit int
 }
 
 func NewSubmissionService(repo repository.Store, queue job.Queue, storageService storage.Storage, quota ...config.QuotaConfig) SubmissionService {
 	s := &submissionService{repo: repo, queue: queue, storage: storageService}
 	if len(quota) > 0 {
-		s.dailyLimit = quota[0].DailyLimit
+		s.freeLimit = quota[0].FreeLimit
 	}
 	return s
 }
@@ -118,45 +118,45 @@ func ecgRequest(requestID, userID uuid.UUID, p ECGParams) *models.Request {
 	return req
 }
 
-// checkQuota enforces the freemium model (always tracks usage):
-//  1. Increment daily usage counter.
-//  2. If user has active subscription → allow.
-//  3. If daily usage <= dailyLimit → free, allow.
-//  4. If daily usage > dailyLimit but user has paid analyses → decrement paid counter, allow.
-//  5. Otherwise → return ErrPaymentRequired.
+// checkQuota enforces the lifetime free analyses model:
+//  1. If freeLimit <= 0, allow unconditionally (unlimited mode).
+//  2. If user has an active subscription → allow.
+//  3. Atomically increment free_analyses_used.
+//  4. If new count <= freeLimit → this is a free slot, allow.
+//  5. Otherwise → decrement back and return ErrPaymentRequired.
 //
-// NOTE: Quota checks fail open (allow request) if database errors occur to prioritize
-// availability. Set alerts on the error logs to detect quota system failures.
+// NOTE: Quota checks fail open on database errors to prioritize availability.
+// Set alerts on these error logs.
 func (s *submissionService) checkQuota(ctx context.Context, userID uuid.UUID) error {
-	if s.dailyLimit <= 0 {
+	if s.freeLimit <= 0 {
 		return nil // unlimited
 	}
 
-	count, err := s.repo.IncrementDailyUsage(ctx, userID)
-	if err != nil {
-		slog.ErrorContext(ctx, "QUOTA_BYPASS: Database error during quota check", "user_id", userID, "error", err)
-		return nil // fail-open for availability
-	}
-
+	// Check subscription first (takes precedence over free quota)
 	subExpires, err := s.repo.GetSubscriptionExpiresAt(ctx, userID)
 	if err != nil {
-		slog.ErrorContext(ctx, "QUOTA_BYPASS: Failed to check subscription status", "user_id", userID, "error", err)
-	} else if subExpires != nil && subExpires.After(time.Now()) {
-		return nil
+		return fmt.Errorf("check subscription: %w", err)
+	}
+	if subExpires != nil && subExpires.After(time.Now()) {
+		return nil // active subscription = unlimited
 	}
 
-	if count <= s.dailyLimit {
-		return nil // within free quota
-	}
-
-	// Free quota exceeded — try to use a paid analysis
-	remaining, err := s.repo.DecrementPaidAnalyses(ctx, userID)
+	// Increment usage and check against lifetime limit
+	count, err := s.repo.IncrementFreeAnalysesUsed(ctx, userID)
 	if err != nil {
-		slog.InfoContext(ctx, "Quota exceeded, no paid analyses", "user_id", userID, "daily_count", count)
-		return fmt.Errorf("daily free limit (%d) exceeded, purchase more analyses: %w", s.dailyLimit, apperr.ErrPaymentRequired)
+		return fmt.Errorf("increment free analyses used: %w", err)
 	}
 
-	slog.InfoContext(ctx, "Used paid analysis", "user_id", userID, "remaining", remaining)
+	if count > s.freeLimit {
+		// Refund the slot we just claimed — this request will not proceed.
+		if decErr := s.repo.DecrementFreeAnalysesUsed(ctx, userID); decErr != nil {
+			slog.WarnContext(ctx, "Failed to decrement free analyses after quota exceeded",
+				"user_id", userID, "error", decErr)
+		}
+		return fmt.Errorf("free limit (%d) exceeded, subscribe for unlimited: %w",
+			s.freeLimit, apperr.ErrPaymentRequired)
+	}
+
 	return nil
 }
 

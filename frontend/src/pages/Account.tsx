@@ -108,25 +108,24 @@ export function Account() {
 
             {hasActiveSub ? (
               <div className="bg-gray-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-semibold text-gray-900">{quota.used_today}</p>
-                <p className="text-xs text-gray-400 mt-1">выполнено сегодня</p>
+                <p className="text-base font-semibold text-green-700">Безлимитный доступ активен</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-gray-50 rounded-lg p-4 text-center">
                   <p className="text-3xl font-semibold text-gray-900">{quota.free_remaining}</p>
-                  <p className="text-xs text-gray-400 mt-1">бесплатных сегодня</p>
+                  <p className="text-xs text-gray-400 mt-1">бесплатных осталось</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-4 text-center">
-                  <p className="text-3xl font-semibold text-gray-900">{quota.used_today}</p>
-                  <p className="text-xs text-gray-400 mt-1">использовано сегодня</p>
+                  <p className="text-3xl font-semibold text-gray-900">{quota.free_analyses_used}</p>
+                  <p className="text-xs text-gray-400 mt-1">использовано</p>
                 </div>
               </div>
             )}
 
             {!hasActiveSub && (
               <p className="text-xs text-gray-400 mt-4">
-                Бесплатный лимит: {quota.daily_limit} анализа в день. Для безлимита оформите подписку.
+                Бесплатный лимит: {quota.free_limit} анализа всего. Для безлимита оформите подписку.
               </p>
             )}
           </div>

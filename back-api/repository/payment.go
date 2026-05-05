@@ -125,22 +125,6 @@ func (r *Repository) GetPaidAnalysesRemaining(ctx context.Context, userID uuid.U
 	return count, nil
 }
 
-// DecrementPaidAnalyses decrements the user's paid analysis counter by 1.
-// Returns the new remaining count. Returns error if count is already 0.
-func (r *Repository) DecrementPaidAnalyses(ctx context.Context, userID uuid.UUID) (int, error) {
-	var remaining int
-	err := r.querier.QueryRow(ctx, `
-		UPDATE users
-		SET paid_analyses_remaining = paid_analyses_remaining - 1
-		WHERE id = $1 AND paid_analyses_remaining > 0
-		RETURNING paid_analyses_remaining
-	`, userID).Scan(&remaining)
-	if err != nil {
-		return 0, fmt.Errorf("decrement paid analyses: %w", err)
-	}
-	return remaining, nil
-}
-
 // GetSubscriptionExpiresAt returns the user's subscription expiration time, or nil if none.
 func (r *Repository) GetSubscriptionExpiresAt(ctx context.Context, userID uuid.UUID) (*time.Time, error) {
 	var expiresAt *time.Time

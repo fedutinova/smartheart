@@ -12,32 +12,8 @@ type PaymentHandler struct {
 	Service service.PaymentService
 }
 
-type createPaymentRequest struct {
-	AnalysesCount int `json:"analyses_count" validate:"required,gte=1,lte=100"`
-}
-
-// CreatePayment creates a YooKassa payment and returns the redirect URL.
-func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
-
-	var req createPaymentRequest
-	if !decodeAndValidate(w, r, &req) {
-		return
-	}
-
-	userID, _, ok := extractUserID(r)
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "no auth context")
-		return
-	}
-
-	result, err := h.Service.CreatePayment(r.Context(), userID, req.AnalysesCount)
-	if err != nil {
-		handleServiceError(w, err)
-		return
-	}
-
-	writeJSON(w, http.StatusOK, result)
+type applyPromoCodeRequest struct {
+	Code string `json:"code" validate:"required,min=1,max=50"`
 }
 
 // Webhook handles YooKassa payment notifications.
@@ -96,4 +72,28 @@ func (h *PaymentHandler) GetQuota(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, info)
+}
+
+// ApplyPromoCode validates and returns discount info for a promo code.
+func (h *PaymentHandler) ApplyPromoCode(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+
+	var req applyPromoCodeRequest
+	if !decodeAndValidate(w, r, &req) {
+		return
+	}
+
+	userID, _, ok := extractUserID(r)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "no auth context")
+		return
+	}
+
+	discount, err := h.Service.ValidatePromoCode(r.Context(), userID, req.Code)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, discount)
 }

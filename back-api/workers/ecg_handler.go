@@ -73,9 +73,9 @@ func (h *ECGWorker) HandleECGJob(ctx context.Context, j *job.Job) error {
 }
 
 func (h *ECGWorker) handleEKGFailure(ctx context.Context, payload *job.ECGJobPayload) {
-	// Refund the daily usage counter so failed analyses don't count.
-	if decErr := h.quotaRepo.DecrementDailyUsage(ctx, payload.UserID); decErr != nil {
-		slog.WarnContext(ctx, "Failed to decrement daily usage after EKG failure", "user_id", payload.UserID, "error", decErr)
+	// Refund the free analyses counter so failed analyses don't count.
+	if decErr := h.quotaRepo.DecrementFreeAnalysesUsed(ctx, payload.UserID); decErr != nil {
+		slog.WarnContext(ctx, "Failed to decrement free analyses used after EKG failure", "user_id", payload.UserID, "error", decErr)
 	}
 	// Mark request as failed and notify user.
 	if payload.RequestID == uuid.Nil {
