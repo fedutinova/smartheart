@@ -28,12 +28,7 @@ export function PaymentModal({ quota, onClose }: PaymentModalProps) {
     }
     setPromoError(null);
     try {
-      const response = await fetch('/api/v1/promo/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: promoCode }),
-      });
-      const data = await response.json();
+      const data = await paymentAPI.validatePromoCode(promoCode.trim());
       if (data.is_valid) {
         setPromoDiscount(data.discount_percent);
       } else {
