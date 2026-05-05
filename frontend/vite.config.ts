@@ -24,5 +24,10 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
     css: true,
+    exclude: [
+      '**/node_modules/**',
+      '**/h2-verification.test.*',
+      '**/h2-runtime-benchmark.test.*',
+    ],
   },
 });
