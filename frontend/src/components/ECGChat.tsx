@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { ecgChatAPI, type ECGChatMessage as ApiMessage } from '@/services/api';
 import type { ECGStructuredResult } from '@/types';
@@ -37,7 +37,7 @@ export function ECGChat({ requestId, structuredResult }: ECGChatProps) {
   const [error, setError] = useState<string | null>(null);
   const [showDisclaimer, setShowDisclaimer] = useState(true);
   const [thinkingSeconds, setThinkingSeconds] = useState(0);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+
 
   const suggestions = useMemo(() => buildSuggestions(structuredResult), [structuredResult]);
 
@@ -76,9 +76,6 @@ export function ECGChat({ requestId, structuredResult }: ECGChatProps) {
     };
   }, [requestId]);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isThinking]);
 
   // Tick a counter while we're waiting for the assistant so the UI can
   // surface progressively reassuring messages on slow RAG calls.
@@ -113,11 +110,12 @@ export function ECGChat({ requestId, structuredResult }: ECGChatProps) {
     try {
       const reply = await ecgChatAPI.sendMessage(requestId, trimmed);
       setMessages((prev) => [...prev, reply]);
-    } catch {
-      // The backend keeps processing on disconnect, so the answer may
-      // already be saved server-side. Hint the user to refresh.
+    } catch (err: unknown) {
+      const isTimeout = err instanceof Error && err.message.includes('timeout');
       setError(
-        'Ответ задерживается. Если он уже готов, нажмите «Обновить» — он появится в истории.',
+        isTimeout
+          ? 'Ответ ещё готовится — нажмите «Обновить», он появится в истории.'
+          : 'Не удалось отправить сообщение. Попробуйте ещё раз.',
       );
       setMessages((prev) => prev.filter((m) => m.id !== optimisticUserMsg.id));
     } finally {
@@ -230,7 +228,6 @@ export function ECGChat({ requestId, structuredResult }: ECGChatProps) {
           </div>
         )}
 
-        <div ref={messagesEndRef} />
       </div>
 
       <form onSubmit={handleSubmit} className="flex gap-2 items-end">
