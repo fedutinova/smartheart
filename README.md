@@ -1,6 +1,6 @@
-# SmartHeart EKG Analysis System
+# Умное сердце
 
-## Overview
+## Обзор
 
 Умное сердце — система анализа ЭКГ изображений с использованием OpenCV для предобработки и GPT для интерпретации результатов. Включает Go-бэкенд, React-фронтенд и инфраструктуру на Docker Compose (PostgreSQL, Redis, S3/LocalStack).
 
@@ -62,7 +62,7 @@ CGO_ENABLED=1 go run cmd/main.go
 cd frontend && npm install && npm run dev
 ```
 
-Приложение: бэкенд на `http://localhost:8080`, фронтенд на `http://localhost:5173`.
+Приложение: бэкенд на `http://localhost:8080`, фронтенд на `http://localhost:3000`.
 
 ### Docker
 
@@ -123,15 +123,6 @@ curl -X POST http://localhost:8080/v1/ekg/analyze \
   -H "Authorization: Bearer TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"image_temp_url": "https://example.com/ekg.jpg", "notes": "Описание"}'
-```
-
-### GPT обработка
-
-```bash
-curl -X POST http://localhost:8080/v1/gpt/process \
-  -H "Authorization: Bearer TOKEN" \
-  -F "text_query=Проанализируй ЭКГ" \
-  -F "files=@image.jpg"
 ```
 
 ### Запросы и результаты
