@@ -128,7 +128,7 @@ const FEATURES = [
     ),
   },
   {
-    title: '2 бесплатных анализа в день',
+    title: '3 бесплатных анализа всего',
     description: 'Попробуйте без оплаты. Нужно больше? Месячная подписка с безлимитными анализами',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -206,7 +206,7 @@ export function Landing() {
             </a>
           </div>
           <p className="mt-4 text-sm text-gray-400">
-            2 бесплатных анализа в день, без привязки карты
+            3 бесплатных анализа всего, без привязки карты
           </p>
           <p className="mt-2 text-xs text-gray-400 max-w-2xl mx-auto">
             Сервис предназначен для информационной поддержки и не заменяет медицинское заключение врача.
@@ -339,7 +339,7 @@ export function Landing() {
                   Попробовать бесплатно
                 </Link>
                 <p className="mt-3 text-xs text-gray-400">
-                  2 бесплатных анализа в день без подписки
+                  3 бесплатных анализа всего без подписки
                 </p>
               </div>
             </div>
@@ -354,7 +354,7 @@ export function Landing() {
             Начните прямо сейчас
           </h2>
           <p className="text-gray-500 mb-8">
-            2 бесплатных анализа каждый день. Регистрация за 30 секунд.
+            3 бесплатных анализа. Регистрация за 30 секунд.
           </p>
           <Link
             to={ROUTES.REGISTER}
