@@ -12,7 +12,7 @@ import { useImageInput } from '@/hooks/useImageInput';
 import { usePendingJobs } from '@/hooks/usePendingJobs';
 import { useQuota } from '@/hooks/useQuota';
 import { getApiError } from '@/utils/apiError';
-import type { ECGCalibrationParams, ECGClientMeta, RedactionBox } from '@/types';
+import type { ECGCalibrationParams, ECGClientMeta, QuotaInfo, RedactionBox } from '@/types';
 
 type Mode = 'file' | 'camera' | 'url';
 

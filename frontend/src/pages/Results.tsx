@@ -260,14 +260,14 @@ function StructuredResultView({ result }: { result: ECGStructuredResult }) {
         <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-bold text-gray-900">Интерпретация</h2>
-            {result.interpretation.text_summary && (
+            {result.interpretation?.text_summary && (
               <CopyButton text={result.interpretation.text_summary} />
             )}
           </div>
           <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4 text-xs text-amber-800">
             Результат автоматической обработки. Не является медицинским заключением и не заменяет консультацию врача.
           </div>
-          {result.interpretation.summary && result.interpretation.summary.length > 0 && (
+          {result.interpretation?.summary && result.interpretation.summary.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
               {result.interpretation.summary.map((s, i) => (
                 <div key={i} className="bg-white rounded-lg px-4 py-3 border border-purple-100 flex items-center justify-between gap-2">
@@ -280,7 +280,7 @@ function StructuredResultView({ result }: { result: ECGStructuredResult }) {
               ))}
             </div>
           )}
-          {result.interpretation.items && result.interpretation.items.length > 0 && (
+          {result.interpretation?.items && result.interpretation.items.length > 0 && (
             <InterpretationItems items={result.interpretation.items} />
           )}
         </div>

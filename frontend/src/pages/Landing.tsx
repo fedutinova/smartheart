@@ -128,7 +128,7 @@ const FEATURES = [
     ),
   },
   {
-    title: '3 бесплатных анализа всего',
+    title: '3 бесплатных анализа',
     description: 'Попробуйте без оплаты. Нужно больше? Месячная подписка с безлимитными анализами',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -142,6 +142,7 @@ const STEPS = [
   { num: '1', title: 'Загрузите фото', description: 'Сфотографируйте ЭКГ или загрузите файл' },
   { num: '2', title: 'Укажите параметры', description: 'Возраст, пол, скорость плёнки' },
   { num: '3', title: 'Получите результат', description: 'Измерения, индексы и справочную интерпретацию' },
+  { num: '4', title: 'Задайте вопрос в чат', description: 'Уточните детали у ИИ-ассистента прямо в результатах' },
 ];
 
 export function Landing() {
@@ -339,7 +340,7 @@ export function Landing() {
                   Попробовать бесплатно
                 </Link>
                 <p className="mt-3 text-xs text-gray-400">
-                  3 бесплатных анализа всего без подписки
+                  3 бесплатных анализа без подписки
                 </p>
               </div>
             </div>
