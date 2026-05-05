@@ -19,7 +19,7 @@ interface WordEntry {
 
 /** PII patterns for dates, IDs, and СНИЛС */
 const PII_PATTERNS = [
-  { pattern: /\b\d{1,2}[.\-\/]\d{1,2}[.\-\/]\d{2,4}\b/g, label: 'date' },
+  { pattern: /\b\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4}\b/g, label: 'date' },
   {
     pattern: /\b\d{1,2}\s+(янв|фев|мар|апр|май|июн|июл|авг|сен|окт|ноя|дек)\w*\s+\d{4}\b/gi,
     label: 'date_words',
