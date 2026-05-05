@@ -88,6 +88,20 @@ func (r *Repository) ConfirmPayment(ctx context.Context, yookassaID string) erro
 	})
 }
 
+// ActivateSubscription directly extends a user's subscription by 30 days.
+// Used when a payment is not required (e.g. 100% promo code).
+func (r *Repository) ActivateSubscription(ctx context.Context, userID uuid.UUID) error {
+	_, err := r.querier.Exec(ctx, `
+		UPDATE users
+		SET subscription_expires_at = GREATEST(COALESCE(subscription_expires_at, now()), now()) + INTERVAL '30 days'
+		WHERE id = $1
+	`, userID)
+	if err != nil {
+		return fmt.Errorf("activate subscription: %w", err)
+	}
+	return nil
+}
+
 // CancelPayment marks a payment as canceled.
 func (r *Repository) CancelPayment(ctx context.Context, yookassaID string) error {
 	_, err := r.querier.Exec(ctx, `

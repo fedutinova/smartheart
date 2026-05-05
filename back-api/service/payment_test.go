@@ -184,7 +184,7 @@ func TestCreateSubscription_RejectsActiveSubscription(t *testing.T) {
 
 	repo.EXPECT().GetSubscriptionExpiresAt(mock.Anything, userID).Return(&expires, nil)
 
-	_, err := svc.CreateSubscription(ctx, userID)
+	_, err := svc.CreateSubscription(ctx, userID, "")
 	require.Error(t, err)
 	assert.ErrorIs(t, err, apperr.ErrConflict)
 }
@@ -199,7 +199,7 @@ func TestCreateSubscription_AllowsExpiredSubscription(t *testing.T) {
 	repo.EXPECT().HasPendingPayment(mock.Anything, userID, models.PaymentTypeSubscription).Return(false, nil)
 
 	// Will fail at the HTTP call to YooKassa (no real server), but passes the subscription check.
-	_, err := svc.CreateSubscription(ctx, userID)
+	_, err := svc.CreateSubscription(ctx, userID, "")
 	require.Error(t, err)
 	assert.NotErrorIs(t, err, apperr.ErrConflict)
 }

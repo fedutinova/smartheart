@@ -89,6 +89,7 @@ type PaymentRepo interface {
 	CancelStalePayments(ctx context.Context, olderThan time.Duration) (int, error)
 	GetSubscriptionExpiresAt(ctx context.Context, userID uuid.UUID) (*time.Time, error)
 	GetPaymentsByUserID(ctx context.Context, userID uuid.UUID) ([]models.Payment, error)
+	ActivateSubscription(ctx context.Context, userID uuid.UUID) error
 }
 
 // AdminRepo provides admin dashboard data access.

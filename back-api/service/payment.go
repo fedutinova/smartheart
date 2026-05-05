@@ -23,8 +23,9 @@ import (
 
 // PaymentService handles payment creation and webhook processing.
 type PaymentService interface {
-	// CreateSubscription creates a YooKassa payment for a monthly subscription.
-	CreateSubscription(ctx context.Context, userID uuid.UUID) (*PaymentResult, error)
+	// CreateSubscription creates a payment for a monthly subscription.
+	// If promoCode is non-empty and gives 100% discount, the subscription is activated directly.
+	CreateSubscription(ctx context.Context, userID uuid.UUID, promoCode string) (*PaymentResult, error)
 	// HandleWebhook processes a YooKassa webhook notification after verifying the signature.
 	HandleWebhook(ctx context.Context, body []byte, signature string) error
 	// GetQuotaInfo returns the user's current quota status.
@@ -207,7 +208,7 @@ func (s *paymentService) createYooKassaPayment(ctx context.Context, payment *mod
 	}, nil
 }
 
-func (s *paymentService) CreateSubscription(ctx context.Context, userID uuid.UUID) (*PaymentResult, error) {
+func (s *paymentService) CreateSubscription(ctx context.Context, userID uuid.UUID, promoCode string) (*PaymentResult, error) {
 	// Reject if user already has an active subscription.
 	subExpires, err := s.repo.GetSubscriptionExpiresAt(ctx, userID)
 	if err != nil {
@@ -216,6 +217,40 @@ func (s *paymentService) CreateSubscription(ctx context.Context, userID uuid.UUI
 	if subExpires != nil && subExpires.After(time.Now()) {
 		return nil, fmt.Errorf("subscription is already active until %s: %w",
 			subExpires.Format("2006-01-02"), apperr.ErrConflict)
+	}
+
+	// Validate promo code if provided and handle 100% discount case.
+	if promoCode != "" {
+		discount, err := s.ValidatePromoCode(ctx, userID, promoCode)
+		if err != nil {
+			return nil, err
+		}
+		if !discount.IsValid {
+			return nil, fmt.Errorf("promo code is not valid: %s: %w", discount.Reason, apperr.ErrValidation)
+		}
+		if discount.DiscountPercent == 100 {
+			// No payment needed — activate subscription directly and record usage.
+			if err := s.repo.ActivateSubscription(ctx, userID); err != nil {
+				return nil, apperr.WrapInternal("activate subscription via promo", err)
+			}
+			promoInfo, _ := s.repo.GetPromoCodeByCode(ctx, promoCode)
+			if promoInfo != nil {
+				_ = s.repo.UpdatePromoCodeUsedCount(ctx, promoInfo.ID)
+				_ = s.repo.RecordPromoCodeUsage(ctx, &models.PromoCodeUsage{
+					ID:                   uuid.New(),
+					UserID:               userID,
+					PromoCodeID:          promoInfo.ID,
+					DiscountAmountKopeks: s.cfg.SubscriptionPriceKopecks,
+					UsedAt:               time.Now(),
+				})
+			}
+			slog.InfoContext(ctx, "Subscription activated via 100% promo code", "user_id", userID, "promo_code", promoCode)
+			return &PaymentResult{
+				PaymentID:       uuid.Nil,
+				ConfirmationURL: "",
+				AmountRub:       "0.00",
+			}, nil
+		}
 	}
 
 	// Reject if there is already a pending subscription payment to prevent

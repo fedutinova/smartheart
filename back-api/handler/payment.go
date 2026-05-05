@@ -40,7 +40,12 @@ func (h *PaymentHandler) Webhook(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// CreateSubscription creates a YooKassa payment for a monthly subscription.
+type createSubscriptionRequest struct {
+	PromoCode string `json:"promo_code"`
+}
+
+// CreateSubscription creates a payment for a monthly subscription.
+// If promo_code gives 100% discount, the subscription is activated directly.
 func (h *PaymentHandler) CreateSubscription(w http.ResponseWriter, r *http.Request) {
 	userID, _, ok := extractUserID(r)
 	if !ok {
@@ -48,7 +53,15 @@ func (h *PaymentHandler) CreateSubscription(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	result, err := h.Service.CreateSubscription(r.Context(), userID)
+	var req createSubscriptionRequest
+	if r.ContentLength > 0 {
+		if err := decodeJSON(r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid request body")
+			return
+		}
+	}
+
+	result, err := h.Service.CreateSubscription(r.Context(), userID, req.PromoCode)
 	if err != nil {
 		handleServiceError(w, err)
 		return

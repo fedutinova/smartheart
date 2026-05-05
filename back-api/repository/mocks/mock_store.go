@@ -26,6 +26,46 @@ func (_m *MockStore) EXPECT() *MockStore_Expecter {
 	return &MockStore_Expecter{mock: &_m.Mock}
 }
 
+// ActivateSubscription provides a mock function with given fields: ctx, userID
+func (_m *MockStore) ActivateSubscription(ctx context.Context, userID uuid.UUID) error {
+	_va := []interface{}{ctx, userID}
+	ret := _m.Called(_va...)
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockStore_ActivateSubscription_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ActivateSubscription'
+type MockStore_ActivateSubscription_Call struct {
+	*mock.Call
+}
+
+// ActivateSubscription is a helper method to define mock.On call
+func (_e *MockStore_Expecter) ActivateSubscription(ctx interface{}, userID interface{}) *MockStore_ActivateSubscription_Call {
+	return &MockStore_ActivateSubscription_Call{Call: _e.mock.On("ActivateSubscription", ctx, userID)}
+}
+
+func (_c *MockStore_ActivateSubscription_Call) Run(run func(ctx context.Context, userID uuid.UUID)) *MockStore_ActivateSubscription_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(uuid.UUID))
+	})
+	return _c
+}
+
+func (_c *MockStore_ActivateSubscription_Call) Return(_a0 error) *MockStore_ActivateSubscription_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockStore_ActivateSubscription_Call) RunAndReturn(run func(context.Context, uuid.UUID) error) *MockStore_ActivateSubscription_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // AssignRoleToUser provides a mock function with given fields: ctx, userID, roleName
 func (_m *MockStore) AssignRoleToUser(ctx context.Context, userID uuid.UUID, roleName string) error {
 	ret := _m.Called(ctx, userID, roleName)

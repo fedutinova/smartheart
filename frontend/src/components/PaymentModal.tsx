@@ -43,8 +43,13 @@ export function PaymentModal({ quota, onClose }: PaymentModalProps) {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await paymentAPI.createSubscription();
-      window.location.href = result.confirmation_url;
+      const result = await paymentAPI.createSubscription(promoDiscount === 100 ? promoCode : undefined);
+      if (result.confirmation_url) {
+        window.location.href = result.confirmation_url;
+      } else {
+        // 100% promo — subscription activated directly, reload quota
+        window.location.reload();
+      }
     } catch (err: unknown) {
       setError(getApiError(err).message || 'Ошибка при создании платежа');
       setIsLoading(false);

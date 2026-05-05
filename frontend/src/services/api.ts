@@ -304,8 +304,8 @@ export const paymentAPI = {
     const response = await api.get<QuotaInfo>('/v1/quota');
     return response.data;
   },
-  createSubscription: async () => {
-    const response = await api.post<PaymentResult>('/v1/subscriptions');
+  createSubscription: async (promoCode?: string) => {
+    const response = await api.post<PaymentResult>('/v1/subscriptions', promoCode ? { promo_code: promoCode } : {});
     return response.data;
   },
   validatePromoCode: async (code: string) => {

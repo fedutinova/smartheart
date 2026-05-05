@@ -23,9 +23,9 @@ func (_m *MockPaymentService) EXPECT() *MockPaymentService_Expecter {
 	return &MockPaymentService_Expecter{mock: &_m.Mock}
 }
 
-// CreateSubscription provides a mock function with given fields: ctx, userID
-func (_m *MockPaymentService) CreateSubscription(ctx context.Context, userID uuid.UUID) (*service.PaymentResult, error) {
-	ret := _m.Called(ctx, userID)
+// CreateSubscription provides a mock function with given fields: ctx, userID, promoCode
+func (_m *MockPaymentService) CreateSubscription(ctx context.Context, userID uuid.UUID, promoCode string) (*service.PaymentResult, error) {
+	ret := _m.Called(ctx, userID, promoCode)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreateSubscription")
@@ -33,19 +33,19 @@ func (_m *MockPaymentService) CreateSubscription(ctx context.Context, userID uui
 
 	var r0 *service.PaymentResult
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (*service.PaymentResult, error)); ok {
-		return rf(ctx, userID)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) (*service.PaymentResult, error)); ok {
+		return rf(ctx, userID, promoCode)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) *service.PaymentResult); ok {
-		r0 = rf(ctx, userID)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) *service.PaymentResult); ok {
+		r0 = rf(ctx, userID, promoCode)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*service.PaymentResult)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
-		r1 = rf(ctx, userID)
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, string) error); ok {
+		r1 = rf(ctx, userID, promoCode)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -61,13 +61,14 @@ type MockPaymentService_CreateSubscription_Call struct {
 // CreateSubscription is a helper method to define mock.On call
 //   - ctx context.Context
 //   - userID uuid.UUID
-func (_e *MockPaymentService_Expecter) CreateSubscription(ctx interface{}, userID interface{}) *MockPaymentService_CreateSubscription_Call {
-	return &MockPaymentService_CreateSubscription_Call{Call: _e.mock.On("CreateSubscription", ctx, userID)}
+//   - promoCode string
+func (_e *MockPaymentService_Expecter) CreateSubscription(ctx interface{}, userID interface{}, promoCode interface{}) *MockPaymentService_CreateSubscription_Call {
+	return &MockPaymentService_CreateSubscription_Call{Call: _e.mock.On("CreateSubscription", ctx, userID, promoCode)}
 }
 
-func (_c *MockPaymentService_CreateSubscription_Call) Run(run func(ctx context.Context, userID uuid.UUID)) *MockPaymentService_CreateSubscription_Call {
+func (_c *MockPaymentService_CreateSubscription_Call) Run(run func(ctx context.Context, userID uuid.UUID, promoCode string)) *MockPaymentService_CreateSubscription_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(uuid.UUID))
+		run(args[0].(context.Context), args[1].(uuid.UUID), args[2].(string))
 	})
 	return _c
 }
@@ -77,7 +78,7 @@ func (_c *MockPaymentService_CreateSubscription_Call) Return(_a0 *service.Paymen
 	return _c
 }
 
-func (_c *MockPaymentService_CreateSubscription_Call) RunAndReturn(run func(context.Context, uuid.UUID) (*service.PaymentResult, error)) *MockPaymentService_CreateSubscription_Call {
+func (_c *MockPaymentService_CreateSubscription_Call) RunAndReturn(run func(context.Context, uuid.UUID, string) (*service.PaymentResult, error)) *MockPaymentService_CreateSubscription_Call {
 	_c.Call.Return(run)
 	return _c
 }
