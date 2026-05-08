@@ -1,0 +1,502 @@
+[
+  {
+    "iter": 0,
+    "run": "measure",
+    "question_id": 0,
+    "question": "Как определить гипертрофию левого желудочка по электрокардиограмме?",
+    "group": "lvh",
+    "duration_ms": 591.13,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 1,
+    "run": "measure",
+    "question_id": 1,
+    "question": "По каким ЭКГ-признакам понять, что есть ГЛЖ?",
+    "group": "lvh",
+    "duration_ms": 6264.06,
+    "cache_hit": false,
+    "status": 200
+  },
+  {
+    "iter": 2,
+    "run": "measure",
+    "question_id": 2,
+    "question": "Как выглядит инфаркт с подъёмом ST на электрокардиограмме?",
+    "group": "infarct",
+    "duration_ms": 430.01,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 3,
+    "run": "measure",
+    "question_id": 3,
+    "question": "Какие признаки STEMI видны на кардиограмме?",
+    "group": "infarct",
+    "duration_ms": 5870.64,
+    "cache_hit": false,
+    "status": 200
+  },
+  {
+    "iter": 4,
+    "run": "measure",
+    "question_id": 4,
+    "question": "ЭКГ-признаки мерцательной аритмии",
+    "group": "afib",
+    "duration_ms": 5774.39,
+    "cache_hit": false,
+    "status": 200
+  },
+  {
+    "iter": 5,
+    "run": "measure",
+    "question_id": 5,
+    "question": "Как понять по ЭКГ, что у пациента фибрилляция предсердий?",
+    "group": "afib",
+    "duration_ms": 439.09,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 6,
+    "run": "measure",
+    "question_id": 6,
+    "question": "Различия между атриовентрикулярной блокадой первой и второй степени",
+    "group": "avblock",
+    "duration_ms": 708.83,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 7,
+    "run": "measure",
+    "question_id": 7,
+    "question": "Как на ЭКГ отличить АВ-блокаду 1 степени от 2 степени?",
+    "group": "avblock",
+    "duration_ms": 692.74,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 8,
+    "run": "measure",
+    "question_id": 8,
+    "question": "Какой интервал QT считается удлинённым?",
+    "group": "qt",
+    "duration_ms": 591.34,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 9,
+    "run": "measure",
+    "question_id": 9,
+    "question": "Нормальные значения QT на кардиограмме у взрослых",
+    "group": "qt",
+    "duration_ms": 593.6,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 10,
+    "run": "measure",
+    "question_id": 10,
+    "question": "Определение электрической оси сердца на электрокардиограмме",
+    "group": "axis",
+    "duration_ms": 700.74,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 11,
+    "run": "measure",
+    "question_id": 11,
+    "question": "Как быстро посчитать ЭОС по стандартным отведениям?",
+    "group": "axis",
+    "duration_ms": 6260.58,
+    "cache_hit": false,
+    "status": 200
+  },
+  {
+    "iter": 12,
+    "run": "measure",
+    "question_id": 12,
+    "question": "ЭКГ-признаки синдрома Вольфа-Паркинсона-Уайта",
+    "group": "wpw",
+    "duration_ms": 949.13,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 13,
+    "run": "measure",
+    "question_id": 13,
+    "question": "Что такое дельта-волна и как она связана с WPW?",
+    "group": "wpw",
+    "duration_ms": 5681.39,
+    "cache_hit": false,
+    "status": 200
+  },
+  {
+    "iter": 14,
+    "run": "measure",
+    "question_id": 14,
+    "question": "ЭКГ-критерии гипертрофии правого желудочка",
+    "group": "rvh",
+    "duration_ms": 793.98,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 15,
+    "run": "measure",
+    "question_id": 15,
+    "question": "Как определить ГПЖ по электрокардиограмме?",
+    "group": "rvh",
+    "duration_ms": 722.68,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 16,
+    "run": "measure",
+    "question_id": 16,
+    "question": "Признаки перикардита на электрокардиограмме",
+    "group": "pericarditis",
+    "duration_ms": 6602.63,
+    "cache_hit": false,
+    "status": 200
+  },
+  {
+    "iter": 17,
+    "run": "measure",
+    "question_id": 17,
+    "question": "Как отличить перикардит от инфаркта по подъёму ST?",
+    "group": "pericarditis",
+    "duration_ms": 476.13,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 18,
+    "run": "measure",
+    "question_id": 18,
+    "question": "ЭКГ-признаки блокады ЛНПГ",
+    "group": "lbbb",
+    "duration_ms": 709.99,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 19,
+    "run": "measure",
+    "question_id": 19,
+    "question": "Какие критерии полной блокады левой ножки пучка Гиса?",
+    "group": "lbbb",
+    "duration_ms": 783.82,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 20,
+    "run": "measure",
+    "question_id": 20,
+    "question": "Инверсия зубца T на ЭКГ — причины",
+    "group": "twave",
+    "duration_ms": 5991.92,
+    "cache_hit": false,
+    "status": 200
+  },
+  {
+    "iter": 21,
+    "run": "measure",
+    "question_id": 21,
+    "question": "Что значит отрицательный T в V1-V4?",
+    "group": "twave",
+    "duration_ms": 5489.45,
+    "cache_hit": false,
+    "status": 200
+  },
+  {
+    "iter": 22,
+    "run": "measure",
+    "question_id": 22,
+    "question": "ЭКГ-признаки повышенного калия в крови",
+    "group": "hyperkalemia",
+    "duration_ms": 919.4,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 23,
+    "run": "measure",
+    "question_id": 23,
+    "question": "Как выглядит гиперкалиемия на электрокардиограмме?",
+    "group": "hyperkalemia",
+    "duration_ms": 797.06,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 24,
+    "run": "measure",
+    "question_id": 24,
+    "question": "Тромбоэмболия лёгочной артерии — признаки на ЭКГ",
+    "group": "tela",
+    "duration_ms": 6037.87,
+    "cache_hit": false,
+    "status": 200
+  },
+  {
+    "iter": 25,
+    "run": "measure",
+    "question_id": 25,
+    "question": "Как заподозрить ТЭЛА по кардиограмме?",
+    "group": "tela",
+    "duration_ms": 665.91,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 26,
+    "run": "measure",
+    "question_id": 26,
+    "question": "Норма частоты сердечных сокращений у взрослых",
+    "group": "hr",
+    "duration_ms": 5237.48,
+    "cache_hit": false,
+    "status": 200
+  },
+  {
+    "iter": 27,
+    "run": "measure",
+    "question_id": 27,
+    "question": "Какой пульс считается нормальным для взрослого?",
+    "group": "hr",
+    "duration_ms": 763.33,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 28,
+    "run": "measure",
+    "question_id": 28,
+    "question": "Признаки синусового ритма на электрокардиограмме",
+    "group": "rhythm",
+    "duration_ms": 791.16,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 29,
+    "run": "measure",
+    "question_id": 29,
+    "question": "По каким признакам ЭКГ можно определить водитель ритма?",
+    "group": "rhythm",
+    "duration_ms": 885.27,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 30,
+    "run": "measure",
+    "question_id": 30,
+    "question": "Индекс Соколова-Лайона — как рассчитать?",
+    "group": "sokolow",
+    "duration_ms": 6340.91,
+    "cache_hit": false,
+    "status": 200
+  },
+  {
+    "iter": 31,
+    "run": "measure",
+    "question_id": 31,
+    "question": "Пороговые значения Соколова-Лайона для диагностики ГЛЖ",
+    "group": "sokolow",
+    "duration_ms": 972.92,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 32,
+    "run": "measure",
+    "question_id": 32,
+    "question": "Синусовая брадикардия и атриовентрикулярная блокада — различия",
+    "group": "bradycardia",
+    "duration_ms": 6651.76,
+    "cache_hit": false,
+    "status": 200
+  },
+  {
+    "iter": 33,
+    "run": "measure",
+    "question_id": 33,
+    "question": "Как отличить брадикардию от нарушения АВ-проводимости?",
+    "group": "bradycardia",
+    "duration_ms": 6667.04,
+    "cache_hit": false,
+    "status": 200
+  },
+  {
+    "iter": 34,
+    "run": "measure",
+    "question_id": 34,
+    "question": "Дифференциальная диагностика НЖТ и ЖТ по электрокардиограмме",
+    "group": "svt_vt",
+    "duration_ms": 571.56,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 35,
+    "run": "measure",
+    "question_id": 35,
+    "question": "Как морфология QRS помогает разграничить НЖТ с аберрацией и ЖТ?",
+    "group": "svt_vt",
+    "duration_ms": 11488.37,
+    "cache_hit": false,
+    "status": 200
+  },
+  {
+    "iter": 36,
+    "run": "measure",
+    "question_id": 36,
+    "question": "Синдром ранней реполяризации желудочков — ЭКГ и прогноз",
+    "group": "repol",
+    "duration_ms": 1301.26,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 37,
+    "run": "measure",
+    "question_id": 37,
+    "question": "СРРЖ на ЭКГ — нужно ли лечить?",
+    "group": "repol",
+    "duration_ms": 5742.86,
+    "cache_hit": false,
+    "status": 200
+  },
+  {
+    "iter": 38,
+    "run": "measure",
+    "question_id": 38,
+    "question": "Нормальная ширина QRS на электрокардиограмме",
+    "group": "qrs",
+    "duration_ms": 564.24,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 39,
+    "run": "measure",
+    "question_id": 39,
+    "question": "Расширение QRS — при каких состояниях возникает?",
+    "group": "qrs",
+    "duration_ms": 7296.17,
+    "cache_hit": false,
+    "status": 200
+  },
+  {
+    "iter": 40,
+    "run": "measure",
+    "question_id": 40,
+    "question": "Как миокардит может проявляться на ЭКГ?",
+    "group": "myocarditis",
+    "duration_ms": 694.05,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 41,
+    "run": "measure",
+    "question_id": 41,
+    "question": "Какие признаки низкого калия видны на кардиограмме?",
+    "group": "hypokalemia",
+    "duration_ms": 5233.91,
+    "cache_hit": false,
+    "status": 200
+  },
+  {
+    "iter": 42,
+    "run": "measure",
+    "question_id": 42,
+    "question": "ЭКГ-паттерн Бругада — как его распознать?",
+    "group": "brugada",
+    "duration_ms": 863.53,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 43,
+    "run": "measure",
+    "question_id": 43,
+    "question": "Как посчитать QTc по формуле Базетта?",
+    "group": "qt_calc",
+    "duration_ms": 898.69,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 44,
+    "run": "measure",
+    "question_id": 44,
+    "question": "Какие изменения на ЭКГ требуют срочного обращения к врачу?",
+    "group": "urgent",
+    "duration_ms": 902.98,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 45,
+    "run": "measure",
+    "question_id": 45,
+    "question": "Подскажите простыми словами, как на ЭКГ увидеть увеличение левого желудочка",
+    "group": "lvh",
+    "duration_ms": 981.59,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 46,
+    "run": "measure",
+    "question_id": 46,
+    "question": "Мерцательная аритмия на пленке — какие признаки искать?",
+    "group": "afib",
+    "duration_ms": 1002.41,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 47,
+    "run": "measure",
+    "question_id": 47,
+    "question": "QT длинный или нормальный — по каким цифрам смотреть?",
+    "group": "qt",
+    "duration_ms": 808.48,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 48,
+    "run": "measure",
+    "question_id": 48,
+    "question": "Как понять, синусовый ли ритм, если я смотрю обычную ЭКГ?",
+    "group": "rhythm",
+    "duration_ms": 889.66,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 49,
+    "run": "measure",
+    "question_id": 49,
+    "question": "Сколько миллисекунд должен быть QRS в норме?",
+    "group": "qrs",
+    "duration_ms": 787.05,
+    "cache_hit": true,
+    "status": 200
+  }
+]

@@ -1,0 +1,252 @@
+[
+  {
+    "iter": 0,
+    "run": "negative",
+    "question_id": 0,
+    "question": "Какие критерии гипертрофии правого желудочка на ЭКГ?",
+    "group": "lvh_negative",
+    "duration_ms": 546.06,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 1,
+    "run": "negative",
+    "question_id": 1,
+    "question": "Чем дилатация левого желудочка отличается от гипертрофии левого желудочка?",
+    "group": "lvh_negative",
+    "duration_ms": 703.53,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 2,
+    "run": "negative",
+    "question_id": 2,
+    "question": "Каковы ЭКГ-признаки инфаркта миокарда без подъёма сегмента ST?",
+    "group": "infarct_negative",
+    "duration_ms": 797.61,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 3,
+    "run": "negative",
+    "question_id": 3,
+    "question": "Как отличить раннюю реполяризацию от инфаркта с подъёмом ST?",
+    "group": "infarct_negative",
+    "duration_ms": 794.49,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 4,
+    "run": "negative",
+    "question_id": 4,
+    "question": "Какие признаки трепетания предсердий видны на ЭКГ?",
+    "group": "afib_negative",
+    "duration_ms": 808.29,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 5,
+    "run": "negative",
+    "question_id": 5,
+    "question": "Чем фибрилляция предсердий отличается от частой экстрасистолии?",
+    "group": "afib_negative",
+    "duration_ms": 998.46,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 6,
+    "run": "negative",
+    "question_id": 6,
+    "question": "Чем отличается АВ-блокада II степени от полной АВ-блокады?",
+    "group": "avblock_negative",
+    "duration_ms": 791.2,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 7,
+    "run": "negative",
+    "question_id": 7,
+    "question": "Как отличить синоатриальную блокаду от АВ-блокады?",
+    "group": "avblock_negative",
+    "duration_ms": 983.8,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 8,
+    "run": "negative",
+    "question_id": 8,
+    "question": "Что означает укорочение интервала QT и какие нормы?",
+    "group": "qt_negative",
+    "duration_ms": 797.04,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 9,
+    "run": "negative",
+    "question_id": 9,
+    "question": "Какие лекарства укорачивают интервал QT?",
+    "group": "qt_negative",
+    "duration_ms": 713.39,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 10,
+    "run": "negative",
+    "question_id": 10,
+    "question": "Как рассчитать частоту сердечных сокращений по ЭКГ?",
+    "group": "axis_negative",
+    "duration_ms": 794.17,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 11,
+    "run": "negative",
+    "question_id": 11,
+    "question": "Что означает резкое отклонение электрической оси вправо?",
+    "group": "axis_negative",
+    "duration_ms": 7310.69,
+    "cache_hit": false,
+    "status": 200
+  },
+  {
+    "iter": 12,
+    "run": "negative",
+    "question_id": 12,
+    "question": "Что такое синдром Бругада и как он проявляется на ЭКГ?",
+    "group": "wpw_negative",
+    "duration_ms": 784.54,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 13,
+    "run": "negative",
+    "question_id": 13,
+    "question": "Как отличить WPW от блокады ножки пучка Гиса?",
+    "group": "wpw_negative",
+    "duration_ms": 813.74,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 14,
+    "run": "negative",
+    "question_id": 14,
+    "question": "Какие признаки гипертрофии левого желудочка на ЭКГ?",
+    "group": "rvh_negative",
+    "duration_ms": 779.65,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 15,
+    "run": "negative",
+    "question_id": 15,
+    "question": "Какие ЭКГ-изменения характерны для миокардита?",
+    "group": "pericarditis_negative",
+    "duration_ms": 791.91,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 16,
+    "run": "negative",
+    "question_id": 16,
+    "question": "Как выглядит блокада правой ножки пучка Гиса на ЭКГ?",
+    "group": "lbbb_negative",
+    "duration_ms": 1003.22,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 17,
+    "run": "negative",
+    "question_id": 17,
+    "question": "Как интерпретировать высокие заострённые зубцы T?",
+    "group": "twave_negative",
+    "duration_ms": 709.89,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 18,
+    "run": "negative",
+    "question_id": 18,
+    "question": "Какие ЭКГ-изменения характерны для гипокалиемии?",
+    "group": "hyperkalemia_negative",
+    "duration_ms": 489.5,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 19,
+    "run": "negative",
+    "question_id": 19,
+    "question": "Какие ЭКГ-признаки характерны для острого лёгочного сердца?",
+    "group": "tela_negative",
+    "duration_ms": 692.29,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 20,
+    "run": "negative",
+    "question_id": 20,
+    "question": "При каком значении ЧСС ставится диагноз брадикардии?",
+    "group": "hr_negative",
+    "duration_ms": 5774.2,
+    "cache_hit": false,
+    "status": 200
+  },
+  {
+    "iter": 21,
+    "run": "negative",
+    "question_id": 21,
+    "question": "Как определить несинусовый ритм по ЭКГ?",
+    "group": "rhythm_negative",
+    "duration_ms": 424.33,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 22,
+    "run": "negative",
+    "question_id": 22,
+    "question": "Какие критерии Корнелла используются для диагностики ГЛЖ?",
+    "group": "sokolow_negative",
+    "duration_ms": 414.16,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 23,
+    "run": "negative",
+    "question_id": 23,
+    "question": "Чем синусовая тахикардия отличается от наджелудочковой тахикардии?",
+    "group": "bradycardia_negative",
+    "duration_ms": 509.96,
+    "cache_hit": true,
+    "status": 200
+  },
+  {
+    "iter": 24,
+    "run": "negative",
+    "question_id": 24,
+    "question": "Как отличить фибрилляцию желудочков от желудочковой тахикардии?",
+    "group": "svt_vt_negative",
+    "duration_ms": 767.19,
+    "cache_hit": true,
+    "status": 200
+  }
+]

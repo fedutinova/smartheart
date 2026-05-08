@@ -57,6 +57,16 @@ class QueryRequest(BaseModel):
     n_results: int = Field(default=5, ge=1, le=20)
 
 
+class EmbedRequest(BaseModel):
+    text: str = Field(..., min_length=2, max_length=2000)
+
+
+class EmbedResponse(BaseModel):
+    embedding: list[float]
+    model: str
+    dimensions: int
+
+
 class Source(BaseModel):
     doc_name: str
     chunk_index: int
@@ -280,6 +290,28 @@ def ready():
     if not _ready.is_set():
         raise HTTPException(status_code=503, detail="warming up")
     return {"status": "ready"}
+
+
+@app.post("/embed", response_model=EmbedResponse)
+def embed(req: EmbedRequest):
+    """Return a normalized query embedding using the same model as RAG search."""
+    QUERY_TOTAL.labels(endpoint="embed").inc()
+    start = time.monotonic()
+    try:
+        engine = _get_engine()
+        embedding = engine._embed_query(req.text)  # noqa: SLF001 - shared cache helper.
+        from rag_pipeline.config import EMBED_MODEL_NAME
+    except RuntimeError as exc:
+        QUERY_ERRORS.labels(endpoint="embed", error_type="engine_error").inc()
+        raise HTTPException(status_code=503, detail=str(exc)) from None
+    finally:
+        QUERY_LATENCY.labels(endpoint="embed").observe(time.monotonic() - start)
+
+    return EmbedResponse(
+        embedding=embedding,
+        model=EMBED_MODEL_NAME,
+        dimensions=len(embedding),
+    )
 
 
 def _build_sources(items: list[dict], limit: int = 6) -> list[Source]:

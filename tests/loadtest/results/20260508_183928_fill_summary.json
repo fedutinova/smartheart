@@ -1,0 +1,13 @@
+{\n  \"run_name\": \"fill\",\n  \"run_date\": \"2026-05-08\",\n  \"dataset_path\": \"./data/questions_h3_fill.json\",\n  \"question_set_size\": 25,\n  \"n_total\": 25,\n  \"n_cache_hits\": 1,\n  \"n_rag_calls\": 24,\n  \"cache_hit_rate\": 0.04,\n  \"kb_duration_p95\": 10419.080246799998,\n  \"kb_duration_avg\": 7203.355685640002\n}" source=console
+{
+  "run_name": "fill",
+  "run_date": "2026-05-08",
+  "dataset_path": "./data/questions_h3_fill.json",
+  "question_set_size": 25,
+  "n_total": 25,
+  "n_cache_hits": 1,
+  "n_rag_calls": 24,
+  "cache_hit_rate": 0.04,
+  "kb_duration_p95": 10419.080246799998,
+  "kb_duration_avg": 7203.355685640002
+}

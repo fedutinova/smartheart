@@ -9,13 +9,19 @@ import (
 
 // Response represents an AI response to a request.
 type Response struct {
-	ID               uuid.UUID `json:"id"`
-	RequestID        uuid.UUID `json:"request_id"`
-	Content          string    `json:"content"`
-	Model            string    `json:"model,omitempty"`
-	TokensUsed       int       `json:"tokens_used,omitempty"`
-	ProcessingTimeMs int       `json:"processing_time_ms,omitempty"`
-	CreatedAt        time.Time `json:"created_at"`
+	ID                      uuid.UUID  `json:"id"`
+	RequestID               uuid.UUID  `json:"request_id"`
+	Content                 string     `json:"content"`
+	Model                   string     `json:"model,omitempty"`
+	TokensUsed              int        `json:"tokens_used,omitempty"`
+	ProcessingTimeMs        int        `json:"processing_time_ms,omitempty"`
+	CacheStatus             string     `json:"cache_status,omitempty"`
+	CacheEntryID            *uuid.UUID `json:"cache_entry_id,omitempty"`
+	CacheTrigramSimilarity  *float64   `json:"cache_trigram_similarity,omitempty"`
+	CacheVectorSimilarity   *float64   `json:"cache_vector_similarity,omitempty"`
+	CacheCombinedSimilarity *float64   `json:"cache_combined_similarity,omitempty"`
+	CacheMatchMethod        string     `json:"cache_match_method,omitempty"`
+	CreatedAt               time.Time  `json:"created_at"`
 }
 
 // ResponseParsed is a Response with content parsed into a structured field.

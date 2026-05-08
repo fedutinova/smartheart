@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 
@@ -11,6 +12,13 @@ import (
 	"github.com/fedutinova/smartheart/back-api/models"
 )
 
+func nullString(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
+}
+
 // CreateResponse creates a new response record.
 func (r *Repository) CreateResponse(ctx context.Context, resp *models.Response) error {
 	if resp.ID == uuid.Nil {
@@ -18,8 +26,13 @@ func (r *Repository) CreateResponse(ctx context.Context, resp *models.Response) 
 	}
 
 	query := `
-		INSERT INTO responses (id, request_id, content, model, tokens_used, processing_time_ms, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, NOW())
+		INSERT INTO responses (
+			id, request_id, content, model, tokens_used, processing_time_ms,
+			cache_status, cache_entry_id, cache_trigram_similarity,
+			cache_vector_similarity, cache_combined_similarity, cache_match_method,
+			created_at
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
 	`
 
 	_, err := r.querier.Exec(ctx, query,
@@ -29,6 +42,12 @@ func (r *Repository) CreateResponse(ctx context.Context, resp *models.Response) 
 		resp.Model,
 		resp.TokensUsed,
 		resp.ProcessingTimeMs,
+		nullString(resp.CacheStatus),
+		resp.CacheEntryID,
+		resp.CacheTrigramSimilarity,
+		resp.CacheVectorSimilarity,
+		resp.CacheCombinedSimilarity,
+		nullString(resp.CacheMatchMethod),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create response: %w", err)
@@ -39,7 +58,10 @@ func (r *Repository) CreateResponse(ctx context.Context, resp *models.Response) 
 // GetResponseByRequestID retrieves the latest response for a request.
 func (r *Repository) GetResponseByRequestID(ctx context.Context, requestID uuid.UUID) (*models.Response, error) {
 	query := `
-		SELECT id, request_id, content, model, tokens_used, processing_time_ms, created_at
+		SELECT id, request_id, content, model, tokens_used, processing_time_ms,
+		       cache_status, cache_entry_id, cache_trigram_similarity,
+		       cache_vector_similarity, cache_combined_similarity, cache_match_method,
+		       created_at
 		FROM responses
 		WHERE request_id = $1
 		ORDER BY created_at DESC
@@ -47,6 +69,8 @@ func (r *Repository) GetResponseByRequestID(ctx context.Context, requestID uuid.
 	`
 
 	var resp models.Response
+	var cacheStatus sql.NullString
+	var cacheMatchMethod sql.NullString
 	err := r.querier.QueryRow(ctx, query, requestID).Scan(
 		&resp.ID,
 		&resp.RequestID,
@@ -54,6 +78,12 @@ func (r *Repository) GetResponseByRequestID(ctx context.Context, requestID uuid.
 		&resp.Model,
 		&resp.TokensUsed,
 		&resp.ProcessingTimeMs,
+		&cacheStatus,
+		&resp.CacheEntryID,
+		&resp.CacheTrigramSimilarity,
+		&resp.CacheVectorSimilarity,
+		&resp.CacheCombinedSimilarity,
+		&cacheMatchMethod,
 		&resp.CreatedAt,
 	)
 	if err != nil {
@@ -61,6 +91,12 @@ func (r *Repository) GetResponseByRequestID(ctx context.Context, requestID uuid.
 			return nil, nil //nolint:nilnil // no response yet is a valid state, not an error
 		}
 		return nil, fmt.Errorf("failed to get response: %w", err)
+	}
+	if cacheStatus.Valid {
+		resp.CacheStatus = cacheStatus.String
+	}
+	if cacheMatchMethod.Valid {
+		resp.CacheMatchMethod = cacheMatchMethod.String
 	}
 
 	return &resp, nil

@@ -22,9 +22,9 @@ func (_m *MockKBCacheRepo) EXPECT() *MockKBCacheRepo_Expecter {
 	return &MockKBCacheRepo_Expecter{mock: &_m.Mock}
 }
 
-// FindCachedAnswer provides a mock function with given fields: ctx, question, threshold
-func (_m *MockKBCacheRepo) FindCachedAnswer(ctx context.Context, question string, threshold float64) (*models.KBCacheEntry, error) {
-	ret := _m.Called(ctx, question, threshold)
+// FindCachedAnswer provides a mock function with given fields: ctx, question, embedding, trigramThreshold, vectorThreshold
+func (_m *MockKBCacheRepo) FindCachedAnswer(ctx context.Context, question string, embedding []float64, trigramThreshold float64, vectorThreshold float64) (*models.KBCacheEntry, error) {
+	ret := _m.Called(ctx, question, embedding, trigramThreshold, vectorThreshold)
 
 	if len(ret) == 0 {
 		panic("no return value specified for FindCachedAnswer")
@@ -32,19 +32,19 @@ func (_m *MockKBCacheRepo) FindCachedAnswer(ctx context.Context, question string
 
 	var r0 *models.KBCacheEntry
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, float64) (*models.KBCacheEntry, error)); ok {
-		return rf(ctx, question, threshold)
+	if rf, ok := ret.Get(0).(func(context.Context, string, []float64, float64, float64) (*models.KBCacheEntry, error)); ok {
+		return rf(ctx, question, embedding, trigramThreshold, vectorThreshold)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, float64) *models.KBCacheEntry); ok {
-		r0 = rf(ctx, question, threshold)
+	if rf, ok := ret.Get(0).(func(context.Context, string, []float64, float64, float64) *models.KBCacheEntry); ok {
+		r0 = rf(ctx, question, embedding, trigramThreshold, vectorThreshold)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*models.KBCacheEntry)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, float64) error); ok {
-		r1 = rf(ctx, question, threshold)
+	if rf, ok := ret.Get(1).(func(context.Context, string, []float64, float64, float64) error); ok {
+		r1 = rf(ctx, question, embedding, trigramThreshold, vectorThreshold)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -60,14 +60,16 @@ type MockKBCacheRepo_FindCachedAnswer_Call struct {
 // FindCachedAnswer is a helper method to define mock.On call
 //   - ctx context.Context
 //   - question string
-//   - threshold float64
-func (_e *MockKBCacheRepo_Expecter) FindCachedAnswer(ctx interface{}, question interface{}, threshold interface{}) *MockKBCacheRepo_FindCachedAnswer_Call {
-	return &MockKBCacheRepo_FindCachedAnswer_Call{Call: _e.mock.On("FindCachedAnswer", ctx, question, threshold)}
+//   - embedding []float64
+//   - trigramThreshold float64
+//   - vectorThreshold float64
+func (_e *MockKBCacheRepo_Expecter) FindCachedAnswer(ctx interface{}, question interface{}, embedding interface{}, trigramThreshold interface{}, vectorThreshold interface{}) *MockKBCacheRepo_FindCachedAnswer_Call {
+	return &MockKBCacheRepo_FindCachedAnswer_Call{Call: _e.mock.On("FindCachedAnswer", ctx, question, embedding, trigramThreshold, vectorThreshold)}
 }
 
-func (_c *MockKBCacheRepo_FindCachedAnswer_Call) Run(run func(ctx context.Context, question string, threshold float64)) *MockKBCacheRepo_FindCachedAnswer_Call {
+func (_c *MockKBCacheRepo_FindCachedAnswer_Call) Run(run func(ctx context.Context, question string, embedding []float64, trigramThreshold float64, vectorThreshold float64)) *MockKBCacheRepo_FindCachedAnswer_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(float64))
+		run(args[0].(context.Context), args[1].(string), args[2].([]float64), args[3].(float64), args[4].(float64))
 	})
 	return _c
 }
@@ -77,22 +79,22 @@ func (_c *MockKBCacheRepo_FindCachedAnswer_Call) Return(_a0 *models.KBCacheEntry
 	return _c
 }
 
-func (_c *MockKBCacheRepo_FindCachedAnswer_Call) RunAndReturn(run func(context.Context, string, float64) (*models.KBCacheEntry, error)) *MockKBCacheRepo_FindCachedAnswer_Call {
+func (_c *MockKBCacheRepo_FindCachedAnswer_Call) RunAndReturn(run func(context.Context, string, []float64, float64, float64) (*models.KBCacheEntry, error)) *MockKBCacheRepo_FindCachedAnswer_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// SaveCacheEntry provides a mock function with given fields: ctx, question, answer, sourceMeta
-func (_m *MockKBCacheRepo) SaveCacheEntry(ctx context.Context, question string, answer string, sourceMeta string) error {
-	ret := _m.Called(ctx, question, answer, sourceMeta)
+// SaveCacheEntry provides a mock function with given fields: ctx, question, embedding, answer, sourceMeta
+func (_m *MockKBCacheRepo) SaveCacheEntry(ctx context.Context, question string, embedding []float64, answer string, sourceMeta string) error {
+	ret := _m.Called(ctx, question, embedding, answer, sourceMeta)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SaveCacheEntry")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) error); ok {
-		r0 = rf(ctx, question, answer, sourceMeta)
+	if rf, ok := ret.Get(0).(func(context.Context, string, []float64, string, string) error); ok {
+		r0 = rf(ctx, question, embedding, answer, sourceMeta)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -108,15 +110,16 @@ type MockKBCacheRepo_SaveCacheEntry_Call struct {
 // SaveCacheEntry is a helper method to define mock.On call
 //   - ctx context.Context
 //   - question string
+//   - embedding []float64
 //   - answer string
 //   - sourceMeta string
-func (_e *MockKBCacheRepo_Expecter) SaveCacheEntry(ctx interface{}, question interface{}, answer interface{}, sourceMeta interface{}) *MockKBCacheRepo_SaveCacheEntry_Call {
-	return &MockKBCacheRepo_SaveCacheEntry_Call{Call: _e.mock.On("SaveCacheEntry", ctx, question, answer, sourceMeta)}
+func (_e *MockKBCacheRepo_Expecter) SaveCacheEntry(ctx interface{}, question interface{}, embedding interface{}, answer interface{}, sourceMeta interface{}) *MockKBCacheRepo_SaveCacheEntry_Call {
+	return &MockKBCacheRepo_SaveCacheEntry_Call{Call: _e.mock.On("SaveCacheEntry", ctx, question, embedding, answer, sourceMeta)}
 }
 
-func (_c *MockKBCacheRepo_SaveCacheEntry_Call) Run(run func(ctx context.Context, question string, answer string, sourceMeta string)) *MockKBCacheRepo_SaveCacheEntry_Call {
+func (_c *MockKBCacheRepo_SaveCacheEntry_Call) Run(run func(ctx context.Context, question string, embedding []float64, answer string, sourceMeta string)) *MockKBCacheRepo_SaveCacheEntry_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].([]float64), args[3].(string), args[4].(string))
 	})
 	return _c
 }
@@ -126,7 +129,7 @@ func (_c *MockKBCacheRepo_SaveCacheEntry_Call) Return(_a0 error) *MockKBCacheRep
 	return _c
 }
 
-func (_c *MockKBCacheRepo_SaveCacheEntry_Call) RunAndReturn(run func(context.Context, string, string, string) error) *MockKBCacheRepo_SaveCacheEntry_Call {
+func (_c *MockKBCacheRepo_SaveCacheEntry_Call) RunAndReturn(run func(context.Context, string, []float64, string, string) error) *MockKBCacheRepo_SaveCacheEntry_Call {
 	_c.Call.Return(run)
 	return _c
 }

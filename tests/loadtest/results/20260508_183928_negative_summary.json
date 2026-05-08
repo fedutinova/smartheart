@@ -1,0 +1,13 @@
+{\n  \"run_name\": \"negative\",\n  \"run_date\": \"2026-05-08\",\n  \"dataset_path\": \"./data/questions_h3_negative.json\",\n  \"question_set_size\": 25,\n  \"n_total\": 25,\n  \"n_cache_hits\": 2,\n  \"n_rag_calls\": 23,\n  \"cache_hit_rate\": 0.08,\n  \"kb_duration_p95\": 11542.235478599996,\n  \"kb_duration_avg\": 7637.960827679997\n}" source=console
+{
+  "run_name": "negative",
+  "run_date": "2026-05-08",
+  "dataset_path": "./data/questions_h3_negative.json",
+  "question_set_size": 25,
+  "n_total": 25,
+  "n_cache_hits": 2,
+  "n_rag_calls": 23,
+  "cache_hit_rate": 0.08,
+  "kb_duration_p95": 11542.235478599996,
+  "kb_duration_avg": 7637.960827679997
+}

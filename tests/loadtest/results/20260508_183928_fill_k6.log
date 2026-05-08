@@ -1,0 +1,597 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: /tests/h3_cache_scenario.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 1 max VUs, 1h0m30s max duration (incl. graceful stop):
+              * h3: 25 iterations shared among 1 VUs (maxDuration: 1h0m0s, gracefulStop: 30s)
+
+
+running (0h00m01.0s), 1/1 VUs, 0 complete and 0 interrupted iterations
+h3     [   0% ] 1 VUs  0h00m00.5s/1h0m0s  00/25 shared iters
+
+running (0h00m02.0s), 1/1 VUs, 0 complete and 0 interrupted iterations
+h3     [   0% ] 1 VUs  0h00m01.5s/1h0m0s  00/25 shared iters
+
+running (0h00m03.0s), 1/1 VUs, 0 complete and 0 interrupted iterations
+h3     [   0% ] 1 VUs  0h00m02.5s/1h0m0s  00/25 shared iters
+
+running (0h00m04.0s), 1/1 VUs, 0 complete and 0 interrupted iterations
+h3     [   0% ] 1 VUs  0h00m03.5s/1h0m0s  00/25 shared iters
+
+running (0h00m05.0s), 1/1 VUs, 0 complete and 0 interrupted iterations
+h3     [   0% ] 1 VUs  0h00m04.5s/1h0m0s  00/25 shared iters
+
+running (0h00m06.0s), 1/1 VUs, 0 complete and 0 interrupted iterations
+h3     [   0% ] 1 VUs  0h00m05.5s/1h0m0s  00/25 shared iters
+
+running (0h00m07.0s), 1/1 VUs, 0 complete and 0 interrupted iterations
+h3     [   0% ] 1 VUs  0h00m06.5s/1h0m0s  00/25 shared iters
+time="2026-05-08T15:39:36Z" level=info msg="RESULT:{\"iter\":0,\"run\":\"fill\",\"question_id\":0,\"question\":\"Какие критерии гипертрофии левого желудочка на ЭКГ?\",\"group\":\"lvh\",\"duration_ms\":6878.16,\"cache_hit\":false,\"status\":200}" source=console
+
+running (0h00m08.0s), 1/1 VUs, 1 complete and 0 interrupted iterations
+h3     [   4% ] 1 VUs  0h00m07.5s/1h0m0s  01/25 shared iters
+
+running (0h00m09.0s), 1/1 VUs, 1 complete and 0 interrupted iterations
+h3     [   4% ] 1 VUs  0h00m08.5s/1h0m0s  01/25 shared iters
+
+running (0h00m10.0s), 1/1 VUs, 1 complete and 0 interrupted iterations
+h3     [   4% ] 1 VUs  0h00m09.5s/1h0m0s  01/25 shared iters
+
+running (0h00m11.0s), 1/1 VUs, 1 complete and 0 interrupted iterations
+h3     [   4% ] 1 VUs  0h00m10.5s/1h0m0s  01/25 shared iters
+
+running (0h00m12.0s), 1/1 VUs, 1 complete and 0 interrupted iterations
+h3     [   4% ] 1 VUs  0h00m11.5s/1h0m0s  01/25 shared iters
+
+running (0h00m13.0s), 1/1 VUs, 1 complete and 0 interrupted iterations
+h3     [   4% ] 1 VUs  0h00m12.5s/1h0m0s  01/25 shared iters
+
+running (0h00m14.0s), 1/1 VUs, 1 complete and 0 interrupted iterations
+h3     [   4% ] 1 VUs  0h00m13.5s/1h0m0s  01/25 shared iters
+time="2026-05-08T15:39:44Z" level=info msg="RESULT:{\"iter\":1,\"run\":\"fill\",\"question_id\":1,\"question\":\"Каковы ЭКГ-признаки инфаркта миокарда с подъёмом сегмента ST?\",\"group\":\"infarct\",\"duration_ms\":7450.75,\"cache_hit\":false,\"status\":200}" source=console
+
+running (0h00m15.0s), 1/1 VUs, 2 complete and 0 interrupted iterations
+h3     [   8% ] 1 VUs  0h00m14.5s/1h0m0s  02/25 shared iters
+
+running (0h00m16.0s), 1/1 VUs, 2 complete and 0 interrupted iterations
+h3     [   8% ] 1 VUs  0h00m15.5s/1h0m0s  02/25 shared iters
+
+running (0h00m17.0s), 1/1 VUs, 2 complete and 0 interrupted iterations
+h3     [   8% ] 1 VUs  0h00m16.5s/1h0m0s  02/25 shared iters
+
+running (0h00m18.0s), 1/1 VUs, 2 complete and 0 interrupted iterations
+h3     [   8% ] 1 VUs  0h00m17.5s/1h0m0s  02/25 shared iters
+
+running (0h00m19.0s), 1/1 VUs, 2 complete and 0 interrupted iterations
+h3     [   8% ] 1 VUs  0h00m18.5s/1h0m0s  02/25 shared iters
+
+running (0h00m20.0s), 1/1 VUs, 2 complete and 0 interrupted iterations
+h3     [   8% ] 1 VUs  0h00m19.5s/1h0m0s  02/25 shared iters
+time="2026-05-08T15:39:50Z" level=info msg="RESULT:{\"iter\":2,\"run\":\"fill\",\"question_id\":2,\"question\":\"Какие признаки фибрилляции предсердий видны на ЭКГ?\",\"group\":\"afib\",\"duration_ms\":6091.14,\"cache_hit\":false,\"status\":200}" source=console
+
+running (0h00m21.0s), 1/1 VUs, 3 complete and 0 interrupted iterations
+h3     [  12% ] 1 VUs  0h00m20.5s/1h0m0s  03/25 shared iters
+
+running (0h00m22.0s), 1/1 VUs, 3 complete and 0 interrupted iterations
+h3     [  12% ] 1 VUs  0h00m21.5s/1h0m0s  03/25 shared iters
+
+running (0h00m23.0s), 1/1 VUs, 3 complete and 0 interrupted iterations
+h3     [  12% ] 1 VUs  0h00m22.5s/1h0m0s  03/25 shared iters
+
+running (0h00m24.0s), 1/1 VUs, 3 complete and 0 interrupted iterations
+h3     [  12% ] 1 VUs  0h00m23.5s/1h0m0s  03/25 shared iters
+
+running (0h00m25.0s), 1/1 VUs, 3 complete and 0 interrupted iterations
+h3     [  12% ] 1 VUs  0h00m24.5s/1h0m0s  03/25 shared iters
+
+running (0h00m26.0s), 1/1 VUs, 3 complete and 0 interrupted iterations
+h3     [  12% ] 1 VUs  0h00m25.5s/1h0m0s  03/25 shared iters
+
+running (0h00m27.0s), 1/1 VUs, 3 complete and 0 interrupted iterations
+h3     [  12% ] 1 VUs  0h00m26.5s/1h0m0s  03/25 shared iters
+
+running (0h00m28.0s), 1/1 VUs, 3 complete and 0 interrupted iterations
+h3     [  12% ] 1 VUs  0h00m27.5s/1h0m0s  03/25 shared iters
+
+running (0h00m29.0s), 1/1 VUs, 3 complete and 0 interrupted iterations
+h3     [  12% ] 1 VUs  0h00m28.5s/1h0m0s  03/25 shared iters
+
+running (0h00m30.0s), 1/1 VUs, 3 complete and 0 interrupted iterations
+h3     [  12% ] 1 VUs  0h00m29.5s/1h0m0s  03/25 shared iters
+
+running (0h00m31.0s), 1/1 VUs, 3 complete and 0 interrupted iterations
+h3     [  12% ] 1 VUs  0h00m30.5s/1h0m0s  03/25 shared iters
+time="2026-05-08T15:40:00Z" level=info msg="RESULT:{\"iter\":3,\"run\":\"fill\",\"question_id\":3,\"question\":\"Чем отличается АВ-блокада I степени от II степени?\",\"group\":\"avblock\",\"duration_ms\":10529.28,\"cache_hit\":false,\"status\":200}" source=console
+
+running (0h00m32.0s), 1/1 VUs, 4 complete and 0 interrupted iterations
+h3     [  16% ] 1 VUs  0h00m31.5s/1h0m0s  04/25 shared iters
+
+running (0h00m33.0s), 1/1 VUs, 4 complete and 0 interrupted iterations
+h3     [  16% ] 1 VUs  0h00m32.5s/1h0m0s  04/25 shared iters
+
+running (0h00m34.0s), 1/1 VUs, 4 complete and 0 interrupted iterations
+h3     [  16% ] 1 VUs  0h00m33.5s/1h0m0s  04/25 shared iters
+
+running (0h00m35.0s), 1/1 VUs, 4 complete and 0 interrupted iterations
+h3     [  16% ] 1 VUs  0h00m34.5s/1h0m0s  04/25 shared iters
+
+running (0h00m36.0s), 1/1 VUs, 4 complete and 0 interrupted iterations
+h3     [  16% ] 1 VUs  0h00m35.5s/1h0m0s  04/25 shared iters
+
+running (0h00m37.0s), 1/1 VUs, 4 complete and 0 interrupted iterations
+h3     [  16% ] 1 VUs  0h00m36.5s/1h0m0s  04/25 shared iters
+
+running (0h00m38.0s), 1/1 VUs, 4 complete and 0 interrupted iterations
+h3     [  16% ] 1 VUs  0h00m37.5s/1h0m0s  04/25 shared iters
+
+running (0h00m39.0s), 1/1 VUs, 4 complete and 0 interrupted iterations
+h3     [  16% ] 1 VUs  0h00m38.5s/1h0m0s  04/25 shared iters
+time="2026-05-08T15:40:09Z" level=info msg="RESULT:{\"iter\":4,\"run\":\"fill\",\"question_id\":4,\"question\":\"Что означает удлинение интервала QT и какие нормы?\",\"group\":\"qt\",\"duration_ms\":8509.25,\"cache_hit\":false,\"status\":200}" source=console
+
+running (0h00m40.0s), 1/1 VUs, 5 complete and 0 interrupted iterations
+h3     [  20% ] 1 VUs  0h00m39.5s/1h0m0s  05/25 shared iters
+
+running (0h00m41.0s), 1/1 VUs, 5 complete and 0 interrupted iterations
+h3     [  20% ] 1 VUs  0h00m40.5s/1h0m0s  05/25 shared iters
+
+running (0h00m42.0s), 1/1 VUs, 5 complete and 0 interrupted iterations
+h3     [  20% ] 1 VUs  0h00m41.5s/1h0m0s  05/25 shared iters
+
+running (0h00m43.0s), 1/1 VUs, 5 complete and 0 interrupted iterations
+h3     [  20% ] 1 VUs  0h00m42.5s/1h0m0s  05/25 shared iters
+
+running (0h00m44.0s), 1/1 VUs, 5 complete and 0 interrupted iterations
+h3     [  20% ] 1 VUs  0h00m43.5s/1h0m0s  05/25 shared iters
+
+running (0h00m45.0s), 1/1 VUs, 5 complete and 0 interrupted iterations
+h3     [  20% ] 1 VUs  0h00m44.5s/1h0m0s  05/25 shared iters
+
+running (0h00m46.0s), 1/1 VUs, 5 complete and 0 interrupted iterations
+h3     [  20% ] 1 VUs  0h00m45.5s/1h0m0s  05/25 shared iters
+time="2026-05-08T15:40:16Z" level=info msg="RESULT:{\"iter\":5,\"run\":\"fill\",\"question_id\":5,\"question\":\"Как рассчитать электрическую ось сердца по ЭКГ?\",\"group\":\"axis\",\"duration_ms\":6629.48,\"cache_hit\":false,\"status\":200}" source=console
+
+running (0h00m47.0s), 1/1 VUs, 6 complete and 0 interrupted iterations
+h3     [  24% ] 1 VUs  0h00m46.5s/1h0m0s  06/25 shared iters
+
+running (0h00m48.0s), 1/1 VUs, 6 complete and 0 interrupted iterations
+h3     [  24% ] 1 VUs  0h00m47.5s/1h0m0s  06/25 shared iters
+
+running (0h00m49.0s), 1/1 VUs, 6 complete and 0 interrupted iterations
+h3     [  24% ] 1 VUs  0h00m48.5s/1h0m0s  06/25 shared iters
+
+running (0h00m50.0s), 1/1 VUs, 6 complete and 0 interrupted iterations
+h3     [  24% ] 1 VUs  0h00m49.5s/1h0m0s  06/25 shared iters
+
+running (0h00m51.0s), 1/1 VUs, 6 complete and 0 interrupted iterations
+h3     [  24% ] 1 VUs  0h00m50.5s/1h0m0s  06/25 shared iters
+
+running (0h00m52.0s), 1/1 VUs, 6 complete and 0 interrupted iterations
+h3     [  24% ] 1 VUs  0h00m51.5s/1h0m0s  06/25 shared iters
+
+running (0h00m53.0s), 1/1 VUs, 6 complete and 0 interrupted iterations
+h3     [  24% ] 1 VUs  0h00m52.5s/1h0m0s  06/25 shared iters
+
+running (0h00m54.0s), 1/1 VUs, 6 complete and 0 interrupted iterations
+h3     [  24% ] 1 VUs  0h00m53.5s/1h0m0s  06/25 shared iters
+
+running (0h00m55.0s), 1/1 VUs, 6 complete and 0 interrupted iterations
+h3     [  24% ] 1 VUs  0h00m54.5s/1h0m0s  06/25 shared iters
+
+running (0h00m56.0s), 1/1 VUs, 6 complete and 0 interrupted iterations
+h3     [  24% ] 1 VUs  0h00m55.5s/1h0m0s  06/25 shared iters
+
+running (0h00m57.0s), 1/1 VUs, 6 complete and 0 interrupted iterations
+h3     [  24% ] 1 VUs  0h00m56.5s/1h0m0s  06/25 shared iters
+
+running (0h00m58.0s), 1/1 VUs, 6 complete and 0 interrupted iterations
+h3     [  24% ] 1 VUs  0h00m57.5s/1h0m0s  06/25 shared iters
+time="2026-05-08T15:40:27Z" level=info msg="RESULT:{\"iter\":6,\"run\":\"fill\",\"question_id\":6,\"question\":\"Что такое синдром WPW и как он проявляется на ЭКГ?\",\"group\":\"wpw\",\"duration_ms\":11604.94,\"cache_hit\":false,\"status\":200}" source=console
+
+running (0h00m59.0s), 1/1 VUs, 7 complete and 0 interrupted iterations
+h3     [  28% ] 1 VUs  0h00m58.5s/1h0m0s  07/25 shared iters
+
+running (0h01m00.0s), 1/1 VUs, 7 complete and 0 interrupted iterations
+h3     [  28% ] 1 VUs  0h00m59.5s/1h0m0s  07/25 shared iters
+
+running (0h01m01.0s), 1/1 VUs, 7 complete and 0 interrupted iterations
+h3     [  28% ] 1 VUs  0h01m00.5s/1h0m0s  07/25 shared iters
+
+running (0h01m02.0s), 1/1 VUs, 7 complete and 0 interrupted iterations
+h3     [  28% ] 1 VUs  0h01m01.5s/1h0m0s  07/25 shared iters
+
+running (0h01m03.0s), 1/1 VUs, 7 complete and 0 interrupted iterations
+h3     [  28% ] 1 VUs  0h01m02.5s/1h0m0s  07/25 shared iters
+
+running (0h01m04.0s), 1/1 VUs, 7 complete and 0 interrupted iterations
+h3     [  28% ] 1 VUs  0h01m03.5s/1h0m0s  07/25 shared iters
+
+running (0h01m05.0s), 1/1 VUs, 7 complete and 0 interrupted iterations
+h3     [  28% ] 1 VUs  0h01m04.5s/1h0m0s  07/25 shared iters
+
+running (0h01m06.0s), 1/1 VUs, 7 complete and 0 interrupted iterations
+h3     [  28% ] 1 VUs  0h01m05.5s/1h0m0s  07/25 shared iters
+time="2026-05-08T15:40:35Z" level=info msg="RESULT:{\"iter\":7,\"run\":\"fill\",\"question_id\":7,\"question\":\"Какие признаки гипертрофии правого желудочка на ЭКГ?\",\"group\":\"rvh\",\"duration_ms\":7907.34,\"cache_hit\":false,\"status\":200}" source=console
+
+running (0h01m07.0s), 1/1 VUs, 8 complete and 0 interrupted iterations
+h3     [  32% ] 1 VUs  0h01m06.5s/1h0m0s  08/25 shared iters
+
+running (0h01m08.0s), 1/1 VUs, 8 complete and 0 interrupted iterations
+h3     [  32% ] 1 VUs  0h01m07.5s/1h0m0s  08/25 shared iters
+
+running (0h01m09.0s), 1/1 VUs, 8 complete and 0 interrupted iterations
+h3     [  32% ] 1 VUs  0h01m08.5s/1h0m0s  08/25 shared iters
+
+running (0h01m10.0s), 1/1 VUs, 8 complete and 0 interrupted iterations
+h3     [  32% ] 1 VUs  0h01m09.5s/1h0m0s  08/25 shared iters
+
+running (0h01m11.0s), 1/1 VUs, 8 complete and 0 interrupted iterations
+h3     [  32% ] 1 VUs  0h01m10.5s/1h0m0s  08/25 shared iters
+
+running (0h01m12.0s), 1/1 VUs, 8 complete and 0 interrupted iterations
+h3     [  32% ] 1 VUs  0h01m11.5s/1h0m0s  08/25 shared iters
+time="2026-05-08T15:40:42Z" level=info msg="RESULT:{\"iter\":8,\"run\":\"fill\",\"question_id\":8,\"question\":\"Какие ЭКГ-изменения характерны для перикардита?\",\"group\":\"pericarditis\",\"duration_ms\":6868.56,\"cache_hit\":false,\"status\":200}" source=console
+
+running (0h01m13.0s), 1/1 VUs, 9 complete and 0 interrupted iterations
+h3     [  36% ] 1 VUs  0h01m12.5s/1h0m0s  09/25 shared iters
+
+running (0h01m14.0s), 1/1 VUs, 9 complete and 0 interrupted iterations
+h3     [  36% ] 1 VUs  0h01m13.5s/1h0m0s  09/25 shared iters
+
+running (0h01m15.0s), 1/1 VUs, 9 complete and 0 interrupted iterations
+h3     [  36% ] 1 VUs  0h01m14.5s/1h0m0s  09/25 shared iters
+
+running (0h01m16.0s), 1/1 VUs, 9 complete and 0 interrupted iterations
+h3     [  36% ] 1 VUs  0h01m15.5s/1h0m0s  09/25 shared iters
+
+running (0h01m17.0s), 1/1 VUs, 9 complete and 0 interrupted iterations
+h3     [  36% ] 1 VUs  0h01m16.5s/1h0m0s  09/25 shared iters
+
+running (0h01m18.0s), 1/1 VUs, 9 complete and 0 interrupted iterations
+h3     [  36% ] 1 VUs  0h01m17.5s/1h0m0s  09/25 shared iters
+
+running (0h01m19.0s), 1/1 VUs, 9 complete and 0 interrupted iterations
+h3     [  36% ] 1 VUs  0h01m18.5s/1h0m0s  09/25 shared iters
+
+running (0h01m20.0s), 1/1 VUs, 9 complete and 0 interrupted iterations
+h3     [  36% ] 1 VUs  0h01m19.5s/1h0m0s  09/25 shared iters
+time="2026-05-08T15:40:49Z" level=info msg="RESULT:{\"iter\":9,\"run\":\"fill\",\"question_id\":9,\"question\":\"Как выглядит блокада левой ножки пучка Гиса на ЭКГ?\",\"group\":\"lbbb\",\"duration_ms\":7094.4,\"cache_hit\":false,\"status\":200}" source=console
+
+running (0h01m21.0s), 1/1 VUs, 10 complete and 0 interrupted iterations
+h3     [  40% ] 1 VUs  0h01m20.5s/1h0m0s  10/25 shared iters
+
+running (0h01m22.0s), 1/1 VUs, 10 complete and 0 interrupted iterations
+h3     [  40% ] 1 VUs  0h01m21.5s/1h0m0s  10/25 shared iters
+
+running (0h01m23.0s), 1/1 VUs, 10 complete and 0 interrupted iterations
+h3     [  40% ] 1 VUs  0h01m22.5s/1h0m0s  10/25 shared iters
+
+running (0h01m24.0s), 1/1 VUs, 10 complete and 0 interrupted iterations
+h3     [  40% ] 1 VUs  0h01m23.5s/1h0m0s  10/25 shared iters
+
+running (0h01m25.0s), 1/1 VUs, 10 complete and 0 interrupted iterations
+h3     [  40% ] 1 VUs  0h01m24.5s/1h0m0s  10/25 shared iters
+
+running (0h01m26.0s), 1/1 VUs, 10 complete and 0 interrupted iterations
+h3     [  40% ] 1 VUs  0h01m25.5s/1h0m0s  10/25 shared iters
+
+running (0h01m27.0s), 1/1 VUs, 10 complete and 0 interrupted iterations
+h3     [  40% ] 1 VUs  0h01m26.5s/1h0m0s  10/25 shared iters
+time="2026-05-08T15:40:56Z" level=info msg="RESULT:{\"iter\":10,\"run\":\"fill\",\"question_id\":10,\"question\":\"Как интерпретировать отрицательные зубцы T в грудных отведениях?\",\"group\":\"twave\",\"duration_ms\":6960.2,\"cache_hit\":false,\"status\":200}" source=console
+
+running (0h01m28.0s), 1/1 VUs, 11 complete and 0 interrupted iterations
+h3     [  44% ] 1 VUs  0h01m27.5s/1h0m0s  11/25 shared iters
+
+running (0h01m29.0s), 1/1 VUs, 11 complete and 0 interrupted iterations
+h3     [  44% ] 1 VUs  0h01m28.5s/1h0m0s  11/25 shared iters
+
+running (0h01m30.0s), 1/1 VUs, 11 complete and 0 interrupted iterations
+h3     [  44% ] 1 VUs  0h01m29.5s/1h0m0s  11/25 shared iters
+
+running (0h01m31.0s), 1/1 VUs, 11 complete and 0 interrupted iterations
+h3     [  44% ] 1 VUs  0h01m30.5s/1h0m0s  11/25 shared iters
+
+running (0h01m32.0s), 1/1 VUs, 11 complete and 0 interrupted iterations
+h3     [  44% ] 1 VUs  0h01m31.5s/1h0m0s  11/25 shared iters
+time="2026-05-08T15:41:01Z" level=info msg="RESULT:{\"iter\":11,\"run\":\"fill\",\"question_id\":11,\"question\":\"Какие ЭКГ-отклонения могут быть при гиперкалиемии?\",\"group\":\"hyperkalemia\",\"duration_ms\":5457.86,\"cache_hit\":false,\"status\":200}" source=console
+
+running (0h01m33.0s), 1/1 VUs, 12 complete and 0 interrupted iterations
+h3     [  48% ] 1 VUs  0h01m32.5s/1h0m0s  12/25 shared iters
+
+running (0h01m34.0s), 1/1 VUs, 12 complete and 0 interrupted iterations
+h3     [  48% ] 1 VUs  0h01m33.5s/1h0m0s  12/25 shared iters
+
+running (0h01m35.0s), 1/1 VUs, 12 complete and 0 interrupted iterations
+h3     [  48% ] 1 VUs  0h01m34.5s/1h0m0s  12/25 shared iters
+
+running (0h01m36.0s), 1/1 VUs, 12 complete and 0 interrupted iterations
+h3     [  48% ] 1 VUs  0h01m35.5s/1h0m0s  12/25 shared iters
+
+running (0h01m37.0s), 1/1 VUs, 12 complete and 0 interrupted iterations
+h3     [  48% ] 1 VUs  0h01m36.5s/1h0m0s  12/25 shared iters
+
+running (0h01m38.0s), 1/1 VUs, 12 complete and 0 interrupted iterations
+h3     [  48% ] 1 VUs  0h01m37.5s/1h0m0s  12/25 shared iters
+
+running (0h01m39.0s), 1/1 VUs, 12 complete and 0 interrupted iterations
+h3     [  48% ] 1 VUs  0h01m38.5s/1h0m0s  12/25 shared iters
+time="2026-05-08T15:41:09Z" level=info msg="RESULT:{\"iter\":12,\"run\":\"fill\",\"question_id\":12,\"question\":\"Какие ЭКГ-признаки характерны для ТЭЛА?\",\"group\":\"tela\",\"duration_ms\":7218.2,\"cache_hit\":false,\"status\":200}" source=console
+
+running (0h01m40.0s), 1/1 VUs, 13 complete and 0 interrupted iterations
+h3     [  52% ] 1 VUs  0h01m39.5s/1h0m0s  13/25 shared iters
+
+running (0h01m41.0s), 1/1 VUs, 13 complete and 0 interrupted iterations
+h3     [  52% ] 1 VUs  0h01m40.5s/1h0m0s  13/25 shared iters
+
+running (0h01m42.0s), 1/1 VUs, 13 complete and 0 interrupted iterations
+h3     [  52% ] 1 VUs  0h01m41.5s/1h0m0s  13/25 shared iters
+
+running (0h01m43.0s), 1/1 VUs, 13 complete and 0 interrupted iterations
+h3     [  52% ] 1 VUs  0h01m42.5s/1h0m0s  13/25 shared iters
+time="2026-05-08T15:41:13Z" level=info msg="RESULT:{\"iter\":13,\"run\":\"fill\",\"question_id\":13,\"question\":\"Какие нормальные значения ЧСС для взрослого человека?\",\"group\":\"hr\",\"duration_ms\":4235.02,\"cache_hit\":false,\"status\":200}" source=console
+
+running (0h01m44.0s), 1/1 VUs, 14 complete and 0 interrupted iterations
+h3     [  56% ] 1 VUs  0h01m43.5s/1h0m0s  14/25 shared iters
+
+running (0h01m45.0s), 1/1 VUs, 14 complete and 0 interrupted iterations
+h3     [  56% ] 1 VUs  0h01m44.5s/1h0m0s  14/25 shared iters
+
+running (0h01m46.0s), 1/1 VUs, 14 complete and 0 interrupted iterations
+h3     [  56% ] 1 VUs  0h01m45.5s/1h0m0s  14/25 shared iters
+
+running (0h01m47.0s), 1/1 VUs, 14 complete and 0 interrupted iterations
+h3     [  56% ] 1 VUs  0h01m46.5s/1h0m0s  14/25 shared iters
+
+running (0h01m48.0s), 1/1 VUs, 14 complete and 0 interrupted iterations
+h3     [  56% ] 1 VUs  0h01m47.5s/1h0m0s  14/25 shared iters
+
+running (0h01m49.0s), 1/1 VUs, 14 complete and 0 interrupted iterations
+h3     [  56% ] 1 VUs  0h01m48.5s/1h0m0s  14/25 shared iters
+
+running (0h01m50.0s), 1/1 VUs, 14 complete and 0 interrupted iterations
+h3     [  56% ] 1 VUs  0h01m49.5s/1h0m0s  14/25 shared iters
+
+running (0h01m51.0s), 1/1 VUs, 14 complete and 0 interrupted iterations
+h3     [  56% ] 1 VUs  0h01m50.5s/1h0m0s  14/25 shared iters
+
+running (0h01m52.0s), 1/1 VUs, 14 complete and 0 interrupted iterations
+h3     [  56% ] 1 VUs  0h01m51.5s/1h0m0s  14/25 shared iters
+
+running (0h01m53.0s), 1/1 VUs, 14 complete and 0 interrupted iterations
+h3     [  56% ] 1 VUs  0h01m52.5s/1h0m0s  14/25 shared iters
+time="2026-05-08T15:41:22Z" level=info msg="RESULT:{\"iter\":14,\"run\":\"fill\",\"question_id\":14,\"question\":\"Как определить ритм по ЭКГ — синусовый или нет?\",\"group\":\"rhythm\",\"duration_ms\":9253.96,\"cache_hit\":false,\"status\":200}" source=console
+
+running (0h01m54.0s), 1/1 VUs, 15 complete and 0 interrupted iterations
+h3     [  60% ] 1 VUs  0h01m53.5s/1h0m0s  15/25 shared iters
+time="2026-05-08T15:41:23Z" level=info msg="RESULT:{\"iter\":15,\"run\":\"fill\",\"question_id\":15,\"question\":\"Что такое критерии Соколова-Лайона для гипертрофии?\",\"group\":\"sokolow\",\"duration_ms\":981.81,\"cache_hit\":true,\"status\":200}" source=console
+
+running (0h01m55.0s), 1/1 VUs, 16 complete and 0 interrupted iterations
+h3     [  64% ] 1 VUs  0h01m54.5s/1h0m0s  16/25 shared iters
+
+running (0h01m56.0s), 1/1 VUs, 16 complete and 0 interrupted iterations
+h3     [  64% ] 1 VUs  0h01m55.5s/1h0m0s  16/25 shared iters
+
+running (0h01m57.0s), 1/1 VUs, 16 complete and 0 interrupted iterations
+h3     [  64% ] 1 VUs  0h01m56.5s/1h0m0s  16/25 shared iters
+
+running (0h01m58.0s), 1/1 VUs, 16 complete and 0 interrupted iterations
+h3     [  64% ] 1 VUs  0h01m57.5s/1h0m0s  16/25 shared iters
+
+running (0h01m59.0s), 1/1 VUs, 16 complete and 0 interrupted iterations
+h3     [  64% ] 1 VUs  0h01m58.5s/1h0m0s  16/25 shared iters
+
+running (0h02m00.0s), 1/1 VUs, 16 complete and 0 interrupted iterations
+h3     [  64% ] 1 VUs  0h01m59.5s/1h0m0s  16/25 shared iters
+
+running (0h02m01.0s), 1/1 VUs, 16 complete and 0 interrupted iterations
+h3     [  64% ] 1 VUs  0h02m00.5s/1h0m0s  16/25 shared iters
+
+running (0h02m02.0s), 1/1 VUs, 16 complete and 0 interrupted iterations
+h3     [  64% ] 1 VUs  0h02m01.5s/1h0m0s  16/25 shared iters
+time="2026-05-08T15:41:31Z" level=info msg="RESULT:{\"iter\":16,\"run\":\"fill\",\"question_id\":16,\"question\":\"Чем синусовая брадикардия отличается от АВ-блокады?\",\"group\":\"bradycardia\",\"duration_ms\":8084.83,\"cache_hit\":false,\"status\":200}" source=console
+
+running (0h02m03.0s), 1/1 VUs, 17 complete and 0 interrupted iterations
+h3     [  68% ] 1 VUs  0h02m02.5s/1h0m0s  17/25 shared iters
+
+running (0h02m04.0s), 1/1 VUs, 17 complete and 0 interrupted iterations
+h3     [  68% ] 1 VUs  0h02m03.5s/1h0m0s  17/25 shared iters
+
+running (0h02m05.0s), 1/1 VUs, 17 complete and 0 interrupted iterations
+h3     [  68% ] 1 VUs  0h02m04.5s/1h0m0s  17/25 shared iters
+
+running (0h02m06.0s), 1/1 VUs, 17 complete and 0 interrupted iterations
+h3     [  68% ] 1 VUs  0h02m05.5s/1h0m0s  17/25 shared iters
+
+running (0h02m07.0s), 1/1 VUs, 17 complete and 0 interrupted iterations
+h3     [  68% ] 1 VUs  0h02m06.5s/1h0m0s  17/25 shared iters
+
+running (0h02m08.0s), 1/1 VUs, 17 complete and 0 interrupted iterations
+h3     [  68% ] 1 VUs  0h02m07.5s/1h0m0s  17/25 shared iters
+
+running (0h02m09.0s), 1/1 VUs, 17 complete and 0 interrupted iterations
+h3     [  68% ] 1 VUs  0h02m08.5s/1h0m0s  17/25 shared iters
+
+running (0h02m10.0s), 1/1 VUs, 17 complete and 0 interrupted iterations
+h3     [  68% ] 1 VUs  0h02m09.5s/1h0m0s  17/25 shared iters
+
+running (0h02m11.0s), 1/1 VUs, 17 complete and 0 interrupted iterations
+h3     [  68% ] 1 VUs  0h02m10.5s/1h0m0s  17/25 shared iters
+
+running (0h02m12.0s), 1/1 VUs, 17 complete and 0 interrupted iterations
+h3     [  68% ] 1 VUs  0h02m11.5s/1h0m0s  17/25 shared iters
+time="2026-05-08T15:41:41Z" level=info msg="RESULT:{\"iter\":17,\"run\":\"fill\",\"question_id\":17,\"question\":\"Как отличить наджелудочковую тахикардию от желудочковой по ЭКГ?\",\"group\":\"svt_vt\",\"duration_ms\":9978.27,\"cache_hit\":false,\"status\":200}" source=console
+
+running (0h02m13.0s), 1/1 VUs, 18 complete and 0 interrupted iterations
+h3     [  72% ] 1 VUs  0h02m12.5s/1h0m0s  18/25 shared iters
+
+running (0h02m14.0s), 1/1 VUs, 18 complete and 0 interrupted iterations
+h3     [  72% ] 1 VUs  0h02m13.5s/1h0m0s  18/25 shared iters
+
+running (0h02m15.0s), 1/1 VUs, 18 complete and 0 interrupted iterations
+h3     [  72% ] 1 VUs  0h02m14.5s/1h0m0s  18/25 shared iters
+
+running (0h02m16.0s), 1/1 VUs, 18 complete and 0 interrupted iterations
+h3     [  72% ] 1 VUs  0h02m15.5s/1h0m0s  18/25 shared iters
+
+running (0h02m17.0s), 1/1 VUs, 18 complete and 0 interrupted iterations
+h3     [  72% ] 1 VUs  0h02m16.5s/1h0m0s  18/25 shared iters
+
+running (0h02m18.0s), 1/1 VUs, 18 complete and 0 interrupted iterations
+h3     [  72% ] 1 VUs  0h02m17.5s/1h0m0s  18/25 shared iters
+
+running (0h02m19.0s), 1/1 VUs, 18 complete and 0 interrupted iterations
+h3     [  72% ] 1 VUs  0h02m18.5s/1h0m0s  18/25 shared iters
+time="2026-05-08T15:41:48Z" level=info msg="RESULT:{\"iter\":18,\"run\":\"fill\",\"question_id\":18,\"question\":\"Что такое синдром ранней реполяризации и опасен ли он?\",\"group\":\"repol\",\"duration_ms\":7028.25,\"cache_hit\":false,\"status\":200}" source=console
+
+running (0h02m20.0s), 1/1 VUs, 19 complete and 0 interrupted iterations
+h3     [  76% ] 1 VUs  0h02m19.5s/1h0m0s  19/25 shared iters
+
+running (0h02m21.0s), 1/1 VUs, 19 complete and 0 interrupted iterations
+h3     [  76% ] 1 VUs  0h02m20.5s/1h0m0s  19/25 shared iters
+
+running (0h02m22.0s), 1/1 VUs, 19 complete and 0 interrupted iterations
+h3     [  76% ] 1 VUs  0h02m21.5s/1h0m0s  19/25 shared iters
+
+running (0h02m23.0s), 1/1 VUs, 19 complete and 0 interrupted iterations
+h3     [  76% ] 1 VUs  0h02m22.5s/1h0m0s  19/25 shared iters
+
+running (0h02m24.0s), 1/1 VUs, 19 complete and 0 interrupted iterations
+h3     [  76% ] 1 VUs  0h02m23.5s/1h0m0s  19/25 shared iters
+time="2026-05-08T15:41:54Z" level=info msg="RESULT:{\"iter\":19,\"run\":\"fill\",\"question_id\":19,\"question\":\"Какова нормальная длительность комплекса QRS?\",\"group\":\"qrs\",\"duration_ms\":5279.47,\"cache_hit\":false,\"status\":200}" source=console
+
+running (0h02m25.0s), 1/1 VUs, 20 complete and 0 interrupted iterations
+h3     [  80% ] 1 VUs  0h02m24.5s/1h0m0s  20/25 shared iters
+
+running (0h02m26.0s), 1/1 VUs, 20 complete and 0 interrupted iterations
+h3     [  80% ] 1 VUs  0h02m25.5s/1h0m0s  20/25 shared iters
+
+running (0h02m27.0s), 1/1 VUs, 20 complete and 0 interrupted iterations
+h3     [  80% ] 1 VUs  0h02m26.5s/1h0m0s  20/25 shared iters
+
+running (0h02m28.0s), 1/1 VUs, 20 complete and 0 interrupted iterations
+h3     [  80% ] 1 VUs  0h02m27.5s/1h0m0s  20/25 shared iters
+
+running (0h02m29.0s), 1/1 VUs, 20 complete and 0 interrupted iterations
+h3     [  80% ] 1 VUs  0h02m28.5s/1h0m0s  20/25 shared iters
+
+running (0h02m30.0s), 1/1 VUs, 20 complete and 0 interrupted iterations
+h3     [  80% ] 1 VUs  0h02m29.5s/1h0m0s  20/25 shared iters
+
+running (0h02m31.0s), 1/1 VUs, 20 complete and 0 interrupted iterations
+h3     [  80% ] 1 VUs  0h02m30.5s/1h0m0s  20/25 shared iters
+time="2026-05-08T15:42:00Z" level=info msg="RESULT:{\"iter\":20,\"run\":\"fill\",\"question_id\":20,\"question\":\"Какие ЭКГ-признаки характерны для миокардита?\",\"group\":\"myocarditis\",\"duration_ms\":6937.69,\"cache_hit\":false,\"status\":200}" source=console
+
+running (0h02m32.0s), 1/1 VUs, 21 complete and 0 interrupted iterations
+h3     [  84% ] 1 VUs  0h02m31.5s/1h0m0s  21/25 shared iters
+
+running (0h02m33.0s), 1/1 VUs, 21 complete and 0 interrupted iterations
+h3     [  84% ] 1 VUs  0h02m32.5s/1h0m0s  21/25 shared iters
+
+running (0h02m34.0s), 1/1 VUs, 21 complete and 0 interrupted iterations
+h3     [  84% ] 1 VUs  0h02m33.5s/1h0m0s  21/25 shared iters
+
+running (0h02m35.0s), 1/1 VUs, 21 complete and 0 interrupted iterations
+h3     [  84% ] 1 VUs  0h02m34.5s/1h0m0s  21/25 shared iters
+
+running (0h02m36.0s), 1/1 VUs, 21 complete and 0 interrupted iterations
+h3     [  84% ] 1 VUs  0h02m35.5s/1h0m0s  21/25 shared iters
+
+running (0h02m37.0s), 1/1 VUs, 21 complete and 0 interrupted iterations
+h3     [  84% ] 1 VUs  0h02m36.5s/1h0m0s  21/25 shared iters
+
+running (0h02m38.0s), 1/1 VUs, 21 complete and 0 interrupted iterations
+h3     [  84% ] 1 VUs  0h02m37.5s/1h0m0s  21/25 shared iters
+time="2026-05-08T15:42:07Z" level=info msg="RESULT:{\"iter\":21,\"run\":\"fill\",\"question_id\":21,\"question\":\"Какие ЭКГ-изменения характерны для гипокалиемии?\",\"group\":\"hypokalemia\",\"duration_ms\":6625.2,\"cache_hit\":false,\"status\":200}" source=console
+
+running (0h02m39.0s), 1/1 VUs, 22 complete and 0 interrupted iterations
+h3     [  88% ] 1 VUs  0h02m38.5s/1h0m0s  22/25 shared iters
+
+running (0h02m40.0s), 1/1 VUs, 22 complete and 0 interrupted iterations
+h3     [  88% ] 1 VUs  0h02m39.5s/1h0m0s  22/25 shared iters
+
+running (0h02m41.0s), 1/1 VUs, 22 complete and 0 interrupted iterations
+h3     [  88% ] 1 VUs  0h02m40.5s/1h0m0s  22/25 shared iters
+
+running (0h02m42.0s), 1/1 VUs, 22 complete and 0 interrupted iterations
+h3     [  88% ] 1 VUs  0h02m41.5s/1h0m0s  22/25 shared iters
+
+running (0h02m43.0s), 1/1 VUs, 22 complete and 0 interrupted iterations
+h3     [  88% ] 1 VUs  0h02m42.5s/1h0m0s  22/25 shared iters
+
+running (0h02m44.0s), 1/1 VUs, 22 complete and 0 interrupted iterations
+h3     [  88% ] 1 VUs  0h02m43.5s/1h0m0s  22/25 shared iters
+
+running (0h02m45.0s), 1/1 VUs, 22 complete and 0 interrupted iterations
+h3     [  88% ] 1 VUs  0h02m44.5s/1h0m0s  22/25 shared iters
+time="2026-05-08T15:42:15Z" level=info msg="RESULT:{\"iter\":22,\"run\":\"fill\",\"question_id\":22,\"question\":\"Что такое феномен Бругада на ЭКГ?\",\"group\":\"brugada\",\"duration_ms\":7631.99,\"cache_hit\":false,\"status\":200}" source=console
+
+running (0h02m46.0s), 1/1 VUs, 23 complete and 0 interrupted iterations
+h3     [  92% ] 1 VUs  0h02m45.5s/1h0m0s  23/25 shared iters
+
+running (0h02m47.0s), 1/1 VUs, 23 complete and 0 interrupted iterations
+h3     [  92% ] 1 VUs  0h02m46.5s/1h0m0s  23/25 shared iters
+
+running (0h02m48.0s), 1/1 VUs, 23 complete and 0 interrupted iterations
+h3     [  92% ] 1 VUs  0h02m47.5s/1h0m0s  23/25 shared iters
+
+running (0h02m49.0s), 1/1 VUs, 23 complete and 0 interrupted iterations
+h3     [  92% ] 1 VUs  0h02m48.5s/1h0m0s  23/25 shared iters
+
+running (0h02m50.0s), 1/1 VUs, 23 complete and 0 interrupted iterations
+h3     [  92% ] 1 VUs  0h02m49.5s/1h0m0s  23/25 shared iters
+
+running (0h02m51.0s), 1/1 VUs, 23 complete and 0 interrupted iterations
+h3     [  92% ] 1 VUs  0h02m50.5s/1h0m0s  23/25 shared iters
+
+running (0h02m52.0s), 1/1 VUs, 23 complete and 0 interrupted iterations
+h3     [  92% ] 1 VUs  0h02m51.5s/1h0m0s  23/25 shared iters
+time="2026-05-08T15:42:21Z" level=info msg="RESULT:{\"iter\":23,\"run\":\"fill\",\"question_id\":23,\"question\":\"Как рассчитать корригированный интервал QT по формуле Базетта?\",\"group\":\"qt_calc\",\"duration_ms\":6510.81,\"cache_hit\":false,\"status\":200}" source=console
+
+running (0h02m53.0s), 1/1 VUs, 24 complete and 0 interrupted iterations
+h3     [  96% ] 1 VUs  0h02m52.5s/1h0m0s  24/25 shared iters
+
+running (0h02m54.0s), 1/1 VUs, 24 complete and 0 interrupted iterations
+h3     [  96% ] 1 VUs  0h02m53.5s/1h0m0s  24/25 shared iters
+
+running (0h02m55.0s), 1/1 VUs, 24 complete and 0 interrupted iterations
+h3     [  96% ] 1 VUs  0h02m54.5s/1h0m0s  24/25 shared iters
+
+running (0h02m56.0s), 1/1 VUs, 24 complete and 0 interrupted iterations
+h3     [  96% ] 1 VUs  0h02m55.5s/1h0m0s  24/25 shared iters
+
+running (0h02m57.0s), 1/1 VUs, 24 complete and 0 interrupted iterations
+h3     [  96% ] 1 VUs  0h02m56.5s/1h0m0s  24/25 shared iters
+
+running (0h02m58.0s), 1/1 VUs, 24 complete and 0 interrupted iterations
+h3     [  96% ] 1 VUs  0h02m57.5s/1h0m0s  24/25 shared iters
+
+running (0h02m59.0s), 1/1 VUs, 24 complete and 0 interrupted iterations
+h3     [  96% ] 1 VUs  0h02m58.5s/1h0m0s  24/25 shared iters
+
+running (0h03m00.0s), 1/1 VUs, 24 complete and 0 interrupted iterations
+h3     [  96% ] 1 VUs  0h02m59.5s/1h0m0s  24/25 shared iters
+time="2026-05-08T15:42:30Z" level=info msg="RESULT:{\"iter\":24,\"run\":\"fill\",\"question_id\":24,\"question\":\"Какие ЭКГ-находки требуют срочной консультации кардиолога?\",\"group\":\"urgent\",\"duration_ms\":8337.02,\"cache_hit\":false,\"status\":200}" source=console
+time="2026-05-08T15:42:30Z" level=info msg="\n=== H3 Summary ===" source=console
+time="2026-05-08T15:42:30Z" level=info msg="{\n  \"run_name\": \"fill\",\n  \"run_date\": \"2026-05-08\",\n  \"dataset_path\": \"./data/questions_h3_fill.json\",\n  \"question_set_size\": 25,\n  \"n_total\": 25,\n  \"n_cache_hits\": 1,\n  \"n_rag_calls\": 24,\n  \"cache_hit_rate\": 0.04,\n  \"kb_duration_p95\": 10419.080246799998,\n  \"kb_duration_avg\": 7203.355685640002\n}" source=console
+{
+  "run_name": "fill",
+  "run_date": "2026-05-08",
+  "dataset_path": "./data/questions_h3_fill.json",
+  "question_set_size": 25,
+  "n_total": 25,
+  "n_cache_hits": 1,
+  "n_rag_calls": 24,
+  "cache_hit_rate": 0.04,
+  "kb_duration_p95": 10419.080246799998,
+  "kb_duration_avg": 7203.355685640002
+}
+
+running (0h03m00.6s), 0/1 VUs, 25 complete and 0 interrupted iterations
+h3   ✓ [ 100% ] 1 VUs  0h03m00.1s/1h0m0s  25/25 shared iters

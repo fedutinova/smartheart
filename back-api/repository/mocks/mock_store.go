@@ -839,9 +839,9 @@ func (_c *MockStore_DecrementFreeAnalysesUsed_Call) RunAndReturn(run func(contex
 	return _c
 }
 
-// FindCachedAnswer provides a mock function with given fields: ctx, question, threshold
-func (_m *MockStore) FindCachedAnswer(ctx context.Context, question string, threshold float64) (*models.KBCacheEntry, error) {
-	ret := _m.Called(ctx, question, threshold)
+// FindCachedAnswer provides a mock function with given fields: ctx, question, embedding, trigramThreshold, vectorThreshold
+func (_m *MockStore) FindCachedAnswer(ctx context.Context, question string, embedding []float64, trigramThreshold float64, vectorThreshold float64) (*models.KBCacheEntry, error) {
+	ret := _m.Called(ctx, question, embedding, trigramThreshold, vectorThreshold)
 
 	if len(ret) == 0 {
 		panic("no return value specified for FindCachedAnswer")
@@ -849,19 +849,19 @@ func (_m *MockStore) FindCachedAnswer(ctx context.Context, question string, thre
 
 	var r0 *models.KBCacheEntry
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, float64) (*models.KBCacheEntry, error)); ok {
-		return rf(ctx, question, threshold)
+	if rf, ok := ret.Get(0).(func(context.Context, string, []float64, float64, float64) (*models.KBCacheEntry, error)); ok {
+		return rf(ctx, question, embedding, trigramThreshold, vectorThreshold)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, float64) *models.KBCacheEntry); ok {
-		r0 = rf(ctx, question, threshold)
+	if rf, ok := ret.Get(0).(func(context.Context, string, []float64, float64, float64) *models.KBCacheEntry); ok {
+		r0 = rf(ctx, question, embedding, trigramThreshold, vectorThreshold)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*models.KBCacheEntry)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, float64) error); ok {
-		r1 = rf(ctx, question, threshold)
+	if rf, ok := ret.Get(1).(func(context.Context, string, []float64, float64, float64) error); ok {
+		r1 = rf(ctx, question, embedding, trigramThreshold, vectorThreshold)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -877,14 +877,16 @@ type MockStore_FindCachedAnswer_Call struct {
 // FindCachedAnswer is a helper method to define mock.On call
 //   - ctx context.Context
 //   - question string
-//   - threshold float64
-func (_e *MockStore_Expecter) FindCachedAnswer(ctx interface{}, question interface{}, threshold interface{}) *MockStore_FindCachedAnswer_Call {
-	return &MockStore_FindCachedAnswer_Call{Call: _e.mock.On("FindCachedAnswer", ctx, question, threshold)}
+//   - embedding []float64
+//   - trigramThreshold float64
+//   - vectorThreshold float64
+func (_e *MockStore_Expecter) FindCachedAnswer(ctx interface{}, question interface{}, embedding interface{}, trigramThreshold interface{}, vectorThreshold interface{}) *MockStore_FindCachedAnswer_Call {
+	return &MockStore_FindCachedAnswer_Call{Call: _e.mock.On("FindCachedAnswer", ctx, question, embedding, trigramThreshold, vectorThreshold)}
 }
 
-func (_c *MockStore_FindCachedAnswer_Call) Run(run func(ctx context.Context, question string, threshold float64)) *MockStore_FindCachedAnswer_Call {
+func (_c *MockStore_FindCachedAnswer_Call) Run(run func(ctx context.Context, question string, embedding []float64, trigramThreshold float64, vectorThreshold float64)) *MockStore_FindCachedAnswer_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(float64))
+		run(args[0].(context.Context), args[1].(string), args[2].([]float64), args[3].(float64), args[4].(float64))
 	})
 	return _c
 }
@@ -894,7 +896,7 @@ func (_c *MockStore_FindCachedAnswer_Call) Return(_a0 *models.KBCacheEntry, _a1 
 	return _c
 }
 
-func (_c *MockStore_FindCachedAnswer_Call) RunAndReturn(run func(context.Context, string, float64) (*models.KBCacheEntry, error)) *MockStore_FindCachedAnswer_Call {
+func (_c *MockStore_FindCachedAnswer_Call) RunAndReturn(run func(context.Context, string, []float64, float64, float64) (*models.KBCacheEntry, error)) *MockStore_FindCachedAnswer_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2547,17 +2549,17 @@ func (_c *MockStore_RunTx_Call) RunAndReturn(run func(context.Context, func(pgx.
 	return _c
 }
 
-// SaveCacheEntry provides a mock function with given fields: ctx, question, answer, sourceMeta
-func (_m *MockStore) SaveCacheEntry(ctx context.Context, question string, answer string, sourceMeta string) error {
-	ret := _m.Called(ctx, question, answer, sourceMeta)
+// SaveCacheEntry provides a mock function with given fields: ctx, question, embedding, answer, sourceMeta
+func (_m *MockStore) SaveCacheEntry(ctx context.Context, question string, embedding []float64, answer string, sourceMeta string) error {
+	ret := _m.Called(ctx, question, embedding, answer, sourceMeta)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SaveCacheEntry")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) error); ok {
-		r0 = rf(ctx, question, answer, sourceMeta)
+	if rf, ok := ret.Get(0).(func(context.Context, string, []float64, string, string) error); ok {
+		r0 = rf(ctx, question, embedding, answer, sourceMeta)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -2573,15 +2575,16 @@ type MockStore_SaveCacheEntry_Call struct {
 // SaveCacheEntry is a helper method to define mock.On call
 //   - ctx context.Context
 //   - question string
+//   - embedding []float64
 //   - answer string
 //   - sourceMeta string
-func (_e *MockStore_Expecter) SaveCacheEntry(ctx interface{}, question interface{}, answer interface{}, sourceMeta interface{}) *MockStore_SaveCacheEntry_Call {
-	return &MockStore_SaveCacheEntry_Call{Call: _e.mock.On("SaveCacheEntry", ctx, question, answer, sourceMeta)}
+func (_e *MockStore_Expecter) SaveCacheEntry(ctx interface{}, question interface{}, embedding interface{}, answer interface{}, sourceMeta interface{}) *MockStore_SaveCacheEntry_Call {
+	return &MockStore_SaveCacheEntry_Call{Call: _e.mock.On("SaveCacheEntry", ctx, question, embedding, answer, sourceMeta)}
 }
 
-func (_c *MockStore_SaveCacheEntry_Call) Run(run func(ctx context.Context, question string, answer string, sourceMeta string)) *MockStore_SaveCacheEntry_Call {
+func (_c *MockStore_SaveCacheEntry_Call) Run(run func(ctx context.Context, question string, embedding []float64, answer string, sourceMeta string)) *MockStore_SaveCacheEntry_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].([]float64), args[3].(string), args[4].(string))
 	})
 	return _c
 }
@@ -2591,7 +2594,7 @@ func (_c *MockStore_SaveCacheEntry_Call) Return(_a0 error) *MockStore_SaveCacheE
 	return _c
 }
 
-func (_c *MockStore_SaveCacheEntry_Call) RunAndReturn(run func(context.Context, string, string, string) error) *MockStore_SaveCacheEntry_Call {
+func (_c *MockStore_SaveCacheEntry_Call) RunAndReturn(run func(context.Context, string, []float64, string, string) error) *MockStore_SaveCacheEntry_Call {
 	_c.Call.Return(run)
 	return _c
 }

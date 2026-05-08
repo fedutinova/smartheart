@@ -20,7 +20,7 @@ services:
       - app
 
   postgres:
-    image: postgres:16
+    image: pgvector/pgvector:pg16
     container_name: smartheart_postgres
     restart: unless-stopped
     environment:

@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16
+    image: pgvector/pgvector:pg16
     container_name: smartheart_postgres
     restart: unless-stopped
     environment:
@@ -93,7 +93,6 @@ services:
       RATE_LIMIT_RPM: ${RATE_LIMIT_RPM:-100}
       GPT_MOCK: ${GPT_MOCK:-false}
       GPT_MOCK_DELAY: ${GPT_MOCK_DELAY:-5s}
-      RAG_MOCK_DELAY: ${RAG_MOCK_DELAY:-}
       MIGRATIONS_DIR: /app/migrations
     volumes:
       - ./migrations:/app/migrations:ro

@@ -60,10 +60,10 @@ type RAGFeedbackRepo interface {
 	CreateRAGFeedback(ctx context.Context, feedback *models.RAGFeedback) error
 }
 
-// KBCacheRepo provides semantic cache for knowledge-base queries.
+// KBCacheRepo provides hybrid cache for knowledge-base queries.
 type KBCacheRepo interface {
-	FindCachedAnswer(ctx context.Context, question string, threshold float64) (*models.KBCacheEntry, error)
-	SaveCacheEntry(ctx context.Context, question, answer, sourceMeta string) error
+	FindCachedAnswer(ctx context.Context, question string, embedding []float64, trigramThreshold, vectorThreshold float64) (*models.KBCacheEntry, error)
+	SaveCacheEntry(ctx context.Context, question string, embedding []float64, answer, sourceMeta string) error
 }
 
 // ECGChatRepo provides storage for contextual chat messages anchored to an ECG analysis.

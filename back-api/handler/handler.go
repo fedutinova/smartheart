@@ -89,7 +89,7 @@ func NewHandler(
 		Request:  &RequestHandler{Service: requestSvc, Config: cfg, Storage: storageService},
 		Healthz:  &HealthHandler{Queue: queue, Repo: repo, Sessions: sessions, Storage: storageService},
 		Events:   &EventsHandler{Hub: hub},
-		RAG:      NewRAGHandler(cfg.RAG.URL, repo),
+		RAG:      NewRAGHandler(cfg.RAG.URL, repo, cfg.GPT.APIKey),
 		ECGChat:  &ECGChatHandler{Service: ecgChatSvc},
 		Payment:  &PaymentHandler{Service: paymentSvc},
 		Profile:  &ProfileHandler{Repo: repo},
