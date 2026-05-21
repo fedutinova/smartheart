@@ -1,6 +1,7 @@
 import { Link, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth';
 import { ROUTES } from '@/config';
+import { SurveyBanner } from '@/components/SurveyBanner';
 
 // Static demo: ECG analysis result (mirrors StructuredResultView interpretation block)
 function DemoPreview() {
@@ -373,23 +374,8 @@ export function Landing() {
       </section>
 
       {/* Survey banner */}
-      <section className="py-12 px-4 sm:px-6 bg-gradient-to-r from-indigo-600 to-purple-600">
-        <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">
-            Помогите улучшить сервис
-          </h2>
-          <p className="text-indigo-100 mb-6 text-sm sm:text-base">
-            Пройдите короткий опрос — расскажите о вашем опыте. Это займёт 2–3 минуты.
-          </p>
-          <a
-            href="https://docs.google.com/forms/d/e/1FAIpQLSerfoqa5aM-7A-Yei7gZxs8CxGgmBu_dlMx4XqolAijSTbFBg/viewform"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block px-7 py-3 text-sm font-medium text-indigo-700 bg-white hover:bg-indigo-50 active:scale-95 rounded-xl transition-all duration-150"
-          >
-            Пройти опрос →
-          </a>
-        </div>
+      <section className="py-8 px-4 sm:px-6 bg-gray-50 border-y border-gray-100">
+        <SurveyBanner className="max-w-3xl mx-auto" />
       </section>
 
       {/* Footer */}
