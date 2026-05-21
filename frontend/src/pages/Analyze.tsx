@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, Fragment } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
@@ -9,7 +9,7 @@ import { ImageCropper } from '@/components/ImageCropper';
 import { PaymentModal } from '@/components/PaymentModal';
 import { CalibrationForm } from '@/components/CalibrationForm';
 import { useDraft } from '@/hooks/useDraft';
-import { useImageInput } from '@/hooks/useImageInput';
+import { useImageInput, type ImageStep } from '@/hooks/useImageInput';
 import { usePendingJobs } from '@/hooks/usePendingJobs';
 import { useQuota } from '@/hooks/useQuota';
 import { getApiError } from '@/utils/apiError';
@@ -149,21 +149,19 @@ export function Analyze() {
       )}
       <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl font-semibold text-gray-900 mb-6">Анализ ЭКГ</h1>
-
-        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <p className="font-medium">Перед отправкой убедитесь, что файл обезличен.</p>
-          <p className="mt-1">
-            Не загружайте ФИО, дату рождения, номер карты и другие прямые идентификаторы пациента без
-            самостоятельного правового основания на такую передачу. Результат сервиса носит информационный
-            характер и не заменяет клиническое решение врача.
-          </p>
-        </div>
-
         {/* Quota */}
         {quota && <QuotaBanner quota={quota} />}
 
         <div className="bg-white shadow rounded-lg p-4 sm:p-6">
           <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
+            {(mode === 'file' || mode === 'camera') && (
+              <AnalysisStepIndicator
+                imageStep={image.step}
+                isProcessingOCR={image.isProcessingOCR}
+                isSubmitting={mutation.isPending}
+              />
+            )}
+
             {image.error && (
               <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded text-sm">
                 {image.error}
@@ -198,22 +196,12 @@ export function Analyze() {
               </div>
             )}
 
-            {/* Crop step */}
-            {image.step === 'crop' && image.previewSrc && (
+            {/* Crop / edit step — appears immediately after file select */}
+            {image.step === 'crop' && (image.originalSrc ?? image.previewSrc) && !image.isProcessingOCR && (
               <ImageCropper
-                imageSrc={image.previewSrc}
-                onCropComplete={image.handleCropComplete}
-                onCancel={image.handleCropCancel}
-              />
-            )}
-
-            {/* Preview step: user aligns/rotates before OCR */}
-            {image.step === 'preview' && image.previewSrc && !image.isProcessingOCR && (
-              <ImagePreview
-                src={image.previewSrc}
+                imageSrc={(image.originalSrc ?? image.previewSrc)!}
+                onCropComplete={image.confirmPreview}
                 onRotate={image.rotateImage}
-                onRecrop={image.handleRecrop}
-                onReset={image.reset}
               />
             )}
 
@@ -264,8 +252,7 @@ export function Analyze() {
                   className="mt-0.5 h-4 w-4 rounded border-gray-300 text-rose-600 focus:ring-rose-500"
                 />
                 <span className="text-sm text-gray-600">
-                  Подтверждаю, что изображение обезличено или у меня есть надлежащее основание для передачи
-                  данных в сервис
+                  Подтверждаю, что изображение обезличено.
                 </span>
               </label>
             )}
@@ -280,15 +267,7 @@ export function Analyze() {
                 >
                   Отмена
                 </button>
-                {image.step === 'preview' && !image.isProcessingOCR ? (
-                  <button
-                    type="button"
-                    onClick={image.confirmPreview}
-                    className="px-5 sm:px-6 py-2.5 bg-rose-600 text-white rounded-xl hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 text-sm sm:text-base font-medium transition-colors"
-                  >
-                    Далее →
-                  </button>
-                ) : (mode === 'url' || image.step === 'review' || image.step === 'ready') ? (
+                {(mode === 'url' || image.step === 'review' || image.step === 'ready') ? (
                   <button
                     type="submit"
                     disabled={mutation.isPending || !canSubmit}
@@ -305,11 +284,13 @@ export function Analyze() {
           </form>
         </div>
 
-        <div className="mt-6 sm:mt-8 flex flex-wrap gap-x-6 gap-y-2 text-xs text-gray-400">
-          <span>JPEG, PNG, PDF до 10 MB</span>
-          {mode === 'camera' && <span>Держите телефон параллельно бумаге</span>}
-          {mode === 'url' && <span>Используйте только ссылку на обезличенное изображение</span>}
-        </div>
+        {image.step === 'select' && (
+          <div className="mt-6 sm:mt-8 flex flex-wrap gap-x-6 gap-y-2 text-xs text-gray-400">
+            <span>JPEG, PNG, PDF до 10 MB</span>
+            {mode === 'camera' && <span>Держите телефон параллельно бумаге</span>}
+            {mode === 'url' && <span>Используйте только ссылку на обезличенное изображение</span>}
+          </div>
+        )}
       </div>
     </Layout>
   );
@@ -534,33 +515,88 @@ function MaskedImagePreview({ src, boxes, clientMeta }: { src: string; boxes: Re
   const viewBoxHeight = clientMeta?.image_height ?? 100;
 
   return (
-    <div className="relative rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
-      <div className="relative inline-block max-w-full">
-        <img src={src} alt="Обезличенная ЭКГ" className="max-w-full h-auto max-h-[50vh] sm:max-h-[500px] mx-auto block" />
-        {boxes.length > 0 && (
-          <svg
-            className="absolute inset-0 h-full w-full pointer-events-none"
-            viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
-            preserveAspectRatio="none"
-            aria-hidden="true"
-          >
-            {boxes.map((box, index) => (
-              <rect
-                key={`${box.x}-${box.y}-${box.width}-${box.height}-${index}`}
-                x={box.x}
-                y={box.y}
-                width={box.width}
-                height={box.height}
-                fill="none"
-                stroke="#38bdf8"
-                strokeWidth="1.2"
-                vectorEffect="non-scaling-stroke"
-                strokeDasharray="4 2"
-              />
-            ))}
-          </svg>
-        )}
-      </div>
+    <div className="relative inline-block max-w-full w-full">
+      <img src={src} alt="Обезличенная ЭКГ" className="max-w-full h-auto max-h-[50vh] sm:max-h-[500px] mx-auto block" />
+      {boxes.length > 0 && (
+        <svg
+          className="absolute inset-0 h-full w-full pointer-events-none"
+          viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          {boxes.map((box, index) => (
+            <rect
+              key={`${box.x}-${box.y}-${box.width}-${box.height}-${index}`}
+              x={box.x}
+              y={box.y}
+              width={box.width}
+              height={box.height}
+              fill="none"
+              stroke="#38bdf8"
+              strokeWidth="1.2"
+              vectorEffect="non-scaling-stroke"
+              strokeDasharray="4 2"
+            />
+          ))}
+        </svg>
+      )}
+    </div>
+  );
+}
+
+type AnalysisStepState = 'todo' | 'active' | 'processing' | 'done';
+
+function AnalysisStepIndicator({ imageStep, isProcessingOCR, isSubmitting }: {
+  imageStep: ImageStep;
+  isProcessingOCR: boolean;
+  isSubmitting: boolean;
+}) {
+  const states: AnalysisStepState[] = (() => {
+    if (isSubmitting)                                    return ['done', 'done', 'done', 'active'];
+    if (imageStep === 'review' || imageStep === 'ready') return ['done', 'done', 'active', 'todo'];
+    if (isProcessingOCR)                                 return ['done', 'processing', 'todo', 'todo'];
+    return ['active', 'todo', 'todo', 'todo'];
+  })();
+
+  const labels = ['Загрузка', 'Маскировка', 'Параметры', 'Отправка'];
+
+  return (
+    <div className="flex items-start">
+      {labels.map((label, i) => (
+        <Fragment key={label}>
+          <div className="flex flex-col items-center shrink-0">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+              states[i] === 'done'       ? 'bg-rose-600 text-white' :
+              states[i] === 'active'     ? 'bg-rose-600 text-white ring-4 ring-rose-100' :
+              states[i] === 'processing' ? 'bg-rose-500 text-white' :
+              'bg-gray-100 text-gray-400'
+            }`}>
+              {states[i] === 'done' ? (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                </svg>
+              ) : states[i] === 'processing' ? (
+                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              ) : (
+                i + 1
+              )}
+            </div>
+            <span className={`mt-1.5 text-[11px] font-medium text-center leading-tight w-20 ${
+              states[i] === 'todo' ? 'text-gray-400' : 'text-gray-700'
+            }`}>
+              {label}
+            </span>
+          </div>
+          {i < labels.length - 1 && (
+            <div className={`flex-1 h-px mt-4 mx-1 transition-colors ${
+              states[i] === 'done' ? 'bg-rose-300' : 'bg-gray-200'
+            }`} />
+          )}
+        </Fragment>
+      ))}
     </div>
   );
 }
@@ -580,3 +616,4 @@ function OverlayButton({ onClick, title, children }: { onClick: () => void; titl
     </button>
   );
 }
+
