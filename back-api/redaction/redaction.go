@@ -65,9 +65,9 @@ func ApplyBandRedaction(reader io.Reader, contentType string, cfg *BandRedaction
 	height := bounds.Dy()
 
 	// Calculate band dimensions
-	topHeight := clampDim(int(float64(height) * cfg.TopRatio), 0, height/2)
-	bottomHeight := clampDim(int(float64(height) * cfg.BottomRatio), 0, height/2)
-	leftWidth := clampDim(int(float64(width) * cfg.LeftRatio), 0, width/2)
+	topHeight := clampDim(int(float64(height)*cfg.TopRatio), 0, height/2)
+	bottomHeight := clampDim(int(float64(height)*cfg.BottomRatio), 0, height/2)
+	leftWidth := clampDim(int(float64(width)*cfg.LeftRatio), 0, width/2)
 
 	// Create destination image and copy original
 	dst := image.NewRGBA(img.Bounds())
@@ -255,11 +255,12 @@ func encodeImage(img image.Image, originalFormat, contentType string) (io.Reader
 	// Determine output format
 	format := originalFormat
 	if format == "" {
-		if contentType == "image/png" {
+		switch contentType {
+		case "image/png":
 			format = "png"
-		} else if contentType == "image/webp" {
+		case "image/webp":
 			format = "webp"
-		} else {
+		default:
 			format = "jpeg"
 		}
 	}

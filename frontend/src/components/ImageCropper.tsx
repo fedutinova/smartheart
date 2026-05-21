@@ -194,7 +194,7 @@ export function ImageCropper({ imageSrc, onCropComplete, onRotate }: ImageCroppe
       <div className="bg-white border-t border-gray-200">
         <div className="flex items-center px-3 py-2 gap-1">
           {/* Crop mode icons */}
-          <ToolIconButton active={mode === 'rect'} onClick={() => handleModeChange('rect')} label="Прямоугольник">
+          <ToolIconButton active={mode === 'rect'} onClick={() => handleModeChange('rect')} label="Кадрирование">
             <RectCropIcon />
           </ToolIconButton>
           <ToolIconButton active={mode === 'perspective'} onClick={() => handleModeChange('perspective')} label="Перспектива">
