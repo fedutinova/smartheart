@@ -372,6 +372,26 @@ export function Landing() {
         </div>
       </section>
 
+      {/* Survey banner */}
+      <section className="py-12 px-4 sm:px-6 bg-gradient-to-r from-indigo-600 to-purple-600">
+        <div className="max-w-2xl mx-auto text-center">
+          <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">
+            Помогите улучшить сервис
+          </h2>
+          <p className="text-indigo-100 mb-6 text-sm sm:text-base">
+            Пройдите короткий опрос — расскажите о вашем опыте. Это займёт 2–3 минуты.
+          </p>
+          <a
+            href="https://docs.google.com/forms/d/e/1FAIpQLSerfoqa5aM-7A-Yei7gZxs8CxGgmBu_dlMx4XqolAijSTbFBg/viewform"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block px-7 py-3 text-sm font-medium text-indigo-700 bg-white hover:bg-indigo-50 active:scale-95 rounded-xl transition-all duration-150"
+          >
+            Пройти опрос →
+          </a>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="border-t border-gray-100 py-8 px-4 sm:px-6">
         <div className="max-w-6xl mx-auto flex flex-col items-center gap-4 text-xs text-gray-400 sm:flex-row sm:justify-between">

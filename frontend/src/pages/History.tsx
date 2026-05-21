@@ -21,6 +21,22 @@ export function History() {
       <div>
         <h1 className="text-2xl font-semibold text-gray-900 mb-6">История анализов</h1>
 
+        {/* Survey banner */}
+        <div className="mb-6 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-white">Помогите улучшить сервис</p>
+            <p className="text-sm text-indigo-100 mt-0.5">Пройдите короткий опрос о вашем опыте — займёт 2–3 минуты</p>
+          </div>
+          <a
+            href="https://docs.google.com/forms/d/e/1FAIpQLSerfoqa5aM-7A-Yei7gZxs8CxGgmBu_dlMx4XqolAijSTbFBg/viewform"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 inline-block px-4 py-2 text-sm font-medium text-indigo-700 bg-white hover:bg-indigo-50 rounded-lg transition-colors"
+          >
+            Пройти опрос →
+          </a>
+        </div>
+
         <div className="bg-white shadow rounded-lg">
           {isLoading ? (
             <HistoryTableSkeleton />
