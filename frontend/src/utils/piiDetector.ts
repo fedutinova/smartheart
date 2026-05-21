@@ -21,7 +21,7 @@ interface WordEntry {
 const PII_PATTERNS = [
   // Two or three consecutive capitalised Cyrillic words — reliable ФИО fallback when NER is unavailable
   { pattern: /\b[А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ][а-яё]+){1,2}\b/g, label: 'fio' },
-  { pattern: /\b\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4}\b/g, label: 'date' },
+  { pattern: /\b\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2}(?:\s?\d{2})?\b/g, label: 'date' },
   {
     pattern: /\b\d{1,2}\s+(янв|фев|мар|апр|май|июн|июл|авг|сен|окт|ноя|дек)\w*\s+\d{4}\b/gi,
     label: 'date_words',
