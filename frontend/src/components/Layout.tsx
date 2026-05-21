@@ -47,6 +47,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { to: ROUTES.ANALYZE, label: 'Анализ' },
     { to: ROUTES.HISTORY, label: 'История' },
     { to: ROUTES.KNOWLEDGE_BASE, label: 'Чат-бот' },
+    { to: ROUTES.PRICING, label: 'Тарифы' },
   ];
 
   const bottomTabs: { to: string; label: string; icon: React.ReactNode }[] = [
@@ -152,6 +153,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                     >
                       Личный кабинет
+                    </Link>
+                    <Link
+                      to={ROUTES.PRICING}
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      Тарифы
                     </Link>
                     <button
                       onClick={handleLogout}

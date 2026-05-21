@@ -18,6 +18,7 @@ export const ROUTES = {
   RESET_PASSWORD: '/reset-password',
   PRIVACY: '/privacy',
   TERMS: '/terms',
+  PRICING: '/pricing',
 };
 
 /**

@@ -49,6 +49,7 @@ const Results = lazy(() => lazyRetry(() => import('@/pages/Results').then((m) =>
 const Account = lazy(() => lazyRetry(() => import('@/pages/Account').then((m) => ({ default: m.Account }))));
 const Privacy = lazy(() => lazyRetry(() => import('@/pages/Privacy').then((m) => ({ default: m.Privacy }))));
 const Terms = lazy(() => lazyRetry(() => import('@/pages/Terms').then((m) => ({ default: m.Terms }))));
+const Pricing = lazy(() => lazyRetry(() => import('@/pages/Pricing').then((m) => ({ default: m.Pricing }))));
 
 function PageLoader() {
   return (
@@ -127,6 +128,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Results />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.PRICING}
+            element={
+              <ProtectedRoute>
+                <Pricing />
               </ProtectedRoute>
             }
           />

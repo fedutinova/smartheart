@@ -32,8 +32,8 @@ describe('useQuota', () => {
 
   it('returns quota data on success', async () => {
     const quotaData: QuotaInfo = {
-      daily_limit: 50,
-      used_today: 45,
+      free_limit: 50,
+      free_analyses_used: 45,
       free_remaining: 5,
       paid_analyses_remaining: 10,
       needs_payment: false,
@@ -66,8 +66,8 @@ describe('useQuota', () => {
 
   it('refetches quota on demand via refetch', async () => {
     const quotaData: QuotaInfo = {
-      daily_limit: 50,
-      used_today: 30,
+      free_limit: 50,
+      free_analyses_used: 30,
       free_remaining: 20,
       paid_analyses_remaining: 15,
       needs_payment: false,

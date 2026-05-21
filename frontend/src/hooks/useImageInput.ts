@@ -2,13 +2,15 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import type { ECGClientMeta, RedactionBox } from '@/types';
 import { applyOCRRedaction } from '@/utils/redaction';
 
-/** Step in the image input workflow: select file → crop → review → ready to upload */
-export type ImageStep = 'select' | 'crop' | 'review' | 'ready';
+/** Step in the image input workflow: select → preview (crop/rotate) → OCR → review → ready */
+export type ImageStep = 'select' | 'crop' | 'preview' | 'review' | 'ready';
 
 /** Current state of the image input */
 interface ImageInputState {
   /** Current workflow step */
   step: ImageStep;
+  /** True while OCR redaction is running (between file select and review step) */
+  isProcessingOCR: boolean;
   /** Object URL of the current editable source image */
   previewSrc: string | null;
   /** Current source image before redaction */
@@ -27,10 +29,12 @@ interface ImageInputState {
 interface ImageInputActions {
   /** Load a file, optionally compress it, and set as preview */
   handleFileSelect: (file: File) => Promise<void>;
-  /** Accept crop result and re-run redaction */
+  /** Accept crop result and return to preview step */
   handleCropComplete: (blob: Blob) => Promise<void>;
-  /** Cancel crop and return to the review step */
+  /** Cancel crop and return to the preview step */
   handleCropCancel: () => void;
+  /** Run OCR redaction on the current source and advance to review */
+  confirmPreview: () => Promise<void>;
   /** Rotate current source image 90° clockwise */
   rotateImage: () => Promise<void>;
   /** Confirm auto-applied redaction masks */
@@ -118,6 +122,7 @@ function compressImage(file: File): Promise<Blob> {
  */
 export function useImageInput(): UseImageInputReturn {
   const [step, setStep] = useState<ImageStep>('select');
+  const [isProcessingOCR, setIsProcessingOCR] = useState(false);
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
   const [sourceBlob, setSourceBlob] = useState<Blob | null>(null);
   const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null);
@@ -163,6 +168,13 @@ export function useImageInput(): UseImageInputReturn {
     setPreviewSrc(URL.createObjectURL(blob));
   }, []);
 
+  const setSourceForPreview = useCallback((blob: Blob) => {
+    resetDerivedState();
+    setSourceBlob(blob);
+    setSourcePreview(blob);
+    setStep('preview');
+  }, [resetDerivedState, setSourcePreview]);
+
   const applyRedaction = useCallback(async (blob: Blob) => {
     if (!blob.type.startsWith('image/')) {
       revokeDerivedPreview();
@@ -174,13 +186,18 @@ export function useImageInput(): UseImageInputReturn {
       return;
     }
 
-    const result = await applyOCRRedaction(blob);
-    revokeDerivedPreview();
-    setCroppedBlob(result.blob);
-    setCroppedPreview(URL.createObjectURL(result.blob));
-    setRedactionBoxes(result.boxes);
-    setClientMeta(result.clientMeta);
-    setStep('review');
+    setIsProcessingOCR(true);
+    try {
+      const result = await applyOCRRedaction(blob);
+      revokeDerivedPreview();
+      setCroppedBlob(result.blob);
+      setCroppedPreview(URL.createObjectURL(result.blob));
+      setRedactionBoxes(result.boxes);
+      setClientMeta(result.clientMeta);
+      setStep('review');
+    } finally {
+      setIsProcessingOCR(false);
+    }
   }, [revokeDerivedPreview]);
 
   const updateSourceAndRedaction = useCallback(async (blob: Blob) => {
@@ -207,7 +224,7 @@ export function useImageInput(): UseImageInputReturn {
       if (file.type.startsWith('image/')) {
         try {
           const blob = await compressImage(file);
-          await updateSourceAndRedaction(blob);
+          setSourceForPreview(blob);
         } catch {
           setError('Не удалось сжать изображение');
         }
@@ -218,17 +235,21 @@ export function useImageInput(): UseImageInputReturn {
     }
 
     const blob = new Blob([file], { type: file.type });
-    await updateSourceAndRedaction(blob);
-  }, [resetDerivedState, revokeDerivedPreview, updateSourceAndRedaction]);
+    if (file.type.startsWith('image/')) {
+      setSourceForPreview(blob);
+    } else {
+      await updateSourceAndRedaction(blob);
+    }
+  }, [resetDerivedState, revokeDerivedPreview, setSourceForPreview, updateSourceAndRedaction]);
 
   const handleCropComplete = useCallback(async (blob: Blob) => {
     setError('');
-    await updateSourceAndRedaction(blob);
-  }, [updateSourceAndRedaction]);
+    setSourceForPreview(blob);
+  }, [setSourceForPreview]);
 
   const handleCropCancel = useCallback(() => {
     setError('');
-    setStep('review');
+    setStep('preview');
   }, []);
 
   const rotateImage = useCallback(async () => {
@@ -250,8 +271,14 @@ export function useImageInput(): UseImageInputReturn {
     ctx.drawImage(img, -img.width / 2, -img.height / 2);
 
     const blob = await canvasToBlob(canvas, 'image/jpeg', ROTATE_QUALITY);
-    await updateSourceAndRedaction(blob);
-  }, [updateSourceAndRedaction]);
+    setSourceForPreview(blob);
+  }, [setSourceForPreview]);
+
+  const confirmPreview = useCallback(async () => {
+    const blob = sourceBlobRef.current;
+    if (!blob) return;
+    await applyRedaction(blob);
+  }, [applyRedaction]);
 
   const confirmRedaction = useCallback(() => {
     setStep('ready');
@@ -271,12 +298,14 @@ export function useImageInput(): UseImageInputReturn {
     setCroppedPreview(null);
     setRedactionBoxes([]);
     setClientMeta(null);
+    setIsProcessingOCR(false);
     setStep('select');
     setError('');
   }, [revokeDerivedPreview]);
 
   return {
     step,
+    isProcessingOCR,
     previewSrc,
     sourceBlob,
     croppedBlob,
@@ -287,6 +316,7 @@ export function useImageInput(): UseImageInputReturn {
     handleFileSelect,
     handleCropComplete,
     handleCropCancel,
+    confirmPreview,
     rotateImage,
     confirmRedaction,
     handleRecrop,

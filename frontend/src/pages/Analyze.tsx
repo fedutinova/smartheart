@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ecgAPI } from '@/services/api';
 import { ROUTES } from '@/config';
 import { Layout } from '@/components/Layout';
@@ -124,9 +125,18 @@ export function Analyze() {
   const canSubmit =
     noPersonalData && (
       (mode === 'file' || mode === 'camera')
-        ? image.step === 'ready' && image.croppedBlob !== null
+        ? (image.step === 'ready' || image.step === 'review') && image.croppedBlob !== null
         : imageUrl.trim() !== ''
     );
+
+  const submitHint: string | null = (() => {
+    if (canSubmit || mutation.isPending) return null;
+    if (mode === 'file' || mode === 'camera') {
+      if ((image.step === 'ready' || image.step === 'review') && !noPersonalData) return 'Установите флажок подтверждения обезличивания выше';
+    }
+    if (mode === 'url' && !imageUrl.trim()) return 'Введите ссылку на изображение';
+    return null;
+  })();
 
   return (
     <Layout>
@@ -163,8 +173,8 @@ export function Analyze() {
               <PaymentPrompt onShowPayment={() => setShowPayment(true)} />
             )}
 
-            {/* Image source — select step */}
-            {image.step === 'select' && (
+            {/* Image source — select step (hidden while OCR runs) */}
+            {image.step === 'select' && !image.isProcessingOCR && (
               <ImageSelectStep
                 mode={mode}
                 imageUrl={imageUrl}
@@ -177,6 +187,17 @@ export function Analyze() {
               />
             )}
 
+            {/* OCR processing indicator */}
+            {image.isProcessingOCR && (
+              <div className="flex flex-col items-center justify-center gap-3 py-12 text-sm text-gray-500">
+                <svg className="animate-spin h-8 w-8 text-rose-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                <span>Анализируем изображение для обнаружения идентификаторов…</span>
+              </div>
+            )}
+
             {/* Crop step */}
             {image.step === 'crop' && image.previewSrc && (
               <ImageCropper
@@ -186,10 +207,14 @@ export function Analyze() {
               />
             )}
 
-            {(image.step === 'review' || image.step === 'ready' || image.step === 'crop') && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 text-sm text-amber-800">
-                Изображение анализируется нейросетью для точного поиска идентификаторов. Проверьте маски и только потом запускайте анализ.
-              </div>
+            {/* Preview step: user aligns/rotates before OCR */}
+            {image.step === 'preview' && image.previewSrc && !image.isProcessingOCR && (
+              <ImagePreview
+                src={image.previewSrc}
+                onRotate={image.rotateImage}
+                onRecrop={image.handleRecrop}
+                onReset={image.reset}
+              />
             )}
 
             {image.step === 'review' && image.croppedPreview && (
@@ -197,7 +222,6 @@ export function Analyze() {
                 src={image.croppedPreview}
                 boxes={image.redactionBoxes}
                 clientMeta={image.clientMeta}
-                onConfirm={image.confirmRedaction}
                 onRecrop={image.handleRecrop}
                 onRotate={image.rotateImage}
                 onReset={image.reset}
@@ -213,18 +237,19 @@ export function Analyze() {
               />
             )}
 
-            {/* Calibration params */}
-            <CalibrationForm
-              age={age} sex={sex} paperSpeed={paperSpeed}
-              mmPerMvLimb={mmPerMvLimb} mmPerMvChest={mmPerMvChest}
-              onAgeChange={setAge} onSexChange={setSex}
-              onPaperSpeedChange={setPaperSpeed}
-              onMmPerMvLimbChange={setMmPerMvLimb}
-              onMmPerMvChestChange={setMmPerMvChest}
-            />
+            {/* Calibration params and confirmation — only after OCR or for URL mode */}
+            {(mode === 'url' || image.step === 'review' || image.step === 'ready') && (
+              <CalibrationForm
+                age={age} sex={sex} paperSpeed={paperSpeed}
+                mmPerMvLimb={mmPerMvLimb} mmPerMvChest={mmPerMvChest}
+                onAgeChange={setAge} onSexChange={setSex}
+                onPaperSpeedChange={setPaperSpeed}
+                onMmPerMvLimbChange={setMmPerMvLimb}
+                onMmPerMvChestChange={setMmPerMvChest}
+              />
+            )}
 
-            {/* Personal data confirmation */}
-            {(image.step === 'ready' || mode === 'url') && (
+            {(mode === 'url' || image.step === 'review' || image.step === 'ready') && (
               <label className="flex items-start gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
@@ -240,21 +265,36 @@ export function Analyze() {
             )}
 
             {/* Actions */}
-            <div className="flex items-center justify-between pt-2 sm:pt-4">
-              <button
-                type="button"
-                onClick={() => navigate(ROUTES.DASHBOARD)}
-                className="text-gray-600 hover:text-gray-800 text-sm sm:text-base"
-              >
-                Отмена
-              </button>
-              <button
-                type="submit"
-                disabled={mutation.isPending || !canSubmit}
-                className="px-5 sm:px-6 py-2.5 bg-rose-600 text-white rounded-xl hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 disabled:opacity-50 text-sm sm:text-base font-medium transition-colors"
-              >
-                {mutation.isPending ? 'Отправка...' : 'Запустить анализ'}
-              </button>
+            <div className="flex flex-col gap-2 pt-2 sm:pt-4">
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => navigate(ROUTES.DASHBOARD)}
+                  className="text-gray-600 hover:text-gray-800 text-sm sm:text-base"
+                >
+                  Отмена
+                </button>
+                {image.step === 'preview' && !image.isProcessingOCR ? (
+                  <button
+                    type="button"
+                    onClick={image.confirmPreview}
+                    className="px-5 sm:px-6 py-2.5 bg-rose-600 text-white rounded-xl hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 text-sm sm:text-base font-medium transition-colors"
+                  >
+                    Далее →
+                  </button>
+                ) : (mode === 'url' || image.step === 'review' || image.step === 'ready') ? (
+                  <button
+                    type="submit"
+                    disabled={mutation.isPending || !canSubmit}
+                    className="px-5 sm:px-6 py-2.5 bg-rose-600 text-white rounded-xl hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 disabled:opacity-50 text-sm sm:text-base font-medium transition-colors"
+                  >
+                    {mutation.isPending ? 'Отправка...' : 'Запустить анализ'}
+                  </button>
+                ) : null}
+              </div>
+              {submitHint && (
+                <p className="text-xs text-amber-700 text-right">{submitHint}</p>
+              )}
             </div>
           </form>
         </div>
@@ -296,7 +336,10 @@ function PaymentPrompt({ onShowPayment }: { onShowPayment: () => void }) {
         <div className="flex-1 min-w-0">
           <p className="text-base font-semibold text-gray-900">Бесплатные анализы закончились</p>
           <p className="text-sm text-gray-500 mt-1">
-            Оформите подписку: безлимитные анализы ЭКГ и доступ ко всем функциям
+            Оформите подписку: безлимитные анализы ЭКГ и доступ ко всем функциям.{' '}
+            <Link to={ROUTES.PRICING} className="text-rose-600 hover:underline">
+              Подробнее о тарифах →
+            </Link>
           </p>
         </div>
         <button
@@ -442,62 +485,40 @@ function ImagePreview({ src, onRotate, onRecrop, onReset }: {
   );
 }
 
-function ImageRedactionReview({ src, boxes, clientMeta, onConfirm, onRecrop, onRotate, onReset }: {
+function ImageRedactionReview({ src, boxes, clientMeta, onRecrop, onRotate, onReset }: {
   src: string;
   boxes: RedactionBox[];
   clientMeta: ECGClientMeta | null;
-  onConfirm: () => void;
   onRecrop: () => void;
   onRotate: () => void;
   onReset: () => void;
 }) {
+  const maskedPct = clientMeta ? (clientMeta.masked_area_ratio * 100).toFixed(1) : null;
+
   return (
-    <div className="space-y-4">
-      <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
-        <p className="font-medium">Review-step перед отправкой</p>
-        <p className="mt-1">
-          Автоматический режим <span className="font-medium">{clientMeta?.redaction_mode ?? 'band'}</span> уже наложил непрозрачные маски.
-          Если они задевают калибровку или отведения, вернитесь к обрезке источника.
-        </p>
-        {clientMeta && (
-          <p className="mt-2 text-sky-800">
-            Маскировка заняла {clientMeta.redaction_ms} мс, закрыто {(clientMeta.masked_area_ratio * 100).toFixed(1)}% изображения.
-          </p>
-        )}
+    <div className="space-y-2">
+      <div className="relative rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
+        <MaskedImagePreview src={src} boxes={boxes} clientMeta={clientMeta} />
+        <div className="absolute top-2 right-2 flex gap-1.5">
+          <OverlayButton onClick={onRotate} title="Повернуть">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" />
+          </OverlayButton>
+          <OverlayButton onClick={onRecrop} title="Обрезать">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 3.75H6A2.25 2.25 0 0 0 3.75 6v1.5M16.5 3.75H18A2.25 2.25 0 0 1 20.25 6v1.5m0 9V18A2.25 2.25 0 0 1 18 20.25h-1.5m-9 0H6A2.25 2.25 0 0 1 3.75 18v-1.5" />
+          </OverlayButton>
+          <OverlayButton onClick={onReset} title="Заменить файл">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+          </OverlayButton>
+        </div>
       </div>
-
-      <MaskedImagePreview src={src} boxes={boxes} clientMeta={clientMeta} />
-
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={onConfirm}
-          className="px-4 py-2.5 bg-rose-600 text-white rounded-xl hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 text-sm font-medium transition-colors"
-        >
-          Подтвердить маски
-        </button>
-        <button
-          type="button"
-          onClick={onRecrop}
-          className="px-4 py-2.5 rounded-xl border border-gray-300 text-sm text-gray-700 hover:border-gray-400 hover:text-gray-900 transition-colors"
-        >
-          Обрезать источник
-        </button>
-        <button
-          type="button"
-          onClick={onRotate}
-          className="px-4 py-2.5 rounded-xl border border-gray-300 text-sm text-gray-700 hover:border-gray-400 hover:text-gray-900 transition-colors"
-        >
-          Повернуть и пересчитать
-        </button>
-        <button
-          type="button"
-          onClick={onReset}
-          className="px-4 py-2.5 rounded-xl border border-gray-300 text-sm text-gray-700 hover:border-gray-400 hover:text-gray-900 transition-colors"
-        >
-          Заменить файл
-        </button>
-      </div>
+      <p className="text-xs text-sky-700 flex items-center gap-1.5">
+        <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+        </svg>
+        {boxes.length > 0
+          ? `Закрыто ${boxes.length} зон${maskedPct ? ` (${maskedPct}% площади)` : ''}. Если маски задевают отведения — используйте кнопку обрезки.`
+          : 'Идентификаторов не обнаружено. Изображение готово к отправке.'}
+      </p>
     </div>
   );
 }

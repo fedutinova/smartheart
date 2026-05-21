@@ -9,6 +9,7 @@ interface PageMetaConfig {
   keywords: string;
   ogDescription?: string;
   ogImage?: string;
+  robotsIndex?: string;
 }
 
 export const pageMeta: Record<string, PageMetaConfig> = {

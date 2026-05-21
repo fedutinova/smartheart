@@ -13,17 +13,19 @@ const { mockAddJob, mockSetError, mockSubmitAnalysis, mockSubmitAnalysisFile } =
 }));
 
 const mockImageState = {
-  step: 'select' as 'select' | 'crop' | 'review' | 'ready',
+  step: 'select' as 'select' | 'crop' | 'preview' | 'review' | 'ready',
+  isProcessingOCR: false,
   previewSrc: null as string | null,
   sourceBlob: null as Blob | null,
   croppedBlob: null as Blob | null,
   croppedPreview: null as string | null,
   redactionBoxes: [],
-  clientMeta: null,
+  clientMeta: null as import('@/types').ECGClientMeta | null,
   error: '',
   handleFileSelect: vi.fn(),
   handleCropComplete: vi.fn(),
   handleCropCancel: vi.fn(),
+  confirmPreview: vi.fn(),
   rotateImage: vi.fn(),
   confirmRedaction: vi.fn(),
   handleRecrop: vi.fn(),
@@ -105,6 +107,7 @@ describe('Analyze', () => {
     mockSubmitAnalysis.mockReset();
     mockSubmitAnalysisFile.mockReset();
 
+    mockImageState.confirmPreview.mockReset();
     mockImageState.step = 'select';
     mockImageState.previewSrc = null;
     mockImageState.sourceBlob = null;
