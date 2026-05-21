@@ -71,6 +71,49 @@ export function Dashboard() {
           </Link>
         </div>
 
+        {/* Onboarding — shown only before the first analysis */}
+        {!isLoading && recentRequests.length === 0 && (
+          <div className="mb-6 sm:mb-8 rounded-xl border border-gray-200 bg-white p-6 sm:p-8">
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Добро пожаловать!</h2>
+            <p className="text-sm text-gray-500 mb-6">Вот как работает сервис — всего 3 шага</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-7">
+              {[
+                {
+                  num: '1',
+                  title: 'Загрузите ЭКГ',
+                  desc: 'Сфотографируйте плёнку или загрузите скан. Сервис автоматически обезличит изображение.',
+                },
+                {
+                  num: '2',
+                  title: 'Получите результат',
+                  desc: 'Измерения по 12 отведениям, индексы ГЛЖ и справочная интерпретация за несколько секунд.',
+                },
+                {
+                  num: '3',
+                  title: 'Задайте вопрос',
+                  desc: 'Уточните детали у чат-бота прямо на странице результата — с учётом вашей ЭКГ.',
+                },
+              ].map((step) => (
+                <div key={step.num} className="flex gap-3 items-start">
+                  <div className="w-7 h-7 rounded-full bg-rose-100 text-rose-600 text-sm font-bold flex items-center justify-center shrink-0 mt-0.5">
+                    {step.num}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">{step.title}</p>
+                    <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{step.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Link
+              to={ROUTES.ANALYZE}
+              className="inline-block px-5 py-2.5 text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors"
+            >
+              Начать первый анализ →
+            </Link>
+          </div>
+        )}
+
         <div className="bg-white shadow rounded-lg">
           <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
             <h2 className="text-base sm:text-lg font-medium text-gray-900">История</h2>
@@ -78,14 +121,8 @@ export function Dashboard() {
           {isLoading ? (
             <DashboardHistorySkeleton />
           ) : recentRequests.length === 0 ? (
-            <div className="px-4 sm:px-6 py-8 text-center text-gray-500">
-              <p>У вас пока нет анализов</p>
-              <Link
-                to={ROUTES.ANALYZE}
-                className="text-rose-600 hover:text-rose-500 mt-2 inline-block"
-              >
-                Создать первый анализ →
-              </Link>
+            <div className="px-4 sm:px-6 py-6 text-center text-sm text-gray-400">
+              Анализы появятся здесь после первой отправки
             </div>
           ) : (
             <>

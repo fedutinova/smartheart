@@ -369,7 +369,7 @@ func Load() Config {
 			SecretKey:                envString("YOOKASSA_SECRET_KEY", ""),
 			ReturnURL:                envString("YOOKASSA_RETURN_URL", "http://localhost:3000/dashboard"),
 			PriceKopecks:             envInt("YOOKASSA_PRICE_KOPECKS", 4900),                // 49 rub default
-			SubscriptionPriceKopecks: envInt("YOOKASSA_SUBSCRIPTION_PRICE_KOPECKS", 199900), // 1999 rub default
+			SubscriptionPriceKopecks: envInt("YOOKASSA_SUBSCRIPTION_PRICE_KOPECKS", 199000), // 1990 rub default
 		},
 		SMTP: SMTPConfig{
 			Host:     envString("SMTP_HOST", "smtp.timeweb.ru"),

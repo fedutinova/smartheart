@@ -56,7 +56,7 @@ describe('Dashboard', () => {
         { date: '2026-04-02', count: 5 },
       ],
       payments_succeeded: 4,
-      payments_total_rub: 1999,
+      payments_total_rub: 1990,
       feedback_positive: 9,
       feedback_negative: 3,
       feedback_satisfaction_pct: 75,

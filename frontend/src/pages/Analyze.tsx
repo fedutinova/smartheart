@@ -239,6 +239,12 @@ export function Analyze() {
 
             {/* Calibration params and confirmation — only after OCR or for URL mode */}
             {(mode === 'url' || image.step === 'review' || image.step === 'ready') && (
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Параметры плёнки</span>
+                <div className="flex-1 h-px bg-gray-200" />
+              </div>
+            )}
+            {(mode === 'url' || image.step === 'review' || image.step === 'ready') && (
               <CalibrationForm
                 age={age} sex={sex} paperSpeed={paperSpeed}
                 mmPerMvLimb={mmPerMvLimb} mmPerMvChest={mmPerMvChest}
