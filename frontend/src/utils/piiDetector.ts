@@ -30,6 +30,7 @@ const PII_PATTERNS = [
     pattern: /\b\d{1,2}\s+(янв|фев|мар|апр|май|июн|июл|авг|сен|окт|ноя|дек)\w*\s+\d{4}\b/gi,
     label: 'date_words',
   },
+  { pattern: /\+?7?\s?\(?\d{3}\)?\s?\d{3}[-\s]?\d{2}[-\s]?\d{2}/g, label: 'phone' },
   { pattern: /\b[А-Я]?\d{5,12}\b/g, label: 'patient_id' },
   { pattern: /\b\d{3}-\d{3}-\d{3}\s\d{2}\b/g, label: 'snils' },
 ];
