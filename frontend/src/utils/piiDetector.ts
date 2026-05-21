@@ -20,7 +20,11 @@ interface WordEntry {
 /** PII patterns for names, dates, IDs, and СНИЛС */
 const PII_PATTERNS = [
   // Two or three consecutive capitalised Cyrillic words — reliable ФИО fallback when NER is unavailable
-  { pattern: /\b[А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ][а-яё]+){1,2}\b/g, label: 'fio' },
+  { pattern: /[А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ][а-яё]+){1,2}/g, label: 'fio' },
+  // Surname followed by initials: Хорунжина Е.В. or Хорунжина Е. В.
+  { pattern: /[А-ЯЁ][а-яё]+\s+[А-ЯЁ]\.\s?[А-ЯЁ]\./g, label: 'fio_initials_after' },
+  // Initials followed by surname: Е.В. Хорунжина or Е. В. Хорунжина
+  { pattern: /[А-ЯЁ]\.\s?[А-ЯЁ]\.\s+[А-ЯЁ][а-яё]+/g, label: 'fio_initials_before' },
   { pattern: /\b\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2}(?:\s?\d{2})?\b/g, label: 'date' },
   {
     pattern: /\b\d{1,2}\s+(янв|фев|мар|апр|май|июн|июл|авг|сен|окт|ноя|дек)\w*\s+\d{4}\b/gi,
@@ -39,9 +43,13 @@ const MIN_WORD_TEXT_LENGTH = 2;
 
 // Lazy-load NER pipeline once and reuse across calls
 let nerPipeline: any = null;
+let nerPipelineFailed = false;
 let ocrWorkerPromise: Promise<any> | null = null;
 
 async function getNERPipeline(): Promise<any> {
+  if (nerPipelineFailed) {
+    throw new Error('NER model failed to load previously, skipping');
+  }
   if (!nerPipeline) {
     try {
       nerPipeline = await pipeline(
@@ -51,7 +59,7 @@ async function getNERPipeline(): Promise<any> {
       );
     } catch (err) {
       console.error('Failed to load NER model, falling back to regex-only detection', err);
-      nerPipeline = null; // Mark as failed so regex-only fallback continues
+      nerPipelineFailed = true;
       throw err;
     }
   }
