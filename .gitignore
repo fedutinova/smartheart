@@ -32,8 +32,16 @@ bin/
 
 # Local file uploads
 uploads/
+
+# H2 dataset: ignore large image files, track manifest and reports
+h2/with-test-data/
+
+# Docs: ignore generated/local content, track H2 verification artifacts
 docs/
-h2/
+!docs/artifacts/h2-ground-truth-validation.md
+!docs/artifacts/source-data/
+!docs/artifacts/source-data/redaction/
+!docs/artifacts/source-data/redaction/h2_ground_truth_results.csv
 
 # Node.js
 node_modules/

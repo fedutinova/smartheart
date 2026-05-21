@@ -16,6 +16,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { applyBandRedaction, applyOCRRedaction, DEFAULT_BAND_REDACTION_CONFIG } from '../redaction';
 import { H2_TEST_CASES, loadTestCase } from './h2-dataset';
+import { evaluateRedaction } from './h2-evaluator';
 
 interface H2MetricsResult {
   testCaseId: string;
@@ -100,24 +101,66 @@ describe('H2 Hypothesis: OCR-based ECG redaction vs band redaction', () => {
   });
 
   describe('H2 Comparison: Baseline vs Intervention', () => {
-    it.skip('should show masked_area_reduction with OCR mode', async () => {
-      // TODO: Enable when OCR redaction is implemented
-    });
+    it('should show masked_area_reduction with OCR mode', async () => {
+      const subset = testCases.slice(0, 5);
+      let totalBandRatio = 0;
+      let totalOcrRatio = 0;
 
-    it.skip('should maintain leak_rate constraint (≤2 pp increase)', async () => {
-      // TODO: Requires post-redaction OCR scan to measure remaining identifiers
-      // For each test case:
-      // 1. Apply band redaction
-      // 2. Apply OCR redaction
-      // 3. Scan both outputs with OCR to detect remaining identifiers
-      // 4. Calculate: leak_rate_band and leak_rate_ocr
-      // 5. Assert: leak_rate_ocr - leak_rate_band ≤ 0.02
-    });
+      for (const testCase of subset) {
+        const blob = await loadTestCase(testCase.id);
+        const bandResult = await applyBandRedaction(blob, DEFAULT_BAND_REDACTION_CONFIG);
+        const ocrResult = await applyOCRRedaction(blob);
+        totalBandRatio += bandResult.clientMeta.masked_area_ratio;
+        totalOcrRatio += ocrResult.clientMeta.masked_area_ratio;
+      }
 
-    it.skip('should meet performance constraint (mean < 3000 ms)', async () => {
-      // TODO: Collect redaction times from all test cases
-      // Calculate mean from the distribution
-    });
+      const meanBandRatio = totalBandRatio / subset.length;
+      const meanOcrRatio = totalOcrRatio / subset.length;
+
+      console.log(`[H2] masked_area_ratio — band: ${meanBandRatio.toFixed(4)}, ocr: ${meanOcrRatio.toFixed(4)}`);
+      expect(meanOcrRatio).toBeLessThan(meanBandRatio);
+    }, 30_000);
+
+    it('should maintain leak_rate constraint (≤2 pp increase)', async () => {
+      const subset = testCases.slice(0, 5);
+      let totalBandLeakRate = 0;
+      let totalOcrLeakRate = 0;
+
+      for (const testCase of subset) {
+        const blob = await loadTestCase(testCase.id);
+        const bandResult = await applyBandRedaction(blob, DEFAULT_BAND_REDACTION_CONFIG);
+        const ocrResult = await applyOCRRedaction(blob);
+
+        const bandEval = await evaluateRedaction(bandResult.blob, testCase.expectedIdentifiers);
+        const ocrEval = await evaluateRedaction(ocrResult.blob, testCase.expectedIdentifiers);
+
+        totalBandLeakRate += bandEval.leakRate;
+        totalOcrLeakRate += ocrEval.leakRate;
+      }
+
+      const meanBandLeakRate = totalBandLeakRate / subset.length;
+      const meanOcrLeakRate = totalOcrLeakRate / subset.length;
+
+      console.log(`[H2] leak_rate — band: ${(meanBandLeakRate * 100).toFixed(1)}%, ocr: ${(meanOcrLeakRate * 100).toFixed(1)}%, diff: ${((meanOcrLeakRate - meanBandLeakRate) * 100).toFixed(1)}pp`);
+      expect(meanOcrLeakRate - meanBandLeakRate).toBeLessThanOrEqual(0.02);
+    }, 120_000);
+
+    it('should meet performance constraint (mean < 3000 ms)', async () => {
+      const subset = testCases.slice(0, 10);
+      const times: number[] = [];
+
+      for (const testCase of subset) {
+        const blob = await loadTestCase(testCase.id);
+        const result = await applyOCRRedaction(blob);
+        times.push(result.clientMeta.redaction_ms);
+      }
+
+      const mean = times.reduce((a, b) => a + b, 0) / times.length;
+      const p95 = times.sort((a, b) => a - b)[Math.floor(times.length * 0.95)];
+
+      console.log(`[H2] redaction_ms — mean: ${mean.toFixed(0)}ms, p95: ${p95}ms`);
+      expect(mean).toBeLessThan(3000);
+    }, 120_000);
   });
 
   describe('H2 Report generation', () => {

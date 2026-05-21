@@ -1,0 +1,914 @@
+{
+  "summary": {
+    "datasetSize": 100,
+    "meanDetectPiiRuntimeMs": 2117.84,
+    "p95DetectPiiRuntimeMs": 6251,
+    "minDetectPiiRuntimeMs": 850,
+    "maxDetectPiiRuntimeMs": 8303,
+    "thresholdMs": 3000,
+    "thresholdPassed": false,
+    "measurementScope": "верхняя треть + downsample до 1000px + PSM 6 + фильтрация слов + переиспользуемый OCR worker + NER/regex"
+  },
+  "results": [
+    {
+      "id": "h2_001",
+      "imageFile": "00001_hr_1R.png",
+      "detectPiiRuntimeMs": 2225,
+      "rawWordsCount": 14,
+      "filteredWordsCount": 6,
+      "nerEntitiesCount": 0,
+      "regexMatches": 2
+    },
+    {
+      "id": "h2_002",
+      "imageFile": "00002_hr_1R.png",
+      "detectPiiRuntimeMs": 1683,
+      "rawWordsCount": 9,
+      "filteredWordsCount": 1,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_003",
+      "imageFile": "00003_hr_1R.png",
+      "detectPiiRuntimeMs": 2478,
+      "rawWordsCount": 19,
+      "filteredWordsCount": 7,
+      "nerEntitiesCount": 1,
+      "regexMatches": 1
+    },
+    {
+      "id": "h2_004",
+      "imageFile": "00004_hr_1R.png",
+      "detectPiiRuntimeMs": 1362,
+      "rawWordsCount": 10,
+      "filteredWordsCount": 2,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_005",
+      "imageFile": "00005_hr_1R.png",
+      "detectPiiRuntimeMs": 1958,
+      "rawWordsCount": 16,
+      "filteredWordsCount": 6,
+      "nerEntitiesCount": 4,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_006",
+      "imageFile": "00006_hr_1R.png",
+      "detectPiiRuntimeMs": 1103,
+      "rawWordsCount": 0,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_007",
+      "imageFile": "00007_hr_1R.png",
+      "detectPiiRuntimeMs": 2572,
+      "rawWordsCount": 24,
+      "filteredWordsCount": 5,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_008",
+      "imageFile": "00008_hr_1R.png",
+      "detectPiiRuntimeMs": 1153,
+      "rawWordsCount": 3,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_009",
+      "imageFile": "00009_hr_1R.png",
+      "detectPiiRuntimeMs": 1778,
+      "rawWordsCount": 16,
+      "filteredWordsCount": 5,
+      "nerEntitiesCount": 4,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_010",
+      "imageFile": "00010_hr_1R.png",
+      "detectPiiRuntimeMs": 2711,
+      "rawWordsCount": 22,
+      "filteredWordsCount": 7,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_011",
+      "imageFile": "00011_hr_1R.png",
+      "detectPiiRuntimeMs": 3589,
+      "rawWordsCount": 14,
+      "filteredWordsCount": 2,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_012",
+      "imageFile": "00012_hr_1R.png",
+      "detectPiiRuntimeMs": 3805,
+      "rawWordsCount": 34,
+      "filteredWordsCount": 12,
+      "nerEntitiesCount": 0,
+      "regexMatches": 3
+    },
+    {
+      "id": "h2_013",
+      "imageFile": "00013_hr_1R.png",
+      "detectPiiRuntimeMs": 1677,
+      "rawWordsCount": 16,
+      "filteredWordsCount": 3,
+      "nerEntitiesCount": 2,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_014",
+      "imageFile": "00014_hr_1R.png",
+      "detectPiiRuntimeMs": 1039,
+      "rawWordsCount": 1,
+      "filteredWordsCount": 1,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_015",
+      "imageFile": "00015_hr_1R.png",
+      "detectPiiRuntimeMs": 1716,
+      "rawWordsCount": 14,
+      "filteredWordsCount": 3,
+      "nerEntitiesCount": 3,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_016",
+      "imageFile": "00016_hr_1R.png",
+      "detectPiiRuntimeMs": 903,
+      "rawWordsCount": 0,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_017",
+      "imageFile": "00017_hr_1R.png",
+      "detectPiiRuntimeMs": 1462,
+      "rawWordsCount": 16,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_018",
+      "imageFile": "00018_hr_1R.png",
+      "detectPiiRuntimeMs": 1517,
+      "rawWordsCount": 15,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_019",
+      "imageFile": "00019_hr_1R.png",
+      "detectPiiRuntimeMs": 1344,
+      "rawWordsCount": 9,
+      "filteredWordsCount": 1,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_020",
+      "imageFile": "00020_hr_1R.png",
+      "detectPiiRuntimeMs": 921,
+      "rawWordsCount": 0,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_021",
+      "imageFile": "00021_hr_1R.png",
+      "detectPiiRuntimeMs": 973,
+      "rawWordsCount": 0,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_022",
+      "imageFile": "00022_hr_1R.png",
+      "detectPiiRuntimeMs": 1429,
+      "rawWordsCount": 4,
+      "filteredWordsCount": 1,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_023",
+      "imageFile": "00023_hr_1R.png",
+      "detectPiiRuntimeMs": 2372,
+      "rawWordsCount": 23,
+      "filteredWordsCount": 3,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_024",
+      "imageFile": "00024_hr_1R.png",
+      "detectPiiRuntimeMs": 1323,
+      "rawWordsCount": 11,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_025",
+      "imageFile": "00025_hr_1R.png",
+      "detectPiiRuntimeMs": 927,
+      "rawWordsCount": 0,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_026",
+      "imageFile": "00026_hr_1R.png",
+      "detectPiiRuntimeMs": 1798,
+      "rawWordsCount": 19,
+      "filteredWordsCount": 1,
+      "nerEntitiesCount": 0,
+      "regexMatches": 1
+    },
+    {
+      "id": "h2_027",
+      "imageFile": "00027_hr_1R.png",
+      "detectPiiRuntimeMs": 1005,
+      "rawWordsCount": 1,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_028",
+      "imageFile": "00028_hr_1R.png",
+      "detectPiiRuntimeMs": 1782,
+      "rawWordsCount": 3,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_029",
+      "imageFile": "00029_hr_1R.png",
+      "detectPiiRuntimeMs": 1527,
+      "rawWordsCount": 16,
+      "filteredWordsCount": 2,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_030",
+      "imageFile": "00030_hr_1R.png",
+      "detectPiiRuntimeMs": 1572,
+      "rawWordsCount": 16,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_031",
+      "imageFile": "00031_hr_1R.png",
+      "detectPiiRuntimeMs": 850,
+      "rawWordsCount": 0,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_032",
+      "imageFile": "00032_hr_1R.png",
+      "detectPiiRuntimeMs": 1040,
+      "rawWordsCount": 0,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_033",
+      "imageFile": "00033_hr_1R.png",
+      "detectPiiRuntimeMs": 1718,
+      "rawWordsCount": 16,
+      "filteredWordsCount": 1,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_034",
+      "imageFile": "00034_hr_1R.png",
+      "detectPiiRuntimeMs": 1654,
+      "rawWordsCount": 16,
+      "filteredWordsCount": 3,
+      "nerEntitiesCount": 0,
+      "regexMatches": 1
+    },
+    {
+      "id": "h2_035",
+      "imageFile": "00035_hr_1R.png",
+      "detectPiiRuntimeMs": 2237,
+      "rawWordsCount": 26,
+      "filteredWordsCount": 3,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_036",
+      "imageFile": "00036_hr_1R.png",
+      "detectPiiRuntimeMs": 1741,
+      "rawWordsCount": 16,
+      "filteredWordsCount": 3,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_037",
+      "imageFile": "00037_hr_1R.png",
+      "detectPiiRuntimeMs": 1349,
+      "rawWordsCount": 8,
+      "filteredWordsCount": 1,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_038",
+      "imageFile": "00038_hr_1R.png",
+      "detectPiiRuntimeMs": 2649,
+      "rawWordsCount": 7,
+      "filteredWordsCount": 4,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_039",
+      "imageFile": "00039_hr_1R.png",
+      "detectPiiRuntimeMs": 1581,
+      "rawWordsCount": 16,
+      "filteredWordsCount": 3,
+      "nerEntitiesCount": 1,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_040",
+      "imageFile": "00040_hr_1R.png",
+      "detectPiiRuntimeMs": 1578,
+      "rawWordsCount": 15,
+      "filteredWordsCount": 4,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_041",
+      "imageFile": "00041_hr_1R.png",
+      "detectPiiRuntimeMs": 1860,
+      "rawWordsCount": 18,
+      "filteredWordsCount": 2,
+      "nerEntitiesCount": 4,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_042",
+      "imageFile": "00042_hr_1R.png",
+      "detectPiiRuntimeMs": 5736,
+      "rawWordsCount": 30,
+      "filteredWordsCount": 2,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_043",
+      "imageFile": "00043_hr_1R.png",
+      "detectPiiRuntimeMs": 1623,
+      "rawWordsCount": 16,
+      "filteredWordsCount": 2,
+      "nerEntitiesCount": 1,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_044",
+      "imageFile": "00044_hr_1R.png",
+      "detectPiiRuntimeMs": 1686,
+      "rawWordsCount": 15,
+      "filteredWordsCount": 1,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_045",
+      "imageFile": "00045_hr_1R.png",
+      "detectPiiRuntimeMs": 903,
+      "rawWordsCount": 0,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_046",
+      "imageFile": "00046_hr_1R.png",
+      "detectPiiRuntimeMs": 2697,
+      "rawWordsCount": 12,
+      "filteredWordsCount": 2,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_047",
+      "imageFile": "00047_hr_1R.png",
+      "detectPiiRuntimeMs": 1453,
+      "rawWordsCount": 16,
+      "filteredWordsCount": 1,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_048",
+      "imageFile": "00048_hr_1R.png",
+      "detectPiiRuntimeMs": 1950,
+      "rawWordsCount": 18,
+      "filteredWordsCount": 4,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_049",
+      "imageFile": "00049_hr_1R.png",
+      "detectPiiRuntimeMs": 3762,
+      "rawWordsCount": 27,
+      "filteredWordsCount": 7,
+      "nerEntitiesCount": 0,
+      "regexMatches": 1
+    },
+    {
+      "id": "h2_050",
+      "imageFile": "00050_hr_1R.png",
+      "detectPiiRuntimeMs": 887,
+      "rawWordsCount": 0,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_051",
+      "imageFile": "00051_hr_1R.png",
+      "detectPiiRuntimeMs": 7708,
+      "rawWordsCount": 42,
+      "filteredWordsCount": 5,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_052",
+      "imageFile": "00052_hr_1R.png",
+      "detectPiiRuntimeMs": 873,
+      "rawWordsCount": 0,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_053",
+      "imageFile": "00053_hr_1R.png",
+      "detectPiiRuntimeMs": 1555,
+      "rawWordsCount": 17,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_054",
+      "imageFile": "00054_hr_1R.png",
+      "detectPiiRuntimeMs": 1423,
+      "rawWordsCount": 15,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_055",
+      "imageFile": "00055_hr_1R.png",
+      "detectPiiRuntimeMs": 915,
+      "rawWordsCount": 0,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_056",
+      "imageFile": "00056_hr_1R.png",
+      "detectPiiRuntimeMs": 1575,
+      "rawWordsCount": 16,
+      "filteredWordsCount": 4,
+      "nerEntitiesCount": 3,
+      "regexMatches": 1
+    },
+    {
+      "id": "h2_057",
+      "imageFile": "00057_hr_1R.png",
+      "detectPiiRuntimeMs": 2717,
+      "rawWordsCount": 10,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_058",
+      "imageFile": "00058_hr_1R.png",
+      "detectPiiRuntimeMs": 1622,
+      "rawWordsCount": 15,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_059",
+      "imageFile": "00059_hr_1R.png",
+      "detectPiiRuntimeMs": 861,
+      "rawWordsCount": 0,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_060",
+      "imageFile": "00060_hr_1R.png",
+      "detectPiiRuntimeMs": 1564,
+      "rawWordsCount": 15,
+      "filteredWordsCount": 4,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_061",
+      "imageFile": "00061_hr_1R.png",
+      "detectPiiRuntimeMs": 3384,
+      "rawWordsCount": 36,
+      "filteredWordsCount": 4,
+      "nerEntitiesCount": 3,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_062",
+      "imageFile": "00062_hr_1R.png",
+      "detectPiiRuntimeMs": 6251,
+      "rawWordsCount": 43,
+      "filteredWordsCount": 12,
+      "nerEntitiesCount": 5,
+      "regexMatches": 1
+    },
+    {
+      "id": "h2_063",
+      "imageFile": "00063_hr_1R.png",
+      "detectPiiRuntimeMs": 1578,
+      "rawWordsCount": 16,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_064",
+      "imageFile": "00064_hr_1R.png",
+      "detectPiiRuntimeMs": 1611,
+      "rawWordsCount": 16,
+      "filteredWordsCount": 3,
+      "nerEntitiesCount": 4,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_065",
+      "imageFile": "00065_hr_1R.png",
+      "detectPiiRuntimeMs": 6544,
+      "rawWordsCount": 52,
+      "filteredWordsCount": 8,
+      "nerEntitiesCount": 0,
+      "regexMatches": 1
+    },
+    {
+      "id": "h2_066",
+      "imageFile": "00066_hr_1R.png",
+      "detectPiiRuntimeMs": 7450,
+      "rawWordsCount": 34,
+      "filteredWordsCount": 2,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_067",
+      "imageFile": "00067_hr_1R.png",
+      "detectPiiRuntimeMs": 3660,
+      "rawWordsCount": 33,
+      "filteredWordsCount": 2,
+      "nerEntitiesCount": 0,
+      "regexMatches": 2
+    },
+    {
+      "id": "h2_068",
+      "imageFile": "00068_hr_1R.png",
+      "detectPiiRuntimeMs": 1639,
+      "rawWordsCount": 15,
+      "filteredWordsCount": 2,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_069",
+      "imageFile": "00069_hr_1R.png",
+      "detectPiiRuntimeMs": 1920,
+      "rawWordsCount": 12,
+      "filteredWordsCount": 5,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_070",
+      "imageFile": "00070_hr_1R.png",
+      "detectPiiRuntimeMs": 1578,
+      "rawWordsCount": 13,
+      "filteredWordsCount": 4,
+      "nerEntitiesCount": 0,
+      "regexMatches": 1
+    },
+    {
+      "id": "h2_071",
+      "imageFile": "00071_hr_1R.png",
+      "detectPiiRuntimeMs": 4694,
+      "rawWordsCount": 34,
+      "filteredWordsCount": 7,
+      "nerEntitiesCount": 0,
+      "regexMatches": 2
+    },
+    {
+      "id": "h2_072",
+      "imageFile": "00072_hr_1R.png",
+      "detectPiiRuntimeMs": 2054,
+      "rawWordsCount": 16,
+      "filteredWordsCount": 5,
+      "nerEntitiesCount": 5,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_073",
+      "imageFile": "00073_hr_1R.png",
+      "detectPiiRuntimeMs": 2490,
+      "rawWordsCount": 23,
+      "filteredWordsCount": 3,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_074",
+      "imageFile": "00074_hr_1R.png",
+      "detectPiiRuntimeMs": 1595,
+      "rawWordsCount": 15,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_075",
+      "imageFile": "00075_hr_1R.png",
+      "detectPiiRuntimeMs": 2797,
+      "rawWordsCount": 23,
+      "filteredWordsCount": 6,
+      "nerEntitiesCount": 4,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_076",
+      "imageFile": "00076_hr_1R.png",
+      "detectPiiRuntimeMs": 1438,
+      "rawWordsCount": 10,
+      "filteredWordsCount": 2,
+      "nerEntitiesCount": 0,
+      "regexMatches": 1
+    },
+    {
+      "id": "h2_077",
+      "imageFile": "00077_hr_1R.png",
+      "detectPiiRuntimeMs": 1079,
+      "rawWordsCount": 0,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_078",
+      "imageFile": "00078_hr_1R.png",
+      "detectPiiRuntimeMs": 1734,
+      "rawWordsCount": 12,
+      "filteredWordsCount": 2,
+      "nerEntitiesCount": 0,
+      "regexMatches": 2
+    },
+    {
+      "id": "h2_079",
+      "imageFile": "00079_hr_1R.png",
+      "detectPiiRuntimeMs": 1911,
+      "rawWordsCount": 14,
+      "filteredWordsCount": 3,
+      "nerEntitiesCount": 4,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_080",
+      "imageFile": "00080_hr_1R.png",
+      "detectPiiRuntimeMs": 978,
+      "rawWordsCount": 0,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_081",
+      "imageFile": "00081_hr_1R.png",
+      "detectPiiRuntimeMs": 1746,
+      "rawWordsCount": 15,
+      "filteredWordsCount": 2,
+      "nerEntitiesCount": 1,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_082",
+      "imageFile": "00082_hr_1R.png",
+      "detectPiiRuntimeMs": 1087,
+      "rawWordsCount": 0,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_083",
+      "imageFile": "00083_hr_1R.png",
+      "detectPiiRuntimeMs": 1682,
+      "rawWordsCount": 16,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_084",
+      "imageFile": "00084_hr_1R.png",
+      "detectPiiRuntimeMs": 1557,
+      "rawWordsCount": 15,
+      "filteredWordsCount": 3,
+      "nerEntitiesCount": 3,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_085",
+      "imageFile": "00085_hr_1R.png",
+      "detectPiiRuntimeMs": 1830,
+      "rawWordsCount": 16,
+      "filteredWordsCount": 6,
+      "nerEntitiesCount": 4,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_086",
+      "imageFile": "00086_hr_1R.png",
+      "detectPiiRuntimeMs": 3097,
+      "rawWordsCount": 25,
+      "filteredWordsCount": 5,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_087",
+      "imageFile": "00087_hr_1R.png",
+      "detectPiiRuntimeMs": 1809,
+      "rawWordsCount": 18,
+      "filteredWordsCount": 5,
+      "nerEntitiesCount": 0,
+      "regexMatches": 1
+    },
+    {
+      "id": "h2_088",
+      "imageFile": "00088_hr_1R.png",
+      "detectPiiRuntimeMs": 1497,
+      "rawWordsCount": 8,
+      "filteredWordsCount": 1,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_089",
+      "imageFile": "00089_hr_1R.png",
+      "detectPiiRuntimeMs": 1308,
+      "rawWordsCount": 6,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_090",
+      "imageFile": "00090_hr_1R.png",
+      "detectPiiRuntimeMs": 1798,
+      "rawWordsCount": 16,
+      "filteredWordsCount": 4,
+      "nerEntitiesCount": 3,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_091",
+      "imageFile": "00091_hr_1R.png",
+      "detectPiiRuntimeMs": 1944,
+      "rawWordsCount": 11,
+      "filteredWordsCount": 4,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_092",
+      "imageFile": "00092_hr_1R.png",
+      "detectPiiRuntimeMs": 1928,
+      "rawWordsCount": 11,
+      "filteredWordsCount": 4,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_093",
+      "imageFile": "00093_hr_1R.png",
+      "detectPiiRuntimeMs": 1099,
+      "rawWordsCount": 0,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_094",
+      "imageFile": "00094_hr_1R.png",
+      "detectPiiRuntimeMs": 8303,
+      "rawWordsCount": 54,
+      "filteredWordsCount": 8,
+      "nerEntitiesCount": 4,
+      "regexMatches": 2
+    },
+    {
+      "id": "h2_095",
+      "imageFile": "00095_hr_1R.png",
+      "detectPiiRuntimeMs": 1937,
+      "rawWordsCount": 18,
+      "filteredWordsCount": 6,
+      "nerEntitiesCount": 4,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_096",
+      "imageFile": "00096_hr_1R.png",
+      "detectPiiRuntimeMs": 1196,
+      "rawWordsCount": 5,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_097",
+      "imageFile": "00097_hr_1R.png",
+      "detectPiiRuntimeMs": 871,
+      "rawWordsCount": 0,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_098",
+      "imageFile": "00098_hr_1R.png",
+      "detectPiiRuntimeMs": 955,
+      "rawWordsCount": 0,
+      "filteredWordsCount": 0,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_099",
+      "imageFile": "00099_hr_1R.png",
+      "detectPiiRuntimeMs": 1689,
+      "rawWordsCount": 17,
+      "filteredWordsCount": 5,
+      "nerEntitiesCount": 4,
+      "regexMatches": 0
+    },
+    {
+      "id": "h2_100",
+      "imageFile": "00100_hr_1R.png",
+      "detectPiiRuntimeMs": 6595,
+      "rawWordsCount": 32,
+      "filteredWordsCount": 1,
+      "nerEntitiesCount": 0,
+      "regexMatches": 0
+    }
+  ]
+}

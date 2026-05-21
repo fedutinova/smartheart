@@ -1,0 +1,2402 @@
+[
+  {
+    "id": "h2_001",
+    "image_file": "00001_hr_1R.png",
+    "image_path": "h2/with-test-data/00001_hr_1R.png",
+    "full_name": "Иван Петров",
+    "birth_date": "02.02.1981",
+    "patient_id": "70000001",
+    "record_no": "EKG-20260001",
+    "sex": "М",
+    "ecg_date": "04.06.2026",
+    "expected_identifiers": [
+      "Иван Петров",
+      "02.02.1981",
+      "70000001",
+      "EKG-20260001"
+    ],
+    "overlay_position": {
+      "left_x": "1420",
+      "left_y": "375",
+      "right_x": "2188",
+      "right_y": "375",
+      "font_size": "42"
+    }
+  },
+  {
+    "id": "h2_002",
+    "image_file": "00002_hr_1R.png",
+    "image_path": "h2/with-test-data/00002_hr_1R.png",
+    "full_name": "Мария Сидорова",
+    "birth_date": "03.03.1982",
+    "patient_id": "70000002",
+    "record_no": "EKG-20260002",
+    "sex": "Ж",
+    "ecg_date": "07.11.2026",
+    "expected_identifiers": [
+      "Мария Сидорова",
+      "03.03.1982",
+      "70000002",
+      "EKG-20260002"
+    ],
+    "overlay_position": {
+      "left_x": "420",
+      "left_y": "215",
+      "right_x": "1818",
+      "right_y": "215",
+      "font_size": "42"
+    }
+  },
+  {
+    "id": "h2_003",
+    "image_file": "00003_hr_1R.png",
+    "image_path": "h2/with-test-data/00003_hr_1R.png",
+    "full_name": "Алексей Иванов",
+    "birth_date": "04.04.1983",
+    "patient_id": "70000003",
+    "record_no": "EKG-20260003",
+    "sex": "М",
+    "ecg_date": "10.04.2026",
+    "expected_identifiers": [
+      "Алексей Иванов",
+      "04.04.1983",
+      "70000003",
+      "EKG-20260003"
+    ],
+    "overlay_position": {
+      "left_x": "530",
+      "left_y": "215",
+      "right_x": "2022",
+      "right_y": "215",
+      "font_size": "42"
+    }
+  },
+  {
+    "id": "h2_004",
+    "image_file": "00004_hr_1R.png",
+    "image_path": "h2/with-test-data/00004_hr_1R.png",
+    "full_name": "Елена Федорова",
+    "birth_date": "05.05.1984",
+    "patient_id": "70000004",
+    "record_no": "EKG-20260004",
+    "sex": "Ж",
+    "ecg_date": "13.09.2026",
+    "expected_identifiers": [
+      "Елена Федорова",
+      "05.05.1984",
+      "70000004",
+      "EKG-20260004"
+    ],
+    "overlay_position": {
+      "left_x": "450",
+      "left_y": "315",
+      "right_x": "2264",
+      "right_y": "315",
+      "font_size": "42"
+    }
+  },
+  {
+    "id": "h2_005",
+    "image_file": "00005_hr_1R.png",
+    "image_path": "h2/with-test-data/00005_hr_1R.png",
+    "full_name": "Дмитрий Смирнов",
+    "birth_date": "06.06.1985",
+    "patient_id": "70000005",
+    "record_no": "EKG-20260005",
+    "sex": "М",
+    "ecg_date": "16.02.2026",
+    "expected_identifiers": [
+      "Дмитрий Смирнов",
+      "06.06.1985",
+      "70000005",
+      "EKG-20260005"
+    ],
+    "overlay_position": {
+      "left_x": "680",
+      "left_y": "365",
+      "right_x": "2046",
+      "right_y": "365",
+      "font_size": "42"
+    }
+  },
+  {
+    "id": "h2_006",
+    "image_file": "00006_hr_1R.png",
+    "image_path": "h2/with-test-data/00006_hr_1R.png",
+    "full_name": "Ольга Кузнецова",
+    "birth_date": "07.07.1986",
+    "patient_id": "70000006",
+    "record_no": "EKG-20260006",
+    "sex": "Ж",
+    "ecg_date": "19.07.2026",
+    "expected_identifiers": [
+      "Ольга Кузнецова",
+      "07.07.1986",
+      "70000006",
+      "EKG-20260006"
+    ],
+    "overlay_position": {
+      "left_x": "610",
+      "left_y": "285",
+      "right_x": "2052",
+      "right_y": "285",
+      "font_size": "42"
+    }
+  },
+  {
+    "id": "h2_007",
+    "image_file": "00007_hr_1R.png",
+    "image_path": "h2/with-test-data/00007_hr_1R.png",
+    "full_name": "Никита Павлов",
+    "birth_date": "08.08.1987",
+    "patient_id": "70000007",
+    "record_no": "EKG-20260007",
+    "sex": "М",
+    "ecg_date": "22.12.2026",
+    "expected_identifiers": [
+      "Никита Павлов",
+      "08.08.1987",
+      "70000007",
+      "EKG-20260007"
+    ],
+    "overlay_position": {
+      "left_x": "710",
+      "left_y": "325",
+      "right_x": "2253",
+      "right_y": "325",
+      "font_size": "42"
+    }
+  },
+  {
+    "id": "h2_008",
+    "image_file": "00008_hr_1R.png",
+    "image_path": "h2/with-test-data/00008_hr_1R.png",
+    "full_name": "Анна Васильева",
+    "birth_date": "09.09.1988",
+    "patient_id": "70000008",
+    "record_no": "EKG-20260008",
+    "sex": "Ж",
+    "ecg_date": "25.05.2026",
+    "expected_identifiers": [
+      "Анна Васильева",
+      "09.09.1988",
+      "70000008",
+      "EKG-20260008"
+    ],
+    "overlay_position": {
+      "left_x": "520",
+      "left_y": "325",
+      "right_x": "2019",
+      "right_y": "325",
+      "font_size": "42"
+    }
+  },
+  {
+    "id": "h2_009",
+    "image_file": "00009_hr_1R.png",
+    "image_path": "h2/with-test-data/00009_hr_1R.png",
+    "full_name": "Сергей Орлов",
+    "birth_date": "10.10.1989",
+    "patient_id": "70000009",
+    "record_no": "EKG-20260009",
+    "sex": "М",
+    "ecg_date": "01.10.2026",
+    "expected_identifiers": [
+      "Сергей Орлов",
+      "10.10.1989",
+      "70000009",
+      "EKG-20260009"
+    ],
+    "overlay_position": {
+      "left_x": "200",
+      "left_y": "275",
+      "right_x": "2026",
+      "right_y": "275",
+      "font_size": "42"
+    }
+  },
+  {
+    "id": "h2_010",
+    "image_file": "00010_hr_1R.png",
+    "image_path": "h2/with-test-data/00010_hr_1R.png",
+    "full_name": "Татьяна Морозова",
+    "birth_date": "11.11.1990",
+    "patient_id": "70000010",
+    "record_no": "EKG-20260010",
+    "sex": "Ж",
+    "ecg_date": "04.03.2026",
+    "expected_identifiers": [
+      "Татьяна Морозова",
+      "11.11.1990",
+      "70000010",
+      "EKG-20260010"
+    ],
+    "overlay_position": {
+      "left_x": "410",
+      "left_y": "425",
+      "right_x": "1896",
+      "right_y": "425",
+      "font_size": "42"
+    }
+  },
+  {
+    "id": "h2_011",
+    "image_file": "00011_hr_1R.png",
+    "image_path": "h2/with-test-data/00011_hr_1R.png",
+    "full_name": "Иван Петров",
+    "birth_date": "12.12.1991",
+    "patient_id": "70000011",
+    "record_no": "EKG-20260011",
+    "sex": "М",
+    "ecg_date": "07.08.2026",
+    "expected_identifiers": [
+      "Иван Петров",
+      "12.12.1991",
+      "70000011",
+      "EKG-20260011"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_012",
+    "image_file": "00012_hr_1R.png",
+    "image_path": "h2/with-test-data/00012_hr_1R.png",
+    "full_name": "Мария Сидорова",
+    "birth_date": "13.01.1992",
+    "patient_id": "70000012",
+    "record_no": "EKG-20260012",
+    "sex": "Ж",
+    "ecg_date": "10.01.2026",
+    "expected_identifiers": [
+      "Мария Сидорова",
+      "13.01.1992",
+      "70000012",
+      "EKG-20260012"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_013",
+    "image_file": "00013_hr_1R.png",
+    "image_path": "h2/with-test-data/00013_hr_1R.png",
+    "full_name": "Алексей Иванов",
+    "birth_date": "14.02.1993",
+    "patient_id": "70000013",
+    "record_no": "EKG-20260013",
+    "sex": "М",
+    "ecg_date": "13.06.2026",
+    "expected_identifiers": [
+      "Алексей Иванов",
+      "14.02.1993",
+      "70000013",
+      "EKG-20260013"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_014",
+    "image_file": "00014_hr_1R.png",
+    "image_path": "h2/with-test-data/00014_hr_1R.png",
+    "full_name": "Елена Федорова",
+    "birth_date": "15.03.1994",
+    "patient_id": "70000014",
+    "record_no": "EKG-20260014",
+    "sex": "Ж",
+    "ecg_date": "16.11.2026",
+    "expected_identifiers": [
+      "Елена Федорова",
+      "15.03.1994",
+      "70000014",
+      "EKG-20260014"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_015",
+    "image_file": "00015_hr_1R.png",
+    "image_path": "h2/with-test-data/00015_hr_1R.png",
+    "full_name": "Дмитрий Смирнов",
+    "birth_date": "16.04.1995",
+    "patient_id": "70000015",
+    "record_no": "EKG-20260015",
+    "sex": "М",
+    "ecg_date": "19.04.2026",
+    "expected_identifiers": [
+      "Дмитрий Смирнов",
+      "16.04.1995",
+      "70000015",
+      "EKG-20260015"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_016",
+    "image_file": "00016_hr_1R.png",
+    "image_path": "h2/with-test-data/00016_hr_1R.png",
+    "full_name": "Ольга Кузнецова",
+    "birth_date": "17.05.1996",
+    "patient_id": "70000016",
+    "record_no": "EKG-20260016",
+    "sex": "Ж",
+    "ecg_date": "22.09.2026",
+    "expected_identifiers": [
+      "Ольга Кузнецова",
+      "17.05.1996",
+      "70000016",
+      "EKG-20260016"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_017",
+    "image_file": "00017_hr_1R.png",
+    "image_path": "h2/with-test-data/00017_hr_1R.png",
+    "full_name": "Никита Павлов",
+    "birth_date": "18.06.1997",
+    "patient_id": "70000017",
+    "record_no": "EKG-20260017",
+    "sex": "М",
+    "ecg_date": "25.02.2026",
+    "expected_identifiers": [
+      "Никита Павлов",
+      "18.06.1997",
+      "70000017",
+      "EKG-20260017"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_018",
+    "image_file": "00018_hr_1R.png",
+    "image_path": "h2/with-test-data/00018_hr_1R.png",
+    "full_name": "Анна Васильева",
+    "birth_date": "19.07.1998",
+    "patient_id": "70000018",
+    "record_no": "EKG-20260018",
+    "sex": "Ж",
+    "ecg_date": "01.07.2026",
+    "expected_identifiers": [
+      "Анна Васильева",
+      "19.07.1998",
+      "70000018",
+      "EKG-20260018"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_019",
+    "image_file": "00019_hr_1R.png",
+    "image_path": "h2/with-test-data/00019_hr_1R.png",
+    "full_name": "Сергей Орлов",
+    "birth_date": "20.08.1999",
+    "patient_id": "70000019",
+    "record_no": "EKG-20260019",
+    "sex": "М",
+    "ecg_date": "04.12.2026",
+    "expected_identifiers": [
+      "Сергей Орлов",
+      "20.08.1999",
+      "70000019",
+      "EKG-20260019"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_020",
+    "image_file": "00020_hr_1R.png",
+    "image_path": "h2/with-test-data/00020_hr_1R.png",
+    "full_name": "Татьяна Морозова",
+    "birth_date": "21.09.2000",
+    "patient_id": "70000020",
+    "record_no": "EKG-20260020",
+    "sex": "Ж",
+    "ecg_date": "07.05.2026",
+    "expected_identifiers": [
+      "Татьяна Морозова",
+      "21.09.2000",
+      "70000020",
+      "EKG-20260020"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_021",
+    "image_file": "00021_hr_1R.png",
+    "image_path": "h2/with-test-data/00021_hr_1R.png",
+    "full_name": "Иван Петров",
+    "birth_date": "22.10.2001",
+    "patient_id": "70000021",
+    "record_no": "EKG-20260021",
+    "sex": "М",
+    "ecg_date": "10.10.2026",
+    "expected_identifiers": [
+      "Иван Петров",
+      "22.10.2001",
+      "70000021",
+      "EKG-20260021"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_022",
+    "image_file": "00022_hr_1R.png",
+    "image_path": "h2/with-test-data/00022_hr_1R.png",
+    "full_name": "Мария Сидорова",
+    "birth_date": "23.11.2002",
+    "patient_id": "70000022",
+    "record_no": "EKG-20260022",
+    "sex": "Ж",
+    "ecg_date": "13.03.2026",
+    "expected_identifiers": [
+      "Мария Сидорова",
+      "23.11.2002",
+      "70000022",
+      "EKG-20260022"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_023",
+    "image_file": "00023_hr_1R.png",
+    "image_path": "h2/with-test-data/00023_hr_1R.png",
+    "full_name": "Алексей Иванов",
+    "birth_date": "24.12.2003",
+    "patient_id": "70000023",
+    "record_no": "EKG-20260023",
+    "sex": "М",
+    "ecg_date": "16.08.2026",
+    "expected_identifiers": [
+      "Алексей Иванов",
+      "24.12.2003",
+      "70000023",
+      "EKG-20260023"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_024",
+    "image_file": "00024_hr_1R.png",
+    "image_path": "h2/with-test-data/00024_hr_1R.png",
+    "full_name": "Елена Федорова",
+    "birth_date": "25.01.2004",
+    "patient_id": "70000024",
+    "record_no": "EKG-20260024",
+    "sex": "Ж",
+    "ecg_date": "19.01.2026",
+    "expected_identifiers": [
+      "Елена Федорова",
+      "25.01.2004",
+      "70000024",
+      "EKG-20260024"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_025",
+    "image_file": "00025_hr_1R.png",
+    "image_path": "h2/with-test-data/00025_hr_1R.png",
+    "full_name": "Дмитрий Смирнов",
+    "birth_date": "26.02.2005",
+    "patient_id": "70000025",
+    "record_no": "EKG-20260025",
+    "sex": "М",
+    "ecg_date": "22.06.2026",
+    "expected_identifiers": [
+      "Дмитрий Смирнов",
+      "26.02.2005",
+      "70000025",
+      "EKG-20260025"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_026",
+    "image_file": "00026_hr_1R.png",
+    "image_path": "h2/with-test-data/00026_hr_1R.png",
+    "full_name": "Ольга Кузнецова",
+    "birth_date": "27.03.2006",
+    "patient_id": "70000026",
+    "record_no": "EKG-20260026",
+    "sex": "Ж",
+    "ecg_date": "25.11.2026",
+    "expected_identifiers": [
+      "Ольга Кузнецова",
+      "27.03.2006",
+      "70000026",
+      "EKG-20260026"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_027",
+    "image_file": "00027_hr_1R.png",
+    "image_path": "h2/with-test-data/00027_hr_1R.png",
+    "full_name": "Никита Павлов",
+    "birth_date": "01.04.2007",
+    "patient_id": "70000027",
+    "record_no": "EKG-20260027",
+    "sex": "М",
+    "ecg_date": "01.04.2026",
+    "expected_identifiers": [
+      "Никита Павлов",
+      "01.04.2007",
+      "70000027",
+      "EKG-20260027"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_028",
+    "image_file": "00028_hr_1R.png",
+    "image_path": "h2/with-test-data/00028_hr_1R.png",
+    "full_name": "Анна Васильева",
+    "birth_date": "02.05.2008",
+    "patient_id": "70000028",
+    "record_no": "EKG-20260028",
+    "sex": "Ж",
+    "ecg_date": "04.09.2026",
+    "expected_identifiers": [
+      "Анна Васильева",
+      "02.05.2008",
+      "70000028",
+      "EKG-20260028"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_029",
+    "image_file": "00029_hr_1R.png",
+    "image_path": "h2/with-test-data/00029_hr_1R.png",
+    "full_name": "Сергей Орлов",
+    "birth_date": "03.06.2009",
+    "patient_id": "70000029",
+    "record_no": "EKG-20260029",
+    "sex": "М",
+    "ecg_date": "07.02.2026",
+    "expected_identifiers": [
+      "Сергей Орлов",
+      "03.06.2009",
+      "70000029",
+      "EKG-20260029"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_030",
+    "image_file": "00030_hr_1R.png",
+    "image_path": "h2/with-test-data/00030_hr_1R.png",
+    "full_name": "Татьяна Морозова",
+    "birth_date": "04.07.1980",
+    "patient_id": "70000030",
+    "record_no": "EKG-20260030",
+    "sex": "Ж",
+    "ecg_date": "10.07.2026",
+    "expected_identifiers": [
+      "Татьяна Морозова",
+      "04.07.1980",
+      "70000030",
+      "EKG-20260030"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_031",
+    "image_file": "00031_hr_1R.png",
+    "image_path": "h2/with-test-data/00031_hr_1R.png",
+    "full_name": "Иван Петров",
+    "birth_date": "05.08.1981",
+    "patient_id": "70000031",
+    "record_no": "EKG-20260031",
+    "sex": "М",
+    "ecg_date": "13.12.2026",
+    "expected_identifiers": [
+      "Иван Петров",
+      "05.08.1981",
+      "70000031",
+      "EKG-20260031"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_032",
+    "image_file": "00032_hr_1R.png",
+    "image_path": "h2/with-test-data/00032_hr_1R.png",
+    "full_name": "Мария Сидорова",
+    "birth_date": "06.09.1982",
+    "patient_id": "70000032",
+    "record_no": "EKG-20260032",
+    "sex": "Ж",
+    "ecg_date": "16.05.2026",
+    "expected_identifiers": [
+      "Мария Сидорова",
+      "06.09.1982",
+      "70000032",
+      "EKG-20260032"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_033",
+    "image_file": "00033_hr_1R.png",
+    "image_path": "h2/with-test-data/00033_hr_1R.png",
+    "full_name": "Алексей Иванов",
+    "birth_date": "07.10.1983",
+    "patient_id": "70000033",
+    "record_no": "EKG-20260033",
+    "sex": "М",
+    "ecg_date": "19.10.2026",
+    "expected_identifiers": [
+      "Алексей Иванов",
+      "07.10.1983",
+      "70000033",
+      "EKG-20260033"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_034",
+    "image_file": "00034_hr_1R.png",
+    "image_path": "h2/with-test-data/00034_hr_1R.png",
+    "full_name": "Елена Федорова",
+    "birth_date": "08.11.1984",
+    "patient_id": "70000034",
+    "record_no": "EKG-20260034",
+    "sex": "Ж",
+    "ecg_date": "22.03.2026",
+    "expected_identifiers": [
+      "Елена Федорова",
+      "08.11.1984",
+      "70000034",
+      "EKG-20260034"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_035",
+    "image_file": "00035_hr_1R.png",
+    "image_path": "h2/with-test-data/00035_hr_1R.png",
+    "full_name": "Дмитрий Смирнов",
+    "birth_date": "09.12.1985",
+    "patient_id": "70000035",
+    "record_no": "EKG-20260035",
+    "sex": "М",
+    "ecg_date": "25.08.2026",
+    "expected_identifiers": [
+      "Дмитрий Смирнов",
+      "09.12.1985",
+      "70000035",
+      "EKG-20260035"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_036",
+    "image_file": "00036_hr_1R.png",
+    "image_path": "h2/with-test-data/00036_hr_1R.png",
+    "full_name": "Ольга Кузнецова",
+    "birth_date": "10.01.1986",
+    "patient_id": "70000036",
+    "record_no": "EKG-20260036",
+    "sex": "Ж",
+    "ecg_date": "01.01.2026",
+    "expected_identifiers": [
+      "Ольга Кузнецова",
+      "10.01.1986",
+      "70000036",
+      "EKG-20260036"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_037",
+    "image_file": "00037_hr_1R.png",
+    "image_path": "h2/with-test-data/00037_hr_1R.png",
+    "full_name": "Никита Павлов",
+    "birth_date": "11.02.1987",
+    "patient_id": "70000037",
+    "record_no": "EKG-20260037",
+    "sex": "М",
+    "ecg_date": "04.06.2026",
+    "expected_identifiers": [
+      "Никита Павлов",
+      "11.02.1987",
+      "70000037",
+      "EKG-20260037"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_038",
+    "image_file": "00038_hr_1R.png",
+    "image_path": "h2/with-test-data/00038_hr_1R.png",
+    "full_name": "Анна Васильева",
+    "birth_date": "12.03.1988",
+    "patient_id": "70000038",
+    "record_no": "EKG-20260038",
+    "sex": "Ж",
+    "ecg_date": "07.11.2026",
+    "expected_identifiers": [
+      "Анна Васильева",
+      "12.03.1988",
+      "70000038",
+      "EKG-20260038"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_039",
+    "image_file": "00039_hr_1R.png",
+    "image_path": "h2/with-test-data/00039_hr_1R.png",
+    "full_name": "Сергей Орлов",
+    "birth_date": "13.04.1989",
+    "patient_id": "70000039",
+    "record_no": "EKG-20260039",
+    "sex": "М",
+    "ecg_date": "10.04.2026",
+    "expected_identifiers": [
+      "Сергей Орлов",
+      "13.04.1989",
+      "70000039",
+      "EKG-20260039"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_040",
+    "image_file": "00040_hr_1R.png",
+    "image_path": "h2/with-test-data/00040_hr_1R.png",
+    "full_name": "Татьяна Морозова",
+    "birth_date": "14.05.1990",
+    "patient_id": "70000040",
+    "record_no": "EKG-20260040",
+    "sex": "Ж",
+    "ecg_date": "13.09.2026",
+    "expected_identifiers": [
+      "Татьяна Морозова",
+      "14.05.1990",
+      "70000040",
+      "EKG-20260040"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_041",
+    "image_file": "00041_hr_1R.png",
+    "image_path": "h2/with-test-data/00041_hr_1R.png",
+    "full_name": "Иван Петров",
+    "birth_date": "15.06.1991",
+    "patient_id": "70000041",
+    "record_no": "EKG-20260041",
+    "sex": "М",
+    "ecg_date": "16.02.2026",
+    "expected_identifiers": [
+      "Иван Петров",
+      "15.06.1991",
+      "70000041",
+      "EKG-20260041"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_042",
+    "image_file": "00042_hr_1R.png",
+    "image_path": "h2/with-test-data/00042_hr_1R.png",
+    "full_name": "Мария Сидорова",
+    "birth_date": "16.07.1992",
+    "patient_id": "70000042",
+    "record_no": "EKG-20260042",
+    "sex": "Ж",
+    "ecg_date": "19.07.2026",
+    "expected_identifiers": [
+      "Мария Сидорова",
+      "16.07.1992",
+      "70000042",
+      "EKG-20260042"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_043",
+    "image_file": "00043_hr_1R.png",
+    "image_path": "h2/with-test-data/00043_hr_1R.png",
+    "full_name": "Алексей Иванов",
+    "birth_date": "17.08.1993",
+    "patient_id": "70000043",
+    "record_no": "EKG-20260043",
+    "sex": "М",
+    "ecg_date": "22.12.2026",
+    "expected_identifiers": [
+      "Алексей Иванов",
+      "17.08.1993",
+      "70000043",
+      "EKG-20260043"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_044",
+    "image_file": "00044_hr_1R.png",
+    "image_path": "h2/with-test-data/00044_hr_1R.png",
+    "full_name": "Елена Федорова",
+    "birth_date": "18.09.1994",
+    "patient_id": "70000044",
+    "record_no": "EKG-20260044",
+    "sex": "Ж",
+    "ecg_date": "25.05.2026",
+    "expected_identifiers": [
+      "Елена Федорова",
+      "18.09.1994",
+      "70000044",
+      "EKG-20260044"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_045",
+    "image_file": "00045_hr_1R.png",
+    "image_path": "h2/with-test-data/00045_hr_1R.png",
+    "full_name": "Дмитрий Смирнов",
+    "birth_date": "19.10.1995",
+    "patient_id": "70000045",
+    "record_no": "EKG-20260045",
+    "sex": "М",
+    "ecg_date": "01.10.2026",
+    "expected_identifiers": [
+      "Дмитрий Смирнов",
+      "19.10.1995",
+      "70000045",
+      "EKG-20260045"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_046",
+    "image_file": "00046_hr_1R.png",
+    "image_path": "h2/with-test-data/00046_hr_1R.png",
+    "full_name": "Ольга Кузнецова",
+    "birth_date": "20.11.1996",
+    "patient_id": "70000046",
+    "record_no": "EKG-20260046",
+    "sex": "Ж",
+    "ecg_date": "04.03.2026",
+    "expected_identifiers": [
+      "Ольга Кузнецова",
+      "20.11.1996",
+      "70000046",
+      "EKG-20260046"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_047",
+    "image_file": "00047_hr_1R.png",
+    "image_path": "h2/with-test-data/00047_hr_1R.png",
+    "full_name": "Никита Павлов",
+    "birth_date": "21.12.1997",
+    "patient_id": "70000047",
+    "record_no": "EKG-20260047",
+    "sex": "М",
+    "ecg_date": "07.08.2026",
+    "expected_identifiers": [
+      "Никита Павлов",
+      "21.12.1997",
+      "70000047",
+      "EKG-20260047"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_048",
+    "image_file": "00048_hr_1R.png",
+    "image_path": "h2/with-test-data/00048_hr_1R.png",
+    "full_name": "Анна Васильева",
+    "birth_date": "22.01.1998",
+    "patient_id": "70000048",
+    "record_no": "EKG-20260048",
+    "sex": "Ж",
+    "ecg_date": "10.01.2026",
+    "expected_identifiers": [
+      "Анна Васильева",
+      "22.01.1998",
+      "70000048",
+      "EKG-20260048"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_049",
+    "image_file": "00049_hr_1R.png",
+    "image_path": "h2/with-test-data/00049_hr_1R.png",
+    "full_name": "Сергей Орлов",
+    "birth_date": "23.02.1999",
+    "patient_id": "70000049",
+    "record_no": "EKG-20260049",
+    "sex": "М",
+    "ecg_date": "13.06.2026",
+    "expected_identifiers": [
+      "Сергей Орлов",
+      "23.02.1999",
+      "70000049",
+      "EKG-20260049"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_050",
+    "image_file": "00050_hr_1R.png",
+    "image_path": "h2/with-test-data/00050_hr_1R.png",
+    "full_name": "Татьяна Морозова",
+    "birth_date": "24.03.2000",
+    "patient_id": "70000050",
+    "record_no": "EKG-20260050",
+    "sex": "Ж",
+    "ecg_date": "16.11.2026",
+    "expected_identifiers": [
+      "Татьяна Морозова",
+      "24.03.2000",
+      "70000050",
+      "EKG-20260050"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_051",
+    "image_file": "00051_hr_1R.png",
+    "image_path": "h2/with-test-data/00051_hr_1R.png",
+    "full_name": "Иван Петров",
+    "birth_date": "25.04.2001",
+    "patient_id": "70000051",
+    "record_no": "EKG-20260051",
+    "sex": "М",
+    "ecg_date": "19.04.2026",
+    "expected_identifiers": [
+      "Иван Петров",
+      "25.04.2001",
+      "70000051",
+      "EKG-20260051"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_052",
+    "image_file": "00052_hr_1R.png",
+    "image_path": "h2/with-test-data/00052_hr_1R.png",
+    "full_name": "Мария Сидорова",
+    "birth_date": "26.05.2002",
+    "patient_id": "70000052",
+    "record_no": "EKG-20260052",
+    "sex": "Ж",
+    "ecg_date": "22.09.2026",
+    "expected_identifiers": [
+      "Мария Сидорова",
+      "26.05.2002",
+      "70000052",
+      "EKG-20260052"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_053",
+    "image_file": "00053_hr_1R.png",
+    "image_path": "h2/with-test-data/00053_hr_1R.png",
+    "full_name": "Алексей Иванов",
+    "birth_date": "27.06.2003",
+    "patient_id": "70000053",
+    "record_no": "EKG-20260053",
+    "sex": "М",
+    "ecg_date": "25.02.2026",
+    "expected_identifiers": [
+      "Алексей Иванов",
+      "27.06.2003",
+      "70000053",
+      "EKG-20260053"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_054",
+    "image_file": "00054_hr_1R.png",
+    "image_path": "h2/with-test-data/00054_hr_1R.png",
+    "full_name": "Елена Федорова",
+    "birth_date": "01.07.2004",
+    "patient_id": "70000054",
+    "record_no": "EKG-20260054",
+    "sex": "Ж",
+    "ecg_date": "01.07.2026",
+    "expected_identifiers": [
+      "Елена Федорова",
+      "01.07.2004",
+      "70000054",
+      "EKG-20260054"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_055",
+    "image_file": "00055_hr_1R.png",
+    "image_path": "h2/with-test-data/00055_hr_1R.png",
+    "full_name": "Дмитрий Смирнов",
+    "birth_date": "02.08.2005",
+    "patient_id": "70000055",
+    "record_no": "EKG-20260055",
+    "sex": "М",
+    "ecg_date": "04.12.2026",
+    "expected_identifiers": [
+      "Дмитрий Смирнов",
+      "02.08.2005",
+      "70000055",
+      "EKG-20260055"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_056",
+    "image_file": "00056_hr_1R.png",
+    "image_path": "h2/with-test-data/00056_hr_1R.png",
+    "full_name": "Ольга Кузнецова",
+    "birth_date": "03.09.2006",
+    "patient_id": "70000056",
+    "record_no": "EKG-20260056",
+    "sex": "Ж",
+    "ecg_date": "07.05.2026",
+    "expected_identifiers": [
+      "Ольга Кузнецова",
+      "03.09.2006",
+      "70000056",
+      "EKG-20260056"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_057",
+    "image_file": "00057_hr_1R.png",
+    "image_path": "h2/with-test-data/00057_hr_1R.png",
+    "full_name": "Никита Павлов",
+    "birth_date": "04.10.2007",
+    "patient_id": "70000057",
+    "record_no": "EKG-20260057",
+    "sex": "М",
+    "ecg_date": "10.10.2026",
+    "expected_identifiers": [
+      "Никита Павлов",
+      "04.10.2007",
+      "70000057",
+      "EKG-20260057"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_058",
+    "image_file": "00058_hr_1R.png",
+    "image_path": "h2/with-test-data/00058_hr_1R.png",
+    "full_name": "Анна Васильева",
+    "birth_date": "05.11.2008",
+    "patient_id": "70000058",
+    "record_no": "EKG-20260058",
+    "sex": "Ж",
+    "ecg_date": "13.03.2026",
+    "expected_identifiers": [
+      "Анна Васильева",
+      "05.11.2008",
+      "70000058",
+      "EKG-20260058"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_059",
+    "image_file": "00059_hr_1R.png",
+    "image_path": "h2/with-test-data/00059_hr_1R.png",
+    "full_name": "Сергей Орлов",
+    "birth_date": "06.12.2009",
+    "patient_id": "70000059",
+    "record_no": "EKG-20260059",
+    "sex": "М",
+    "ecg_date": "16.08.2026",
+    "expected_identifiers": [
+      "Сергей Орлов",
+      "06.12.2009",
+      "70000059",
+      "EKG-20260059"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_060",
+    "image_file": "00060_hr_1R.png",
+    "image_path": "h2/with-test-data/00060_hr_1R.png",
+    "full_name": "Татьяна Морозова",
+    "birth_date": "07.01.1980",
+    "patient_id": "70000060",
+    "record_no": "EKG-20260060",
+    "sex": "Ж",
+    "ecg_date": "19.01.2026",
+    "expected_identifiers": [
+      "Татьяна Морозова",
+      "07.01.1980",
+      "70000060",
+      "EKG-20260060"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_061",
+    "image_file": "00061_hr_1R.png",
+    "image_path": "h2/with-test-data/00061_hr_1R.png",
+    "full_name": "Иван Петров",
+    "birth_date": "08.02.1981",
+    "patient_id": "70000061",
+    "record_no": "EKG-20260061",
+    "sex": "М",
+    "ecg_date": "22.06.2026",
+    "expected_identifiers": [
+      "Иван Петров",
+      "08.02.1981",
+      "70000061",
+      "EKG-20260061"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_062",
+    "image_file": "00062_hr_1R.png",
+    "image_path": "h2/with-test-data/00062_hr_1R.png",
+    "full_name": "Мария Сидорова",
+    "birth_date": "09.03.1982",
+    "patient_id": "70000062",
+    "record_no": "EKG-20260062",
+    "sex": "Ж",
+    "ecg_date": "25.11.2026",
+    "expected_identifiers": [
+      "Мария Сидорова",
+      "09.03.1982",
+      "70000062",
+      "EKG-20260062"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_063",
+    "image_file": "00063_hr_1R.png",
+    "image_path": "h2/with-test-data/00063_hr_1R.png",
+    "full_name": "Алексей Иванов",
+    "birth_date": "10.04.1983",
+    "patient_id": "70000063",
+    "record_no": "EKG-20260063",
+    "sex": "М",
+    "ecg_date": "01.04.2026",
+    "expected_identifiers": [
+      "Алексей Иванов",
+      "10.04.1983",
+      "70000063",
+      "EKG-20260063"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_064",
+    "image_file": "00064_hr_1R.png",
+    "image_path": "h2/with-test-data/00064_hr_1R.png",
+    "full_name": "Елена Федорова",
+    "birth_date": "11.05.1984",
+    "patient_id": "70000064",
+    "record_no": "EKG-20260064",
+    "sex": "Ж",
+    "ecg_date": "04.09.2026",
+    "expected_identifiers": [
+      "Елена Федорова",
+      "11.05.1984",
+      "70000064",
+      "EKG-20260064"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_065",
+    "image_file": "00065_hr_1R.png",
+    "image_path": "h2/with-test-data/00065_hr_1R.png",
+    "full_name": "Дмитрий Смирнов",
+    "birth_date": "12.06.1985",
+    "patient_id": "70000065",
+    "record_no": "EKG-20260065",
+    "sex": "М",
+    "ecg_date": "07.02.2026",
+    "expected_identifiers": [
+      "Дмитрий Смирнов",
+      "12.06.1985",
+      "70000065",
+      "EKG-20260065"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_066",
+    "image_file": "00066_hr_1R.png",
+    "image_path": "h2/with-test-data/00066_hr_1R.png",
+    "full_name": "Ольга Кузнецова",
+    "birth_date": "13.07.1986",
+    "patient_id": "70000066",
+    "record_no": "EKG-20260066",
+    "sex": "Ж",
+    "ecg_date": "10.07.2026",
+    "expected_identifiers": [
+      "Ольга Кузнецова",
+      "13.07.1986",
+      "70000066",
+      "EKG-20260066"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_067",
+    "image_file": "00067_hr_1R.png",
+    "image_path": "h2/with-test-data/00067_hr_1R.png",
+    "full_name": "Никита Павлов",
+    "birth_date": "14.08.1987",
+    "patient_id": "70000067",
+    "record_no": "EKG-20260067",
+    "sex": "М",
+    "ecg_date": "13.12.2026",
+    "expected_identifiers": [
+      "Никита Павлов",
+      "14.08.1987",
+      "70000067",
+      "EKG-20260067"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_068",
+    "image_file": "00068_hr_1R.png",
+    "image_path": "h2/with-test-data/00068_hr_1R.png",
+    "full_name": "Анна Васильева",
+    "birth_date": "15.09.1988",
+    "patient_id": "70000068",
+    "record_no": "EKG-20260068",
+    "sex": "Ж",
+    "ecg_date": "16.05.2026",
+    "expected_identifiers": [
+      "Анна Васильева",
+      "15.09.1988",
+      "70000068",
+      "EKG-20260068"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_069",
+    "image_file": "00069_hr_1R.png",
+    "image_path": "h2/with-test-data/00069_hr_1R.png",
+    "full_name": "Сергей Орлов",
+    "birth_date": "16.10.1989",
+    "patient_id": "70000069",
+    "record_no": "EKG-20260069",
+    "sex": "М",
+    "ecg_date": "19.10.2026",
+    "expected_identifiers": [
+      "Сергей Орлов",
+      "16.10.1989",
+      "70000069",
+      "EKG-20260069"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_070",
+    "image_file": "00070_hr_1R.png",
+    "image_path": "h2/with-test-data/00070_hr_1R.png",
+    "full_name": "Татьяна Морозова",
+    "birth_date": "17.11.1990",
+    "patient_id": "70000070",
+    "record_no": "EKG-20260070",
+    "sex": "Ж",
+    "ecg_date": "22.03.2026",
+    "expected_identifiers": [
+      "Татьяна Морозова",
+      "17.11.1990",
+      "70000070",
+      "EKG-20260070"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_071",
+    "image_file": "00071_hr_1R.png",
+    "image_path": "h2/with-test-data/00071_hr_1R.png",
+    "full_name": "Иван Петров",
+    "birth_date": "18.12.1991",
+    "patient_id": "70000071",
+    "record_no": "EKG-20260071",
+    "sex": "М",
+    "ecg_date": "25.08.2026",
+    "expected_identifiers": [
+      "Иван Петров",
+      "18.12.1991",
+      "70000071",
+      "EKG-20260071"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_072",
+    "image_file": "00072_hr_1R.png",
+    "image_path": "h2/with-test-data/00072_hr_1R.png",
+    "full_name": "Мария Сидорова",
+    "birth_date": "19.01.1992",
+    "patient_id": "70000072",
+    "record_no": "EKG-20260072",
+    "sex": "Ж",
+    "ecg_date": "01.01.2026",
+    "expected_identifiers": [
+      "Мария Сидорова",
+      "19.01.1992",
+      "70000072",
+      "EKG-20260072"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_073",
+    "image_file": "00073_hr_1R.png",
+    "image_path": "h2/with-test-data/00073_hr_1R.png",
+    "full_name": "Алексей Иванов",
+    "birth_date": "20.02.1993",
+    "patient_id": "70000073",
+    "record_no": "EKG-20260073",
+    "sex": "М",
+    "ecg_date": "04.06.2026",
+    "expected_identifiers": [
+      "Алексей Иванов",
+      "20.02.1993",
+      "70000073",
+      "EKG-20260073"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_074",
+    "image_file": "00074_hr_1R.png",
+    "image_path": "h2/with-test-data/00074_hr_1R.png",
+    "full_name": "Елена Федорова",
+    "birth_date": "21.03.1994",
+    "patient_id": "70000074",
+    "record_no": "EKG-20260074",
+    "sex": "Ж",
+    "ecg_date": "07.11.2026",
+    "expected_identifiers": [
+      "Елена Федорова",
+      "21.03.1994",
+      "70000074",
+      "EKG-20260074"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_075",
+    "image_file": "00075_hr_1R.png",
+    "image_path": "h2/with-test-data/00075_hr_1R.png",
+    "full_name": "Дмитрий Смирнов",
+    "birth_date": "22.04.1995",
+    "patient_id": "70000075",
+    "record_no": "EKG-20260075",
+    "sex": "М",
+    "ecg_date": "10.04.2026",
+    "expected_identifiers": [
+      "Дмитрий Смирнов",
+      "22.04.1995",
+      "70000075",
+      "EKG-20260075"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_076",
+    "image_file": "00076_hr_1R.png",
+    "image_path": "h2/with-test-data/00076_hr_1R.png",
+    "full_name": "Ольга Кузнецова",
+    "birth_date": "23.05.1996",
+    "patient_id": "70000076",
+    "record_no": "EKG-20260076",
+    "sex": "Ж",
+    "ecg_date": "13.09.2026",
+    "expected_identifiers": [
+      "Ольга Кузнецова",
+      "23.05.1996",
+      "70000076",
+      "EKG-20260076"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_077",
+    "image_file": "00077_hr_1R.png",
+    "image_path": "h2/with-test-data/00077_hr_1R.png",
+    "full_name": "Никита Павлов",
+    "birth_date": "24.06.1997",
+    "patient_id": "70000077",
+    "record_no": "EKG-20260077",
+    "sex": "М",
+    "ecg_date": "16.02.2026",
+    "expected_identifiers": [
+      "Никита Павлов",
+      "24.06.1997",
+      "70000077",
+      "EKG-20260077"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_078",
+    "image_file": "00078_hr_1R.png",
+    "image_path": "h2/with-test-data/00078_hr_1R.png",
+    "full_name": "Анна Васильева",
+    "birth_date": "25.07.1998",
+    "patient_id": "70000078",
+    "record_no": "EKG-20260078",
+    "sex": "Ж",
+    "ecg_date": "19.07.2026",
+    "expected_identifiers": [
+      "Анна Васильева",
+      "25.07.1998",
+      "70000078",
+      "EKG-20260078"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_079",
+    "image_file": "00079_hr_1R.png",
+    "image_path": "h2/with-test-data/00079_hr_1R.png",
+    "full_name": "Сергей Орлов",
+    "birth_date": "26.08.1999",
+    "patient_id": "70000079",
+    "record_no": "EKG-20260079",
+    "sex": "М",
+    "ecg_date": "22.12.2026",
+    "expected_identifiers": [
+      "Сергей Орлов",
+      "26.08.1999",
+      "70000079",
+      "EKG-20260079"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_080",
+    "image_file": "00080_hr_1R.png",
+    "image_path": "h2/with-test-data/00080_hr_1R.png",
+    "full_name": "Татьяна Морозова",
+    "birth_date": "27.09.2000",
+    "patient_id": "70000080",
+    "record_no": "EKG-20260080",
+    "sex": "Ж",
+    "ecg_date": "25.05.2026",
+    "expected_identifiers": [
+      "Татьяна Морозова",
+      "27.09.2000",
+      "70000080",
+      "EKG-20260080"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_081",
+    "image_file": "00081_hr_1R.png",
+    "image_path": "h2/with-test-data/00081_hr_1R.png",
+    "full_name": "Иван Петров",
+    "birth_date": "01.10.2001",
+    "patient_id": "70000081",
+    "record_no": "EKG-20260081",
+    "sex": "М",
+    "ecg_date": "01.10.2026",
+    "expected_identifiers": [
+      "Иван Петров",
+      "01.10.2001",
+      "70000081",
+      "EKG-20260081"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_082",
+    "image_file": "00082_hr_1R.png",
+    "image_path": "h2/with-test-data/00082_hr_1R.png",
+    "full_name": "Мария Сидорова",
+    "birth_date": "02.11.2002",
+    "patient_id": "70000082",
+    "record_no": "EKG-20260082",
+    "sex": "Ж",
+    "ecg_date": "04.03.2026",
+    "expected_identifiers": [
+      "Мария Сидорова",
+      "02.11.2002",
+      "70000082",
+      "EKG-20260082"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_083",
+    "image_file": "00083_hr_1R.png",
+    "image_path": "h2/with-test-data/00083_hr_1R.png",
+    "full_name": "Алексей Иванов",
+    "birth_date": "03.12.2003",
+    "patient_id": "70000083",
+    "record_no": "EKG-20260083",
+    "sex": "М",
+    "ecg_date": "07.08.2026",
+    "expected_identifiers": [
+      "Алексей Иванов",
+      "03.12.2003",
+      "70000083",
+      "EKG-20260083"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_084",
+    "image_file": "00084_hr_1R.png",
+    "image_path": "h2/with-test-data/00084_hr_1R.png",
+    "full_name": "Елена Федорова",
+    "birth_date": "04.01.2004",
+    "patient_id": "70000084",
+    "record_no": "EKG-20260084",
+    "sex": "Ж",
+    "ecg_date": "10.01.2026",
+    "expected_identifiers": [
+      "Елена Федорова",
+      "04.01.2004",
+      "70000084",
+      "EKG-20260084"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_085",
+    "image_file": "00085_hr_1R.png",
+    "image_path": "h2/with-test-data/00085_hr_1R.png",
+    "full_name": "Дмитрий Смирнов",
+    "birth_date": "05.02.2005",
+    "patient_id": "70000085",
+    "record_no": "EKG-20260085",
+    "sex": "М",
+    "ecg_date": "13.06.2026",
+    "expected_identifiers": [
+      "Дмитрий Смирнов",
+      "05.02.2005",
+      "70000085",
+      "EKG-20260085"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_086",
+    "image_file": "00086_hr_1R.png",
+    "image_path": "h2/with-test-data/00086_hr_1R.png",
+    "full_name": "Ольга Кузнецова",
+    "birth_date": "06.03.2006",
+    "patient_id": "70000086",
+    "record_no": "EKG-20260086",
+    "sex": "Ж",
+    "ecg_date": "16.11.2026",
+    "expected_identifiers": [
+      "Ольга Кузнецова",
+      "06.03.2006",
+      "70000086",
+      "EKG-20260086"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_087",
+    "image_file": "00087_hr_1R.png",
+    "image_path": "h2/with-test-data/00087_hr_1R.png",
+    "full_name": "Никита Павлов",
+    "birth_date": "07.04.2007",
+    "patient_id": "70000087",
+    "record_no": "EKG-20260087",
+    "sex": "М",
+    "ecg_date": "19.04.2026",
+    "expected_identifiers": [
+      "Никита Павлов",
+      "07.04.2007",
+      "70000087",
+      "EKG-20260087"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_088",
+    "image_file": "00088_hr_1R.png",
+    "image_path": "h2/with-test-data/00088_hr_1R.png",
+    "full_name": "Анна Васильева",
+    "birth_date": "08.05.2008",
+    "patient_id": "70000088",
+    "record_no": "EKG-20260088",
+    "sex": "Ж",
+    "ecg_date": "22.09.2026",
+    "expected_identifiers": [
+      "Анна Васильева",
+      "08.05.2008",
+      "70000088",
+      "EKG-20260088"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_089",
+    "image_file": "00089_hr_1R.png",
+    "image_path": "h2/with-test-data/00089_hr_1R.png",
+    "full_name": "Сергей Орлов",
+    "birth_date": "09.06.2009",
+    "patient_id": "70000089",
+    "record_no": "EKG-20260089",
+    "sex": "М",
+    "ecg_date": "25.02.2026",
+    "expected_identifiers": [
+      "Сергей Орлов",
+      "09.06.2009",
+      "70000089",
+      "EKG-20260089"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_090",
+    "image_file": "00090_hr_1R.png",
+    "image_path": "h2/with-test-data/00090_hr_1R.png",
+    "full_name": "Татьяна Морозова",
+    "birth_date": "10.07.1980",
+    "patient_id": "70000090",
+    "record_no": "EKG-20260090",
+    "sex": "Ж",
+    "ecg_date": "01.07.2026",
+    "expected_identifiers": [
+      "Татьяна Морозова",
+      "10.07.1980",
+      "70000090",
+      "EKG-20260090"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_091",
+    "image_file": "00091_hr_1R.png",
+    "image_path": "h2/with-test-data/00091_hr_1R.png",
+    "full_name": "Иван Петров",
+    "birth_date": "11.08.1981",
+    "patient_id": "70000091",
+    "record_no": "EKG-20260091",
+    "sex": "М",
+    "ecg_date": "04.12.2026",
+    "expected_identifiers": [
+      "Иван Петров",
+      "11.08.1981",
+      "70000091",
+      "EKG-20260091"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_092",
+    "image_file": "00092_hr_1R.png",
+    "image_path": "h2/with-test-data/00092_hr_1R.png",
+    "full_name": "Мария Сидорова",
+    "birth_date": "12.09.1982",
+    "patient_id": "70000092",
+    "record_no": "EKG-20260092",
+    "sex": "Ж",
+    "ecg_date": "07.05.2026",
+    "expected_identifiers": [
+      "Мария Сидорова",
+      "12.09.1982",
+      "70000092",
+      "EKG-20260092"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_093",
+    "image_file": "00093_hr_1R.png",
+    "image_path": "h2/with-test-data/00093_hr_1R.png",
+    "full_name": "Алексей Иванов",
+    "birth_date": "13.10.1983",
+    "patient_id": "70000093",
+    "record_no": "EKG-20260093",
+    "sex": "М",
+    "ecg_date": "10.10.2026",
+    "expected_identifiers": [
+      "Алексей Иванов",
+      "13.10.1983",
+      "70000093",
+      "EKG-20260093"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_094",
+    "image_file": "00094_hr_1R.png",
+    "image_path": "h2/with-test-data/00094_hr_1R.png",
+    "full_name": "Елена Федорова",
+    "birth_date": "14.11.1984",
+    "patient_id": "70000094",
+    "record_no": "EKG-20260094",
+    "sex": "Ж",
+    "ecg_date": "13.03.2026",
+    "expected_identifiers": [
+      "Елена Федорова",
+      "14.11.1984",
+      "70000094",
+      "EKG-20260094"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_095",
+    "image_file": "00095_hr_1R.png",
+    "image_path": "h2/with-test-data/00095_hr_1R.png",
+    "full_name": "Дмитрий Смирнов",
+    "birth_date": "15.12.1985",
+    "patient_id": "70000095",
+    "record_no": "EKG-20260095",
+    "sex": "М",
+    "ecg_date": "16.08.2026",
+    "expected_identifiers": [
+      "Дмитрий Смирнов",
+      "15.12.1985",
+      "70000095",
+      "EKG-20260095"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_096",
+    "image_file": "00096_hr_1R.png",
+    "image_path": "h2/with-test-data/00096_hr_1R.png",
+    "full_name": "Ольга Кузнецова",
+    "birth_date": "16.01.1986",
+    "patient_id": "70000096",
+    "record_no": "EKG-20260096",
+    "sex": "Ж",
+    "ecg_date": "19.01.2026",
+    "expected_identifiers": [
+      "Ольга Кузнецова",
+      "16.01.1986",
+      "70000096",
+      "EKG-20260096"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_097",
+    "image_file": "00097_hr_1R.png",
+    "image_path": "h2/with-test-data/00097_hr_1R.png",
+    "full_name": "Никита Павлов",
+    "birth_date": "17.02.1987",
+    "patient_id": "70000097",
+    "record_no": "EKG-20260097",
+    "sex": "М",
+    "ecg_date": "22.06.2026",
+    "expected_identifiers": [
+      "Никита Павлов",
+      "17.02.1987",
+      "70000097",
+      "EKG-20260097"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_098",
+    "image_file": "00098_hr_1R.png",
+    "image_path": "h2/with-test-data/00098_hr_1R.png",
+    "full_name": "Анна Васильева",
+    "birth_date": "18.03.1988",
+    "patient_id": "70000098",
+    "record_no": "EKG-20260098",
+    "sex": "Ж",
+    "ecg_date": "25.11.2026",
+    "expected_identifiers": [
+      "Анна Васильева",
+      "18.03.1988",
+      "70000098",
+      "EKG-20260098"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_099",
+    "image_file": "00099_hr_1R.png",
+    "image_path": "h2/with-test-data/00099_hr_1R.png",
+    "full_name": "Сергей Орлов",
+    "birth_date": "19.04.1989",
+    "patient_id": "70000099",
+    "record_no": "EKG-20260099",
+    "sex": "М",
+    "ecg_date": "01.04.2026",
+    "expected_identifiers": [
+      "Сергей Орлов",
+      "19.04.1989",
+      "70000099",
+      "EKG-20260099"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  },
+  {
+    "id": "h2_100",
+    "image_file": "00100_hr_1R.png",
+    "image_path": "h2/with-test-data/00100_hr_1R.png",
+    "full_name": "Татьяна Морозова",
+    "birth_date": "20.05.1990",
+    "patient_id": "70000100",
+    "record_no": "EKG-20260100",
+    "sex": "Ж",
+    "ecg_date": "04.09.2026",
+    "expected_identifiers": [
+      "Татьяна Морозова",
+      "20.05.1990",
+      "70000100",
+      "EKG-20260100"
+    ],
+    "overlay_position": {
+      "left_x": "",
+      "left_y": "",
+      "right_x": "",
+      "right_y": "",
+      "font_size": ""
+    }
+  }
+]

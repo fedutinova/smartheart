@@ -1,0 +1,21 @@
+{
+  "summary": {
+    "datasetSize": 1,
+    "meanOcrRuntimeMs": 44108,
+    "p95OcrRuntimeMs": 44108,
+    "minOcrRuntimeMs": 44108,
+    "maxOcrRuntimeMs": 44108,
+    "thresholdMs": 3000,
+    "thresholdPassed": false,
+    "measurementScope": "время OCR через tesseract.js с переиспользуемым воркером и полным изображением"
+  },
+  "results": [
+    {
+      "id": "h2_001",
+      "imageFile": "00001_hr_1R.png",
+      "imagePath": "h2/with-test-data/00001_hr_1R.png",
+      "ocrRuntimeMs": 44108,
+      "wordsCount": 272
+    }
+  ]
+}
