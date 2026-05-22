@@ -25,13 +25,7 @@ func (h *PaymentHandler) Webhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	signature := r.Header.Get("X-Webhook-Signature")
-	if signature == "" {
-		writeError(w, http.StatusUnauthorized, "missing webhook signature")
-		return
-	}
-
-	if err := h.Service.HandleWebhook(r.Context(), body, signature); err != nil {
+	if err := h.Service.HandleWebhook(r.Context(), body); err != nil {
 		handleServiceError(w, err)
 		return
 	}

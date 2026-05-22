@@ -3,9 +3,6 @@ package service
 import (
 	"bytes"
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -26,8 +23,11 @@ type PaymentService interface {
 	// CreateSubscription creates a payment for a monthly subscription.
 	// If promoCode is non-empty and gives 100% discount, the subscription is activated directly.
 	CreateSubscription(ctx context.Context, userID uuid.UUID, promoCode string) (*PaymentResult, error)
-	// HandleWebhook processes a YooKassa webhook notification after verifying the signature.
-	HandleWebhook(ctx context.Context, body []byte, signature string) error
+	// HandleWebhook processes a YooKassa webhook notification.
+	// Security is enforced via IP allowlisting (see WebhookIPWhitelist middleware).
+	// For payment.succeeded events the payment status is re-fetched from the YooKassa API
+	// before confirming, to prevent replay and spoofing.
+	HandleWebhook(ctx context.Context, body []byte) error
 	// GetQuotaInfo returns the user's current quota status.
 	GetQuotaInfo(ctx context.Context, userID uuid.UUID) (*QuotaInfo, error)
 	// ValidatePromoCode checks if a promo code is valid and returns discount info.
@@ -62,18 +62,20 @@ type PromoDiscountInfo struct {
 }
 
 type paymentService struct {
-	repo       repository.Store
-	cfg        config.YooKassaConfig
-	freeLimit  int
-	httpClient *http.Client
+	repo           repository.Store
+	cfg            config.YooKassaConfig
+	freeLimit      int
+	httpClient     *http.Client
+	yookassaAPIURL string
 }
 
 func NewPaymentService(repo repository.Store, ykCfg config.YooKassaConfig, freeLimit int) PaymentService {
 	return &paymentService{
-		repo:       repo,
-		cfg:        ykCfg,
-		freeLimit:  freeLimit,
-		httpClient: &http.Client{Timeout: 15 * time.Second},
+		repo:           repo,
+		cfg:            ykCfg,
+		freeLimit:      freeLimit,
+		httpClient:     &http.Client{Timeout: 15 * time.Second},
+		yookassaAPIURL: "https://api.yookassa.ru/v3",
 	}
 }
 
@@ -160,7 +162,7 @@ func (s *paymentService) createYooKassaPayment(ctx context.Context, payment *mod
 		return nil, apperr.WrapInternal("marshal payment request", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.yookassa.ru/v3/payments", bytes.NewReader(bodyBytes))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.yookassaAPIURL+"/payments", bytes.NewReader(bodyBytes))
 	if err != nil {
 		return nil, apperr.WrapInternal("create payment request", err)
 	}
@@ -279,26 +281,7 @@ func (s *paymentService) CreateSubscription(ctx context.Context, userID uuid.UUI
 	})
 }
 
-func (s *paymentService) HandleWebhook(ctx context.Context, body []byte, signature string) error {
-	// Verify webhook signature using HMAC-SHA256
-	// YooKassa sends: X-Webhook-Signature = base64(HMAC-SHA256(body, secret_key))
-	if s.cfg.SecretKey == "" {
-		return fmt.Errorf("webhook secret key not configured: %w", apperr.ErrInternal)
-	}
-
-	expectedSig := base64.StdEncoding.EncodeToString(
-		hmac.New(sha256.New, []byte(s.cfg.SecretKey)).Sum(body),
-	)
-
-	if !hmac.Equal([]byte(signature), []byte(expectedSig)) {
-		sigPreview := signature
-		if len(signature) > 10 {
-			sigPreview = signature[:10]
-		}
-		slog.WarnContext(ctx, "Webhook signature verification failed", "provided", sigPreview, "expected", expectedSig[:10])
-		return fmt.Errorf("invalid webhook signature: %w", apperr.ErrValidation)
-	}
-
+func (s *paymentService) HandleWebhook(ctx context.Context, body []byte) error {
 	var webhook yooKassaWebhook
 	if err := json.Unmarshal(body, &webhook); err != nil {
 		return fmt.Errorf("parse webhook: %w", apperr.ErrValidation)
@@ -311,6 +294,19 @@ func (s *paymentService) HandleWebhook(ctx context.Context, body []byte, signatu
 
 	switch webhook.Event {
 	case "payment.succeeded":
+		// In production, re-fetch payment status from the YooKassa API before confirming
+		// to prevent spoofing. Skipped in dev mode (no credentials configured).
+		if s.cfg.ShopID != "" {
+			status, err := s.getYooKassaPaymentStatus(ctx, yookassaID)
+			if err != nil {
+				slog.ErrorContext(ctx, "Failed to verify payment via API", "yookassa_id", yookassaID, "error", err)
+				return apperr.WrapInternal("verify payment", err)
+			}
+			if status != "succeeded" {
+				slog.WarnContext(ctx, "Payment status mismatch", "yookassa_id", yookassaID, "api_status", status)
+				return fmt.Errorf("payment status mismatch: expected succeeded, got %s: %w", status, apperr.ErrValidation)
+			}
+		}
 		if err := s.repo.ConfirmPayment(ctx, yookassaID); err != nil {
 			slog.ErrorContext(ctx, "Failed to confirm payment", "yookassa_id", yookassaID, "error", err)
 			return apperr.WrapInternal("confirm payment", err)
@@ -329,6 +325,37 @@ func (s *paymentService) HandleWebhook(ctx context.Context, body []byte, signatu
 	}
 
 	return nil
+}
+
+func (s *paymentService) getYooKassaPaymentStatus(ctx context.Context, yookassaID string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.yookassaAPIURL+"/payments/"+yookassaID, nil)
+	if err != nil {
+		return "", apperr.WrapInternal("create verify request", err)
+	}
+	req.SetBasicAuth(s.cfg.ShopID, s.cfg.SecretKey)
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return "", apperr.WrapInternal("verify payment via YooKassa API", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return "", apperr.WrapInternal("read verify response", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		slog.ErrorContext(ctx, "YooKassa verify API error", "status", resp.StatusCode, "yookassa_id", yookassaID)
+		return "", fmt.Errorf("yookassa verify returned %d: %w", resp.StatusCode, apperr.ErrInternal)
+	}
+
+	var ykResp yooKassaPaymentResponse
+	if err := json.Unmarshal(respBody, &ykResp); err != nil {
+		return "", apperr.WrapInternal("parse verify response", err)
+	}
+
+	return ykResp.Status, nil
 }
 
 func (s *paymentService) GetQuotaInfo(ctx context.Context, userID uuid.UUID) (*QuotaInfo, error) {
