@@ -276,6 +276,9 @@ jobs:
           SMTP_FROM: ${{ secrets.SMTP_FROM }}
           SMTP_FROM_NAME: ${{ secrets.SMTP_FROM_NAME }}
           FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+          YOOKASSA_SHOP_ID: ${{ secrets.YOOKASSA_SHOP_ID }}
+          YOOKASSA_SECRET_KEY: ${{ secrets.YOOKASSA_SECRET_KEY }}
+          YOOKASSA_SUBSCRIPTION_PRICE_KOPECKS: ${{ secrets.YOOKASSA_SUBSCRIPTION_PRICE_KOPECKS }}
         run: |
           printf 'DOMAIN_NAME=%s\n'       "$DOMAIN_NAME"       >  /tmp/smartheart.env
           printf 'CORS_ORIGINS=%s\n'      "$CORS_ORIGINS"       >> /tmp/smartheart.env
@@ -288,6 +291,9 @@ jobs:
           printf 'SMTP_FROM=%s\n'         "$SMTP_FROM"          >> /tmp/smartheart.env
           printf 'SMTP_FROM_NAME=%s\n'    "$SMTP_FROM_NAME"     >> /tmp/smartheart.env
           printf 'FRONTEND_URL=%s\n'      "$FRONTEND_URL"       >> /tmp/smartheart.env
+          printf 'YOOKASSA_SHOP_ID=%s\n'                      "$YOOKASSA_SHOP_ID"                      >> /tmp/smartheart.env
+          printf 'YOOKASSA_SECRET_KEY=%s\n'                   "$YOOKASSA_SECRET_KEY"                   >> /tmp/smartheart.env
+          printf 'YOOKASSA_SUBSCRIPTION_PRICE_KOPECKS=%s\n'  "$YOOKASSA_SUBSCRIPTION_PRICE_KOPECKS"   >> /tmp/smartheart.env
           printf 'GHCR_REPO=%s\n'         "${{ github.repository }}" >> /tmp/smartheart.env
           printf 'BACKEND_TAG=%s\n'       "${{ needs.build-backend.outputs.tag }}" >> /tmp/smartheart.env
           printf 'RAG_TAG=%s\n'           "${{ needs.build-rag.outputs.tag }}"     >> /tmp/smartheart.env
