@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { Layout } from '@/components/Layout';
-import { profileAPI } from '@/services/api';
+import { profileAPI, paymentAPI } from '@/services/api';
 import { useQuota } from '@/hooks/useQuota';
 import { useLogout } from '@/hooks/useLogout';
 import { PaymentModal } from '@/components/PaymentModal';
 import { ChangePasswordModal } from '@/components/ChangePasswordModal';
 import { useState } from 'react';
-import { formatPrice, formatDateLong } from '@/utils/format';
+import { formatPrice, formatDate, formatDateLong } from '@/utils/format';
 import { AccountSkeleton } from '@/components/Skeleton';
 
 export function Account() {
@@ -15,6 +15,10 @@ export function Account() {
     queryFn: () => profileAPI.getMe(),
   });
   const { quota, isLoading: quotaLoading } = useQuota();
+  const { data: payments } = useQuery({
+    queryKey: ['payments'],
+    queryFn: () => paymentAPI.getPayments(),
+  });
   const [showPayment, setShowPayment] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const handleLogout = useLogout();
@@ -128,6 +132,31 @@ export function Account() {
                 Бесплатный лимит: {quota.free_limit} анализа всего. Для безлимита оформите подписку.
               </p>
             )}
+          </div>
+        )}
+
+        {/* Payment History */}
+        {payments && payments.length > 0 && (
+          <div className="bg-white shadow rounded-xl p-6 mb-6">
+            <h2 className="text-sm font-medium text-gray-400 mb-4">История платежей</h2>
+            <div className="divide-y divide-gray-100">
+              {payments.map(p => {
+                const statusLabel = p.status === 'succeeded' ? 'Оплачено' : p.status === 'canceled' ? 'Отменён' : 'Ожидает';
+                const statusClass = p.status === 'succeeded' ? 'bg-green-100 text-green-700' : p.status === 'canceled' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600';
+                return (
+                  <div key={p.id} className="py-3 flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-sm text-gray-900 truncate">{p.description}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{formatDate(p.created_at)}</p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-sm font-medium text-gray-900">{formatPrice(p.amount_kopecks)} ₽</span>
+                      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${statusClass}`}>{statusLabel}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 

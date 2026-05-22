@@ -69,6 +69,12 @@ function App() {
     sessionStorage.removeItem('chunk_reload');
   }, []);
 
+  useEffect(() => {
+    if (typeof ym !== 'undefined') {
+      ym(109135080, 'hit', window.location.href);
+    }
+  }, [pathname]);
+
   return (
     <ErrorBoundary resetKey={pathname}>
       <ToastContainer toasts={toasts} onDismiss={dismiss} />

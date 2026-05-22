@@ -142,6 +142,17 @@ export interface PaymentResult {
   amount_rub: string;
 }
 
+export interface Payment {
+  id: string;
+  yookassa_id: string;
+  status: 'pending' | 'succeeded' | 'canceled';
+  amount_kopecks: number;
+  description: string;
+  payment_type: 'subscription' | 'analyses';
+  created_at: string;
+  confirmed_at?: string;
+}
+
 export interface ECGAnalysisResult {
   analysis_type: string;
   notes?: string;

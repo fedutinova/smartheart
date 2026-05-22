@@ -11,6 +11,7 @@ import type {
   PaginatedResponse,
   QuotaInfo,
   PaymentResult,
+  Payment,
 } from '@/types';
 import { API_BASE_URL, API_TIMEOUT, API_TIMEOUT_UPLOAD, API_TIMEOUT_RAG, AUTH_ERROR_KEY } from '@/config';
 import { useAuthStore } from '@/store/auth';
@@ -310,6 +311,10 @@ export const paymentAPI = {
   },
   validatePromoCode: async (code: string) => {
     const response = await api.post<{ code: string; discount_percent: number; is_valid: boolean; reason?: string }>('/v1/promo/validate', { code });
+    return response.data;
+  },
+  getPayments: async () => {
+    const response = await api.get<Payment[]>('/v1/payments');
     return response.data;
   },
 };

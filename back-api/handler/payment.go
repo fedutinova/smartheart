@@ -81,6 +81,23 @@ func (h *PaymentHandler) GetQuota(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, info)
 }
 
+// GetPayments returns the payment history for the authenticated user.
+func (h *PaymentHandler) GetPayments(w http.ResponseWriter, r *http.Request) {
+	userID, _, ok := extractUserID(r)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "no auth context")
+		return
+	}
+
+	payments, err := h.Service.GetPayments(r.Context(), userID)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, payments)
+}
+
 // ApplyPromoCode validates and returns discount info for a promo code.
 func (h *PaymentHandler) ApplyPromoCode(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)

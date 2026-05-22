@@ -32,6 +32,8 @@ type PaymentService interface {
 	GetQuotaInfo(ctx context.Context, userID uuid.UUID) (*QuotaInfo, error)
 	// ValidatePromoCode checks if a promo code is valid and returns discount info.
 	ValidatePromoCode(ctx context.Context, userID uuid.UUID, code string) (*PromoDiscountInfo, error)
+	// GetPayments returns the payment history for a user, newest first.
+	GetPayments(ctx context.Context, userID uuid.UUID) ([]models.Payment, error)
 }
 
 // PaymentResult is returned after creating a payment.
@@ -392,6 +394,14 @@ func (s *paymentService) GetQuotaInfo(ctx context.Context, userID uuid.UUID) (*Q
 	}
 
 	return info, nil
+}
+
+func (s *paymentService) GetPayments(ctx context.Context, userID uuid.UUID) ([]models.Payment, error) {
+	payments, err := s.repo.GetPaymentsByUserID(ctx, userID)
+	if err != nil {
+		return nil, apperr.WrapInternal("get payments", err)
+	}
+	return payments, nil
 }
 
 func (s *paymentService) ValidatePromoCode(ctx context.Context, userID uuid.UUID, code string) (*PromoDiscountInfo, error) {

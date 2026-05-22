@@ -157,6 +157,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		r.Get("/v1/me", h.Profile.GetMe)
 
 		r.Get("/v1/quota", h.Payment.GetQuota)
+		r.Get("/v1/payments", h.Payment.GetPayments)
 		r.Post("/v1/promo/validate", h.Payment.ApplyPromoCode)
 		if h.MW.SubscriptionRateLimit != nil {
 			r.With(h.MW.SubscriptionRateLimit).Post("/v1/subscriptions", h.Payment.CreateSubscription)
