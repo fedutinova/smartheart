@@ -126,8 +126,10 @@ services:
       ECG_CHECKPOINT_PATH: /app/models/stage_oldv9_residual_best.pt
       ECG_STYLE_REF_PATH: /app/config/synth_style_ref.json
       ECG_DEFAULT_PREPROCESS: synthmatch
-    volumes:
-      - ./ecg_site_delivery_bundle/models/stage_oldv9_residual_best.pt:/app/models/stage_oldv9_residual_best.pt:ro
+    # No volume mount — the image bakes in the checkpoint from the GitHub
+    # Release referenced in cv_service/Dockerfile. To test a different
+    # checkpoint locally, pass --build-arg MODEL_URL=... or temporarily add a
+    # volume override.
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 15s

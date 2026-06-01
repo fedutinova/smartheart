@@ -180,6 +180,43 @@ jobs:
           cache-from: type=gha,scope=rag
           cache-to: type=gha,mode=max,scope=rag
 
+  build-cv:
+    name: Build CV
+    runs-on: ubuntu-latest
+    # No test job for cv — the smoke test in cv_service/tests/ requires PyTorch
+    # and the 89MB checkpoint, neither of which we want in CI. Backend tests
+    # cover the Go ↔ cv_service contract via httptest in back-api/cv.
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      tag: sha-${{ steps.sha.outputs.short }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Short SHA
+        id: sha
+        run: echo "short=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_OUTPUT
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./cv_service
+          file: ./cv_service/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/cv:sha-${{ steps.sha.outputs.short }}
+            ${{ env.IMAGE_PREFIX }}/cv:latest
+          cache-from: type=gha,scope=cv
+          cache-to: type=gha,mode=max,scope=cv
+
   build-frontend:
     name: Build frontend
     runs-on: ubuntu-latest
@@ -240,7 +277,7 @@ jobs:
 
   deploy:
     name: Deploy to server
-    needs: [build-backend, build-rag, build-frontend, build-admin]
+    needs: [build-backend, build-rag, build-cv, build-frontend, build-admin]
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -297,6 +334,7 @@ jobs:
           printf 'GHCR_REPO=%s\n'         "${{ github.repository }}" >> /tmp/smartheart.env
           printf 'BACKEND_TAG=%s\n'       "${{ needs.build-backend.outputs.tag }}" >> /tmp/smartheart.env
           printf 'RAG_TAG=%s\n'           "${{ needs.build-rag.outputs.tag }}"     >> /tmp/smartheart.env
+          printf 'CV_TAG=%s\n'            "${{ needs.build-cv.outputs.tag }}"      >> /tmp/smartheart.env
 
       - name: Upload migrations, compose file, Caddyfile, and .env
         run: |

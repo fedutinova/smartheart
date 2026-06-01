@@ -68,6 +68,7 @@ services:
       JOB_MAX_DURATION: 30s
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       RAG_URL: http://rag:8000
+      CV_URL: http://cv:8000
       CORS_ORIGINS: ${CORS_ORIGINS}
       QUOTA_DAILY_LIMIT: ${QUOTA_DAILY_LIMIT:-5}
       RATE_LIMIT_RPM: ${RATE_LIMIT_RPM:-100}
@@ -94,12 +95,34 @@ services:
         condition: service_healthy
       rag:
         condition: service_started
+      cv:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
+
+  cv:
+    image: ghcr.io/${GHCR_REPO}/cv:${CV_TAG:-latest}
+    container_name: smartheart_cv
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 3G
+    environment:
+      ECG_CHECKPOINT_PATH: /app/models/stage_oldv9_residual_best.pt
+      ECG_STYLE_REF_PATH: /app/config/synth_style_ref.json
+      ECG_DEFAULT_PREPROCESS: synthmatch
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 5
 
   rag:
     image: ghcr.io/${GHCR_REPO}/rag:${RAG_TAG:-latest}

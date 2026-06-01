@@ -13,6 +13,16 @@ RUN pip install --no-cache-dir \
         torch==2.4.1 torchvision==0.19.1 \
     && pip install --no-cache-dir -r /app/requirements.txt
 
+# Bake the rhythm classifier checkpoint into the image. The URL points to a
+# public GitHub Release asset, so no auth is required at build time. To roll
+# the model forward, publish a new release and bump MODEL_URL (or pass it via
+# --build-arg in CI). Doing this here keeps the production image immutable —
+# no host volume or one-off scp needed when deploying.
+ARG MODEL_URL="https://github.com/fedutinova/smartheart/releases/download/stage_oldv9_residual_best/stage_oldv9_residual_best.pt"
+RUN mkdir -p /app/models && \
+    curl -fsSL -o /app/models/stage_oldv9_residual_best.pt "$MODEL_URL" && \
+    test -s /app/models/stage_oldv9_residual_best.pt
+
 COPY src /app/src
 COPY config /app/config
 COPY tests /app/tests
