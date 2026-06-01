@@ -1,30 +1,39 @@
 openapi: "3.0.3"
 info:
   title: SmartHeart API
-  description: API for EKG image analysis with GPT interpretation.
-  version: "1.0.0"
+  description: API for ECG image analysis with GPT interpretation, semantic KB cache, and YooKassa-based payments.
+  version: "2.0.0"
 
 servers:
   - url: http://localhost:8080
     description: Local development
+  - url: https://api.smartheart.cloud
+    description: Production
 
 tags:
   - name: auth
-    description: Authentication & registration
-  - name: ekg
-    description: EKG image analysis
+    description: Authentication, registration, password reset/change
+  - name: ecg
+    description: ECG image analysis & contextual chat
   - name: gpt
     description: GPT processing
   - name: requests
-    description: Request & job queries
-  - name: system
-    description: Health & admin endpoints
+    description: Request & job queries, file access
   - name: rag
     description: RAG knowledge base
   - name: events
-    description: Real-time notifications
+    description: Real-time notifications (SSE)
+  - name: profile
+    description: Current user profile and quota
+  - name: payments
+    description: YooKassa payments, subscriptions, promo codes
+  - name: admin
+    description: Admin endpoints (require admin:all permission)
+  - name: system
+    description: Health, readiness, OpenAPI
 
 paths:
+  # ---------- AUTH ----------
   /v1/auth/register:
     post:
       tags: [auth]
@@ -100,7 +109,7 @@ paths:
   /v1/auth/logout:
     post:
       tags: [auth]
-      summary: Logout (blacklist tokens)
+      summary: Logout (revoke refresh token)
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -116,15 +125,83 @@ paths:
           description: Logged out
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  message: { type: string }
+              schema: { $ref: "#/components/schemas/Message" }
 
-  /v1/ekg/analyze:
+  /v1/auth/password-reset:
     post:
-      tags: [ekg]
-      summary: Submit EKG image for analysis
+      tags: [auth]
+      summary: Request password reset email (rate-limited)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        "200":
+          description: |
+            Always returns 200 with a generic message regardless of whether the email exists,
+            to prevent user enumeration. A reset link is emailed only if the account exists.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Message" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /v1/auth/password-reset/confirm:
+    post:
+      tags: [auth]
+      summary: Confirm password reset with token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, new_password]
+              properties:
+                token: { type: string }
+                new_password: { type: string, minLength: 10, maxLength: 72 }
+      responses:
+        "200":
+          description: Password reset
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Message" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /v1/auth/password-change:
+    post:
+      tags: [auth]
+      summary: Change password for authenticated user
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [old_password, new_password]
+              properties:
+                old_password: { type: string }
+                new_password: { type: string, minLength: 10, maxLength: 72 }
+      responses:
+        "200":
+          description: Password changed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Message" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # ---------- ECG ANALYSIS ----------
+  /v1/ecg/analyze:
+    post:
+      tags: [ecg]
+      summary: Submit ECG image for analysis (rate-limited)
       description: |
         Accepts either JSON body (URL mode) or multipart/form-data (file upload).
         Returns a job ID for tracking and a request ID for results.
@@ -148,7 +225,7 @@ paths:
                 image:
                   type: string
                   format: binary
-                  description: "EKG image file (JPEG, PNG, PDF, max 10MB)"
+                  description: "ECG image file (JPEG, PNG, PDF, max 10MB)"
                 notes: { type: string, maxLength: 2000 }
                 client_meta:
                   type: string
@@ -158,14 +235,88 @@ paths:
           description: Job enqueued
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/SubmitEKGResponse" }
+              schema: { $ref: "#/components/schemas/SubmitECGResponse" }
         "400": { $ref: "#/components/responses/BadRequest" }
-        "429": { $ref: "#/components/responses/QuotaExceeded" }
+        "402": { $ref: "#/components/responses/QuotaExceeded" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
+  /v1/ecg/analyze-h2-compare:
+    post:
+      tags: [ecg]
+      summary: H2 — compare band vs OCR PII redaction on the same image
+      description: Used by the H2 reproducibility study. Returns side-by-side metrics for both redaction modes.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image: { type: string, format: binary }
+                expected_identifiers:
+                  type: string
+                  description: Ground-truth identifiers for leak-rate computation (newline- or comma-separated)
+      responses:
+        "200":
+          description: H2 comparison metrics
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/H2CompareResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /v1/ecg/{id}/chat:
+    get:
+      tags: [ecg]
+      summary: List chat messages for an ECG analysis
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Chat history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messages:
+                    type: array
+                    items: { $ref: "#/components/schemas/ECGChatMessage" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /v1/ecg/{id}/chat/messages:
+    post:
+      tags: [ecg]
+      summary: Post a chat message about an ECG analysis
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content: { type: string, minLength: 1, maxLength: 2000 }
+      responses:
+        "200":
+          description: Assistant reply (persisted)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ECGChatMessage" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ---------- GPT ----------
   /v1/gpt/process:
     post:
       tags: [gpt]
-      summary: Submit GPT processing request with files
+      summary: Submit GPT processing request with files (rate-limited)
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -187,18 +338,17 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/SubmitGPTResponse" }
         "400": { $ref: "#/components/responses/BadRequest" }
-        "429": { $ref: "#/components/responses/QuotaExceeded" }
+        "402": { $ref: "#/components/responses/QuotaExceeded" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
+  # ---------- REQUESTS ----------
   /v1/jobs/{id}:
     get:
       tags: [requests]
       summary: Get job status
       security: [{ bearerAuth: [] }]
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: string, format: uuid }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
       responses:
         "200":
           description: Job details
@@ -207,16 +357,35 @@ paths:
               schema: { $ref: "#/components/schemas/Job" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /v1/requests:
+    get:
+      tags: [requests]
+      summary: List user's requests (paginated)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 50, minimum: 1, maximum: 200 } }
+        - { name: offset, in: query, schema: { type: integer, default: 0, minimum: 0 } }
+      responses:
+        "200":
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Page"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/Request" }
+
   /v1/requests/{id}:
     get:
       tags: [requests]
       summary: Get request with response and files
       security: [{ bearerAuth: [] }]
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: string, format: uuid }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
       responses:
         "200":
           description: Request details
@@ -225,33 +394,57 @@ paths:
               schema: { $ref: "#/components/schemas/Request" }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  /v1/requests:
+  /v1/requests/{id}/files/{fileId}/url:
     get:
       tags: [requests]
-      summary: List user's requests (paginated)
+      summary: Get a presigned/temporary URL for a request file
       security: [{ bearerAuth: [] }]
       parameters:
-        - name: limit
-          in: query
-          schema: { type: integer, default: 50, minimum: 1, maximum: 200 }
-        - name: offset
-          in: query
-          schema: { type: integer, default: 0, minimum: 0 }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: fileId, in: path, required: true, schema: { type: string, format: uuid } }
       responses:
         "200":
-          description: Paginated list
+          description: File URL
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  data:
-                    type: array
-                    items: { $ref: "#/components/schemas/Request" }
-                  total: { type: integer }
-                  limit: { type: integer }
-                  offset: { type: integer }
+                  url: { type: string, format: uri }
+        "404": { $ref: "#/components/responses/NotFound" }
 
+  /v1/requests/{id}/files/{fileId}:
+    get:
+      tags: [requests]
+      summary: Stream/download a request file
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: fileId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: File bytes
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /files/{path}:
+    get:
+      tags: [requests]
+      summary: Serve a file directly from local storage (only when STORAGE_MODE=local)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: path, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: File bytes
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ---------- RAG ----------
   /v1/rag/query:
     post:
       tags: [rag]
@@ -279,22 +472,238 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /v1/rag/feedback:
+    post:
+      tags: [rag]
+      summary: Submit thumbs-up/thumbs-down feedback for a RAG answer
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question, answer, rating]
+              properties:
+                question: { type: string }
+                answer: { type: string }
+                rating: { type: integer, enum: [-1, 1] }
+      responses:
+        "200":
+          description: Feedback recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { status: { type: string } }
+
+  # ---------- EVENTS ----------
   /v1/events:
     get:
       tags: [events]
       summary: Server-Sent Events stream for real-time notifications
-      description: |
-        Returns an SSE stream. Events are sent when analysis jobs complete or fail.
-        Each event has `type`, `request_id`, and `status` fields.
+      description: Long-lived SSE stream; emits events when analysis jobs complete or fail.
       security: [{ bearerAuth: [] }]
       responses:
         "200":
           description: SSE event stream
           content:
             text/event-stream:
-              schema:
-                type: string
+              schema: { type: string }
 
+  # ---------- PROFILE / QUOTA ----------
+  /v1/me:
+    get:
+      tags: [profile]
+      summary: Get current user's profile
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserProfile" }
+
+  /v1/quota:
+    get:
+      tags: [profile]
+      summary: Get current user's quota and pricing
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Quota info
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Quota" }
+
+  # ---------- PAYMENTS ----------
+  /v1/payments:
+    get:
+      tags: [payments]
+      summary: Get current user's payment history
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Payment list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Payment" }
+
+  /v1/promo/validate:
+    post:
+      tags: [payments]
+      summary: Validate a promo code and return its discount
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string, minLength: 1, maxLength: 50 }
+      responses:
+        "200":
+          description: Promo code status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: string }
+                  discount_percent: { type: integer }
+                  is_valid: { type: boolean }
+                  reason: { type: string, description: "Reason when is_valid=false" }
+
+  /v1/subscriptions:
+    post:
+      tags: [payments]
+      summary: Create a subscription payment (rate-limited)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                promo_code: { type: string, maxLength: 50 }
+      responses:
+        "200":
+          description: YooKassa payment created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  payment_id: { type: string, format: uuid }
+                  confirmation_url: { type: string, format: uri }
+                  amount_rub: { type: string, description: "Decimal amount in roubles, e.g. '299.00'" }
+        "402": { $ref: "#/components/responses/QuotaExceeded" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /v1/payments/webhook:
+    post:
+      tags: [payments]
+      summary: YooKassa webhook (no JWT; signature- and IP-verified)
+      description: |
+        Called by YooKassa on payment status change. Verified via the YOOKASSA_SECRET_KEY
+        signature and IP whitelist. Updates `payments.status` and grants quota/subscription.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, description: "YooKassa notification payload" }
+      responses:
+        "200": { description: Processed }
+        "401": { description: Invalid signature / IP }
+
+  # ---------- ADMIN ----------
+  /v1/admin/stats:
+    get:
+      tags: [admin]
+      summary: Aggregate platform stats
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminStats" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/admin/users:
+    get:
+      tags: [admin]
+      summary: Paginated list of users
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 20, minimum: 1, maximum: 100 } }
+        - { name: offset, in: query, schema: { type: integer, default: 0, minimum: 0 } }
+      responses:
+        "200":
+          description: Users page
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Page"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/AdminUser" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/admin/payments:
+    get:
+      tags: [admin]
+      summary: Paginated list of payments (with user_email)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 20, minimum: 1, maximum: 100 } }
+        - { name: offset, in: query, schema: { type: integer, default: 0, minimum: 0 } }
+      responses:
+        "200":
+          description: Payments page
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Page"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/AdminPayment" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/admin/feedback:
+    get:
+      tags: [admin]
+      summary: Paginated list of RAG feedback (with user_email)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 20, minimum: 1, maximum: 100 } }
+        - { name: offset, in: query, schema: { type: integer, default: 0, minimum: 0 } }
+      responses:
+        "200":
+          description: Feedback page
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Page"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/AdminFeedback" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  # ---------- SYSTEM ----------
   /health:
     get:
       tags: [system]
@@ -316,10 +725,19 @@ paths:
       summary: Full readiness check (admin only)
       security: [{ bearerAuth: [] }]
       responses:
+        "200": { description: System status with dependency checks }
+        "503": { description: Unhealthy }
+
+  /openapi.yaml:
+    get:
+      tags: [system]
+      summary: This OpenAPI specification
+      responses:
         "200":
-          description: System status with dependency checks
-        "503":
-          description: Unhealthy
+          description: OpenAPI YAML
+          content:
+            application/yaml:
+              schema: { type: string }
 
 components:
   securitySchemes:
@@ -329,13 +747,25 @@ components:
       bearerFormat: JWT
 
   schemas:
+    Message:
+      type: object
+      properties:
+        message: { type: string }
+
     TokenPair:
       type: object
       properties:
         access_token: { type: string }
         refresh_token: { type: string }
 
-    SubmitEKGResponse:
+    Page:
+      type: object
+      properties:
+        total: { type: integer }
+        limit: { type: integer }
+        offset: { type: integer }
+
+    SubmitECGResponse:
       type: object
       properties:
         job_id: { type: string, format: uuid }
@@ -370,10 +800,15 @@ components:
         id: { type: string, format: uuid }
         user_id: { type: string, format: uuid }
         text_query: { type: string }
-        status: { type: string, enum: [pending, processing, completed, failed] }
+        status: { type: string, enum: [pending, queued, processing, completed, failed] }
+        ecg_age: { type: integer, nullable: true }
+        ecg_sex: { type: string, enum: [male, female], nullable: true }
+        ecg_paper_speed_mms: { type: number, nullable: true }
+        ecg_mm_per_mv_limb: { type: number, nullable: true }
+        ecg_mm_per_mv_chest: { type: number, nullable: true }
+        client_meta: { $ref: "#/components/schemas/RequestClientMeta" }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
-        client_meta: { $ref: "#/components/schemas/RequestClientMeta" }
         files:
           type: array
           items: { $ref: "#/components/schemas/File" }
@@ -410,7 +845,44 @@ components:
         model: { type: string }
         tokens_used: { type: integer }
         processing_time_ms: { type: integer }
+        cache_status: { type: string, enum: [HIT, MISS], nullable: true }
+        cache_entry_id: { type: string, format: uuid, nullable: true }
+        cache_trigram_similarity: { type: number, nullable: true }
+        cache_vector_similarity: { type: number, nullable: true }
+        cache_combined_similarity: { type: number, nullable: true }
+        cache_match_method: { type: string, nullable: true }
         created_at: { type: string, format: date-time }
+
+    ECGChatMessage:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        request_id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        role: { type: string, enum: [user, assistant] }
+        content: { type: string }
+        citations:
+          type: array
+          nullable: true
+          items: { type: object }
+        created_at: { type: string, format: date-time }
+
+    H2CompareMetrics:
+      type: object
+      properties:
+        redaction_ms: { type: integer }
+        masked_area_ratio: { type: number }
+        boxes_count: { type: integer }
+        leak_rate: { type: number, description: "Fraction of expected identifiers still visible after redaction" }
+
+    H2CompareResponse:
+      type: object
+      properties:
+        band_metrics: { $ref: "#/components/schemas/H2CompareMetrics" }
+        ocr_metrics: { $ref: "#/components/schemas/H2CompareMetrics" }
+        image_width: { type: integer }
+        image_height: { type: integer }
+        message: { type: string }
 
     RAGQueryResponse:
       type: object
@@ -426,6 +898,95 @@ components:
               score: { type: number }
               preview: { type: string }
         elapsed_ms: { type: integer }
+
+    UserProfile:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        email: { type: string, format: email }
+        roles:
+          type: array
+          items: { type: string }
+        created_at: { type: string, format: date-time }
+
+    Quota:
+      type: object
+      properties:
+        free_limit: { type: integer }
+        free_analyses_used: { type: integer }
+        free_remaining: { type: integer }
+        paid_analyses_remaining: { type: integer }
+        needs_payment: { type: boolean }
+        price_per_analysis_kopecks: { type: integer }
+        subscription_price_kopecks: { type: integer }
+        subscription_expires_at: { type: string, format: date-time, nullable: true }
+
+    Payment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        yookassa_id: { type: string }
+        status: { type: string, enum: [pending, succeeded, canceled] }
+        amount_kopecks: { type: integer }
+        description: { type: string }
+        analyses_count: { type: integer }
+        payment_type: { type: string, enum: [analyses, subscription] }
+        created_at: { type: string, format: date-time }
+        confirmed_at: { type: string, format: date-time, nullable: true }
+
+    AdminStats:
+      type: object
+      properties:
+        users_count: { type: integer }
+        requests_by_status:
+          type: object
+          additionalProperties: { type: integer }
+        requests_daily:
+          type: array
+          items:
+            type: object
+            properties:
+              date: { type: string, format: date }
+              count: { type: integer }
+        payments_succeeded: { type: integer }
+        payments_total_rub: { type: number }
+        feedback_positive: { type: integer }
+        feedback_negative: { type: integer }
+        feedback_satisfaction_pct: { type: number }
+
+    AdminUser:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        email: { type: string, format: email }
+        roles:
+          type: array
+          items: { type: string }
+        paid_analyses_remaining: { type: integer }
+        subscription_expires_at: { type: string, format: date-time, nullable: true }
+        requests_count: { type: integer }
+        created_at: { type: string, format: date-time }
+
+    AdminPayment:
+      allOf:
+        - $ref: "#/components/schemas/Payment"
+        - type: object
+          properties:
+            user_email: { type: string, format: email }
+
+    AdminFeedback:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        user_email: { type: string, format: email }
+        question: { type: string }
+        answer: { type: string }
+        rating: { type: integer, enum: [-1, 1] }
+        created_at: { type: string, format: date-time }
 
     Error:
       type: object
@@ -447,6 +1008,11 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
     NotFound:
       description: Resource not found
       content:
@@ -463,7 +1029,7 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
     QuotaExceeded:
-      description: Daily submission quota exceeded
+      description: Free/paid quota exhausted — payment or subscription required
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
