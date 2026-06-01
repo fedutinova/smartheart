@@ -50,7 +50,12 @@ type ECGParams struct {
 	PaperSpeedMMS float64
 	MmPerMvLimb   float64
 	MmPerMvChest  float64
-	ClientMeta    *models.RequestClientMeta
+	// LayoutLabel and PreprocessName are forwarded to cv_service.
+	// Empty values are filled with cv.DefaultLayout / cv.DefaultPreprocess
+	// inside the worker.
+	LayoutLabel    string
+	PreprocessName string
+	ClientMeta     *models.RequestClientMeta
 }
 
 // SubmissionService handles EKG and GPT job submission business logic.
@@ -175,14 +180,16 @@ func (s *submissionService) SubmitECG(ctx context.Context, userID uuid.UUID, ima
 	}
 
 	payload, err := json.Marshal(job.ECGJobPayload{
-		ImageTempURL:  imageURL,
-		UserID:        userID,
-		RequestID:     requestID,
-		Age:           params.Age,
-		Sex:           params.Sex,
-		PaperSpeedMMS: params.PaperSpeedMMS,
-		MmPerMvLimb:   params.MmPerMvLimb,
-		MmPerMvChest:  params.MmPerMvChest,
+		ImageTempURL:   imageURL,
+		UserID:         userID,
+		RequestID:      requestID,
+		Age:            params.Age,
+		Sex:            params.Sex,
+		PaperSpeedMMS:  params.PaperSpeedMMS,
+		MmPerMvLimb:    params.MmPerMvLimb,
+		MmPerMvChest:   params.MmPerMvChest,
+		LayoutLabel:    params.LayoutLabel,
+		PreprocessName: params.PreprocessName,
 	})
 	if err != nil {
 		return nil, apperr.WrapInternal("marshal EKG payload", err)
@@ -239,14 +246,16 @@ func (s *submissionService) SubmitECGFile(ctx context.Context, userID uuid.UUID,
 	}
 
 	payload, err := json.Marshal(job.ECGJobPayload{
-		ImageFileKey:  uploadResult.Key,
-		UserID:        userID,
-		RequestID:     requestID,
-		Age:           params.Age,
-		Sex:           params.Sex,
-		PaperSpeedMMS: params.PaperSpeedMMS,
-		MmPerMvLimb:   params.MmPerMvLimb,
-		MmPerMvChest:  params.MmPerMvChest,
+		ImageFileKey:   uploadResult.Key,
+		UserID:         userID,
+		RequestID:      requestID,
+		Age:            params.Age,
+		Sex:            params.Sex,
+		PaperSpeedMMS:  params.PaperSpeedMMS,
+		MmPerMvLimb:    params.MmPerMvLimb,
+		MmPerMvChest:   params.MmPerMvChest,
+		LayoutLabel:    params.LayoutLabel,
+		PreprocessName: params.PreprocessName,
 	})
 	if err != nil {
 		return nil, apperr.WrapInternal("marshal EKG payload", err)

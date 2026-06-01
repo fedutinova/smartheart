@@ -1,35 +1,61 @@
 import { useState, useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { ecgChatAPI, type ECGChatMessage as ApiMessage } from '@/services/api';
-import type { ECGStructuredResult } from '@/types';
+import type { ECGRhythmResult, ECGStructuredResult } from '@/types';
 
 interface ECGChatProps {
   requestId: string;
   structuredResult?: ECGStructuredResult | null;
+  rhythmResult?: ECGRhythmResult | null;
 }
 
-function buildSuggestions(result?: ECGStructuredResult | null): string[] {
-  const suggestions: string[] = [];
-  const interpretationItems = result?.interpretation?.items ?? [];
+// Non-sinus rhythm codes from cv_service that warrant a "what does this mean"
+// suggestion. Anything outside this set (SINUS_GROUP, etc.) is treated as
+// normal and skipped.
+const NOTABLE_RHYTHM_CODES = new Set([
+  'AFIB', 'AFLT', 'SVTAC', 'VTAC', 'VFIB_VFLT', 'PACE',
+]);
 
+function buildSuggestions(
+  structured?: ECGStructuredResult | null,
+  rhythm?: ECGRhythmResult | null,
+): string[] {
+  const suggestions: string[] = [];
+
+  // Rhythm classifier-driven prompts come first — they reflect the most
+  // prominent finding shown to the user (the RhythmResultView card on top).
+  if (rhythm && NOTABLE_RHYTHM_CODES.has(rhythm.pred_code)) {
+    suggestions.push(`Что значит «${rhythm.pred_label_ru}» в моём заключении?`);
+  }
+  if (rhythm && rhythm.top3?.[0] && rhythm.top3[0].prob < 0.6) {
+    suggestions.push('Почему модель не уверена в ритме?');
+  }
+  for (const flag of rhythm?.binary_flags ?? []) {
+    if (suggestions.length >= 4) break;
+    suggestions.push(`Что означает признак: ${flag.label_ru.toLowerCase()}?`);
+  }
+
+  // Measurement-driven prompts.
+  const interpretationItems = structured?.interpretation?.items ?? [];
   const hasLVH = interpretationItems.some((it) => it.group === 'lvh' && it.status === 'positive');
   const hasRVH = interpretationItems.some((it) => it.group === 'rvh' && it.status === 'positive');
-  const hasRhythm = interpretationItems.some((it) => it.group === 'rhythm' && it.status === 'abnormal');
-  const hasAbnormalAxis = result?.axis_qrs?.classification && result.axis_qrs.classification !== 'normal';
+  const hasMeasurementRhythm = interpretationItems.some((it) => it.group === 'rhythm' && it.status === 'abnormal');
+  const hasAbnormalAxis = structured?.axis_qrs?.classification && structured.axis_qrs.classification !== 'normal';
 
-  if (hasLVH) suggestions.push('Что такое гипертрофия левого желудочка?');
-  if (hasRVH) suggestions.push('Что означает гипертрофия правого желудочка?');
-  if (hasRhythm) suggestions.push('Опасно ли нарушение ритма на моей ЭКГ?');
-  if (hasAbnormalAxis) suggestions.push('Что значит отклонение оси ЭКГ?');
+  if (hasLVH && suggestions.length < 4) suggestions.push('Что такое гипертрофия левого желудочка?');
+  if (hasRVH && suggestions.length < 4) suggestions.push('Что означает гипертрофия правого желудочка?');
+  if (hasMeasurementRhythm && suggestions.length < 4) suggestions.push('Опасно ли нарушение ритма на моей ЭКГ?');
+  if (hasAbnormalAxis && suggestions.length < 4) suggestions.push('Что значит отклонение оси ЭКГ?');
 
+  // Fallback prompts if nothing notable was found.
   if (suggestions.length < 3) suggestions.push('Что такое индекс Соколова-Лайона?');
-  if (result?.rhythm?.HR_bpm && suggestions.length < 4) suggestions.push('Какая ЧСС считается нормой в покое?');
+  if (structured?.rhythm?.HR_bpm && suggestions.length < 4) suggestions.push('Какая ЧСС считается нормой в покое?');
   if (suggestions.length < 4) suggestions.push('Объясните основные параметры ЭКГ');
 
   return suggestions.slice(0, 4);
 }
 
-export function ECGChat({ requestId, structuredResult }: ECGChatProps) {
+export function ECGChat({ requestId, structuredResult, rhythmResult }: ECGChatProps) {
   const [messages, setMessages] = useState<ApiMessage[]>([]);
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
@@ -39,7 +65,10 @@ export function ECGChat({ requestId, structuredResult }: ECGChatProps) {
   const [thinkingSeconds, setThinkingSeconds] = useState(0);
 
 
-  const suggestions = useMemo(() => buildSuggestions(structuredResult), [structuredResult]);
+  const suggestions = useMemo(
+    () => buildSuggestions(structuredResult, rhythmResult),
+    [structuredResult, rhythmResult],
+  );
 
   const refreshHistory = async () => {
     setError(null);

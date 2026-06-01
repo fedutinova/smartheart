@@ -189,6 +189,7 @@ export const ecgAPI = {
       formData.append('paper_speed_mms', String(params.paper_speed_mms));
       formData.append('mm_per_mv_limb', String(params.mm_per_mv_limb));
       formData.append('mm_per_mv_chest', String(params.mm_per_mv_chest));
+      if (params.layout_label) formData.append('layout_label', params.layout_label);
     }
     if (clientMeta) {
       formData.append('client_meta', JSON.stringify(clientMeta));

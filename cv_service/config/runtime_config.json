@@ -1,0 +1,17 @@
+{
+  "default_preprocess": "synthmatch",
+  "allowed_preprocesses": [
+    "raw",
+    "light",
+    "synthmatch"
+  ],
+  "layout_labels": [
+    "3x4_rhythm",
+    "3x4",
+    "6x2",
+    "6x2_rhythm",
+    "12x1"
+  ],
+  "llm_included": true,
+  "notebook_overfit_rules_included": false
+}

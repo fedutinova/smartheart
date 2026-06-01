@@ -1,0 +1,13 @@
+{
+  "delivery_root": "/content/drive/MyDrive/ecg_site_delivery_bundle",
+  "created_at_unix": 1779818627.3154995,
+  "style_ref_source": null,
+  "default_preprocess": "synthmatch",
+  "llm_included": true,
+  "excluded_runtime_logic": [
+    "best_real_preprocess_search",
+    "synthsafe_class_bias",
+    "synthsafe_pair_rules",
+    "real_ultrastrict_rules"
+  ]
+}

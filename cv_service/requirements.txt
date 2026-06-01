@@ -1,0 +1,9 @@
+numpy<2
+pandas
+pillow
+opencv-python-headless
+scikit-learn
+requests
+fastapi
+uvicorn
+python-multipart

@@ -73,6 +73,12 @@ type ECGJobPayload struct {
 	PaperSpeedMMS float64   `json:"paper_speed_mms,omitempty"`
 	MmPerMvLimb   float64   `json:"mm_per_mv_limb,omitempty"`
 	MmPerMvChest  float64   `json:"mm_per_mv_chest,omitempty"`
+	// LayoutLabel selects how cv_service slices the page into leads.
+	// Empty falls back to cv.DefaultLayout in the worker.
+	LayoutLabel string `json:"layout_label,omitempty"`
+	// PreprocessName selects the cv_service preprocessing mode.
+	// Empty falls back to cv.DefaultPreprocess in the worker.
+	PreprocessName string `json:"preprocess_name,omitempty"`
 }
 
 type Status string

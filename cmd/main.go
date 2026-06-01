@@ -11,6 +11,7 @@ import (
 
 	"github.com/fedutinova/smartheart/back-api/auth"
 	appconfig "github.com/fedutinova/smartheart/back-api/config"
+	"github.com/fedutinova/smartheart/back-api/cv"
 	"github.com/fedutinova/smartheart/back-api/database"
 	"github.com/fedutinova/smartheart/back-api/gpt"
 	"github.com/fedutinova/smartheart/back-api/handler"
@@ -66,7 +67,9 @@ func main() {
 	} else {
 		gptClient = gpt.NewClient(cfg.GPT.APIKey, storageService, gpt.WithModel(cfg.GPT.Model))
 	}
-	startWorkers(ctx, cfg, db, q, storageService, repo, hub, gptClient)
+
+	cvClient := buildCVClient(cfg)
+	startWorkers(ctx, cfg, db, q, storageService, repo, hub, gptClient, cvClient)
 	srv := startHTTPServer(cfg, repo, sessions, storageService, q, hub)
 
 	// Cancel pending payments older than 1 hour, check every 10 minutes.
@@ -180,9 +183,26 @@ func initQueue(cfg appconfig.Config, sessions *session.Service) job.Queue {
 	}
 }
 
-func startWorkers(ctx context.Context, cfg appconfig.Config, db *database.DB, q job.Queue, storageService storage.Storage, repo repository.Store, hub *notify.Hub, gptClient gpt.Processor) {
+// buildCVClient returns a configured cv.Client, or nil when CV_URL is empty.
+// A nil client disables rhythm classification — the ECG worker degrades
+// gracefully and still produces the structured measurement result.
+func buildCVClient(cfg appconfig.Config) cv.Client {
+	if cfg.CV.URL == "" {
+		slog.Info("CV_URL not set — rhythm classification disabled")
+		return nil
+	}
+	client, err := cv.NewHTTPClient(cfg.CV.URL, cfg.CV.Timeout)
+	if err != nil {
+		slog.Error("failed to init CV client — rhythm classification disabled", "error", err)
+		return nil
+	}
+	slog.Info("CV client initialised", "url", cfg.CV.URL, "timeout", cfg.CV.Timeout)
+	return client
+}
+
+func startWorkers(ctx context.Context, cfg appconfig.Config, db *database.DB, q job.Queue, storageService storage.Storage, repo repository.Store, hub *notify.Hub, gptClient gpt.Processor, cvClient cv.Client) {
 	gptWorker := workers.NewGPTWorker(db, gptClient, repo, hub)
-	ecgWorker := workers.NewECGWorker(db, q, storageService, repo, gptClient, hub)
+	ecgWorker := workers.NewECGWorker(db, q, storageService, repo, gptClient, cvClient, hub)
 
 	registry := job.NewRegistry()
 	registry.Register(job.TypeECGAnalyze, ecgWorker.HandleECGJob)

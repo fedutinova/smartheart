@@ -25,3 +25,6 @@ packages:
   github.com/fedutinova/smartheart/back-api/storage:
     interfaces:
       Storage:
+  github.com/fedutinova/smartheart/back-api/cv:
+    interfaces:
+      Client:

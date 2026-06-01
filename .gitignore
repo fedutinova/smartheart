@@ -66,3 +66,5 @@ rag_pipeline/chroma_data/
 rag_pipeline/processed/
 rag_pipeline/processed_docs/
 rag_pipeline/chroma_db_*/
+
+ecg_site_delivery_bundle/

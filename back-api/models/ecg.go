@@ -22,6 +22,10 @@ type ECGResponseContent struct {
 	GPTInterpretation       *string              `json:"gpt_interpretation,omitempty"`
 	GPTFullResponse         *string              `json:"gpt_full_response,omitempty"`
 	StructuredResult        *ECGStructuredResult `json:"structured_result,omitempty"`
+	// RhythmResult is the rhythm-classifier block produced by cv_service.
+	// Nil for legacy responses and when CV inference was unavailable; the
+	// frontend treats it as optional.
+	RhythmResult *ECGRhythmResult `json:"rhythm_result,omitempty"`
 }
 
 // Marshal serializes to JSON string suitable for Response.Content.

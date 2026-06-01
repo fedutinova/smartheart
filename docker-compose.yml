@@ -94,6 +94,7 @@ services:
       GPT_MOCK: ${GPT_MOCK:-false}
       GPT_MOCK_DELAY: ${GPT_MOCK_DELAY:-5s}
       MIGRATIONS_DIR: /app/migrations
+      CV_URL: http://cv:8000
     volumes:
       - ./migrations:/app/migrations:ro
     depends_on:
@@ -105,6 +106,34 @@ services:
         condition: service_healthy
       rag:
         condition: service_started
+      cv:
+        condition: service_healthy
+
+  cv:
+    build:
+      context: ./cv_service
+      dockerfile: Dockerfile
+    container_name: smartheart_cv
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 3G
+    environment:
+      ECG_CHECKPOINT_PATH: /app/models/stage_oldv9_residual_best.pt
+      ECG_STYLE_REF_PATH: /app/config/synth_style_ref.json
+      ECG_DEFAULT_PREPROCESS: synthmatch
+    volumes:
+      - ./ecg_site_delivery_bundle/models/stage_oldv9_residual_best.pt:/app/models/stage_oldv9_residual_best.pt:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 10s
+      start_period: 120s
+      retries: 10
 
   rag:
     build:

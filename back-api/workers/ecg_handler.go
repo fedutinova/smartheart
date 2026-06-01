@@ -14,7 +14,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"golang.org/x/sync/errgroup"
 
+	"github.com/fedutinova/smartheart/back-api/cv"
 	"github.com/fedutinova/smartheart/back-api/database"
 	"github.com/fedutinova/smartheart/back-api/gpt"
 	"github.com/fedutinova/smartheart/back-api/job"
@@ -33,7 +35,10 @@ type ECGWorker struct {
 	repo      repository.RequestRepo
 	quotaRepo repository.QuotaRepo
 	gptClient gpt.Processor
-	hub       *notify.Hub
+	// cvClient is the rhythm classifier. Nil disables rhythm inference — the
+	// worker still produces a structured measurement result via GPT.
+	cvClient cv.Client
+	hub      *notify.Hub
 }
 
 func NewECGWorker(
@@ -42,6 +47,7 @@ func NewECGWorker(
 	storageService storage.Storage,
 	repo repository.Store,
 	gptClient gpt.Processor,
+	cvClient cv.Client,
 	hub *notify.Hub,
 ) *ECGWorker {
 	return &ECGWorker{
@@ -51,6 +57,7 @@ func NewECGWorker(
 		repo:      repo,
 		quotaRepo: repo,
 		gptClient: gptClient,
+		cvClient:  cvClient,
 		hub:       hub,
 	}
 }
@@ -134,12 +141,47 @@ func (h *ECGWorker) processEKG(ctx context.Context, j *job.Job, payload *job.ECG
 		imageURL = uploadResult.URL
 	}
 
-	// Build prompt and call GPT.
+	// Run GPT measurement extraction and CV rhythm classification in parallel.
+	// GPT failure is fatal (no structured result → nothing to save). CV failure
+	// is logged and degraded to a nil rhythm block — the user still gets the
+	// measurements/indices view.
 	systemPrompt, userPrompt := gpt.BuildECGMeasurementPrompt(payload.PaperSpeedMMS)
-	gptResult, err := h.gptClient.ProcessStructuredECG(ctx, []string{imageKey}, systemPrompt, userPrompt)
-	if err != nil {
-		slog.ErrorContext(ctx, "GPT structured ECG call failed", "job_id", j.ID, "error", err)
-		return fmt.Errorf("gpt analysis failed: %w", err)
+
+	var (
+		gptResult    *gpt.ProcessResult
+		rhythmResult *models.ECGRhythmResult
+	)
+	eg, egCtx := errgroup.WithContext(ctx)
+	eg.Go(func() error {
+		res, gerr := h.gptClient.ProcessStructuredECG(egCtx, []string{imageKey}, systemPrompt, userPrompt)
+		if gerr != nil {
+			slog.ErrorContext(egCtx, "GPT structured ECG call failed", "job_id", j.ID, "error", gerr)
+			return fmt.Errorf("gpt analysis failed: %w", gerr)
+		}
+		gptResult = res
+		return nil
+	})
+	if h.cvClient != nil {
+		eg.Go(func() error {
+			pred, cerr := h.cvClient.Predict(
+				egCtx,
+				imageData,
+				"image/jpeg",
+				fmt.Sprintf("ekg_%s.jpg", j.ID.String()[:8]),
+				payload.LayoutLabel,
+				payload.PreprocessName,
+			)
+			if cerr != nil {
+				slog.WarnContext(egCtx, "CV rhythm inference failed; degrading to nil rhythm block",
+					"job_id", j.ID, "error", cerr)
+				return nil
+			}
+			rhythmResult = rhythmFromCV(pred)
+			return nil
+		})
+	}
+	if err := eg.Wait(); err != nil {
+		return err
 	}
 
 	// Parse GPT JSON response
@@ -179,6 +221,7 @@ func (h *ECGWorker) processEKG(ctx context.Context, j *job.Job, payload *job.ECG
 		Timestamp:        timestamp,
 		JobID:            j.ID.String(),
 		StructuredResult: structured,
+		RhythmResult:     rhythmResult,
 	}
 	responseJSON, err := ecgContent.Marshal()
 	if err != nil {

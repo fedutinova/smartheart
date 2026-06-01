@@ -170,6 +170,7 @@ describe('Analyze', () => {
         paper_speed_mms: 25,
         mm_per_mv_limb: 10,
         mm_per_mv_chest: 10,
+        layout_label: '3x4_rhythm',
       });
     });
     expect(mockAddJob).toHaveBeenCalledWith('req-123');
@@ -210,6 +211,7 @@ describe('Analyze', () => {
           paper_speed_mms: 25,
           mm_per_mv_limb: 10,
           mm_per_mv_chest: 10,
+          layout_label: '3x4_rhythm',
         },
         mockImageState.clientMeta,
       );

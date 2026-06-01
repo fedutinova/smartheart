@@ -28,14 +28,19 @@ func (_m *MockStore) EXPECT() *MockStore_Expecter {
 
 // ActivateSubscription provides a mock function with given fields: ctx, userID
 func (_m *MockStore) ActivateSubscription(ctx context.Context, userID uuid.UUID) error {
-	_va := []interface{}{ctx, userID}
-	ret := _m.Called(_va...)
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ActivateSubscription")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
 		r0 = rf(ctx, userID)
 	} else {
 		r0 = ret.Error(0)
 	}
+
 	return r0
 }
 
@@ -45,6 +50,8 @@ type MockStore_ActivateSubscription_Call struct {
 }
 
 // ActivateSubscription is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID uuid.UUID
 func (_e *MockStore_Expecter) ActivateSubscription(ctx interface{}, userID interface{}) *MockStore_ActivateSubscription_Call {
 	return &MockStore_ActivateSubscription_Call{Call: _e.mock.On("ActivateSubscription", ctx, userID)}
 }

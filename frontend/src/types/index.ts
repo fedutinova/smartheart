@@ -24,6 +24,18 @@ export interface RegisterRequest {
   password: string;
 }
 
+// ECGLayoutLabel selects how cv_service slices the page into per-lead crops.
+// Must match the backend's cv.IsValidLayout allow-list.
+export type ECGLayoutLabel = '3x4_rhythm' | '3x4' | '6x2' | '6x2_rhythm' | '12x1';
+
+export const ECG_LAYOUT_OPTIONS: { value: ECGLayoutLabel; label: string; hint: string }[] = [
+  { value: '3x4_rhythm', label: '3×4 + ритм', hint: '12 отведений в сетке 3×4 и полоса ритма снизу (чаще всего)' },
+  { value: '3x4',        label: '3×4',        hint: '12 отведений в сетке 3×4 без полосы ритма' },
+  { value: '6x2',        label: '6×2',        hint: '12 отведений в две колонки по 6' },
+  { value: '6x2_rhythm', label: '6×2 + ритм', hint: '6×2 с дополнительной полосой ритма' },
+  { value: '12x1',       label: '12×1',       hint: 'Все 12 отведений одним столбцом' },
+];
+
 export interface ECGAnalysisRequest {
   image_temp_url: string;
   notes?: string;
@@ -32,6 +44,7 @@ export interface ECGAnalysisRequest {
   paper_speed_mms?: number;
   mm_per_mv_limb?: number;
   mm_per_mv_chest?: number;
+  layout_label?: ECGLayoutLabel;
   client_meta?: ECGClientMeta;
 }
 
@@ -41,6 +54,7 @@ export interface ECGCalibrationParams {
   paper_speed_mms: number;
   mm_per_mv_limb: number;
   mm_per_mv_chest: number;
+  layout_label: ECGLayoutLabel;
 }
 
 export type RedactionMode = 'band' | 'ocr';
@@ -163,6 +177,30 @@ export interface ECGAnalysisResult {
   gpt_interpretation?: string;
   gpt_full_response?: string;
   structured_result?: ECGStructuredResult;
+  // rhythm_result is produced by cv_service. Absent for legacy responses and
+  // when CV inference was unavailable (graceful degradation).
+  rhythm_result?: ECGRhythmResult;
+}
+
+export interface ECGRhythmResult {
+  pred_code: string;
+  pred_label_ru: string;
+  layout_label: string;
+  preprocess_name: string;
+  top3: RhythmClassProb[];
+  binary_flags: RhythmBinaryFlag[];
+}
+
+export interface RhythmClassProb {
+  code: string;
+  label_ru: string;
+  prob: number;
+}
+
+export interface RhythmBinaryFlag {
+  code: string;
+  label_ru: string;
+  prob: number;
 }
 
 export interface InterpretationItem {

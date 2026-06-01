@@ -1,0 +1,29 @@
+{
+  "orig_active_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "compact_to_orig": {
+    "0": 0,
+    "1": 1,
+    "2": 2,
+    "3": 3,
+    "4": 4,
+    "5": 5,
+    "6": 6
+  },
+  "active_names": [
+    "SINUS_GROUP",
+    "AFIB",
+    "AFLT",
+    "SVTAC",
+    "VTAC",
+    "VFIB_VFLT",
+    "PACE"
+  ]
+}

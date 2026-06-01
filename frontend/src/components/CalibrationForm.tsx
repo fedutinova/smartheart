@@ -1,14 +1,18 @@
+import { ECG_LAYOUT_OPTIONS, type ECGLayoutLabel } from '@/types';
+
 interface CalibrationFormProps {
   age: string;
   sex: string;
   paperSpeed: number;
   mmPerMvLimb: number;
   mmPerMvChest: number;
+  layoutLabel: ECGLayoutLabel;
   onAgeChange: (v: string) => void;
   onSexChange: (v: string) => void;
   onPaperSpeedChange: (v: number) => void;
   onMmPerMvLimbChange: (v: number) => void;
   onMmPerMvChestChange: (v: number) => void;
+  onLayoutLabelChange: (v: ECGLayoutLabel) => void;
 }
 
 const AGE_MAX = 150;
@@ -49,11 +53,31 @@ function ToggleGroup({ value, options, onChange }: {
 }
 
 export function CalibrationForm({
-  age, sex, paperSpeed, mmPerMvLimb, mmPerMvChest,
-  onAgeChange, onSexChange, onPaperSpeedChange, onMmPerMvLimbChange, onMmPerMvChestChange,
+  age, sex, paperSpeed, mmPerMvLimb, mmPerMvChest, layoutLabel,
+  onAgeChange, onSexChange, onPaperSpeedChange, onMmPerMvLimbChange, onMmPerMvChestChange, onLayoutLabelChange,
 }: CalibrationFormProps) {
+  const activeHint = ECG_LAYOUT_OPTIONS.find((o) => o.value === layoutLabel)?.hint;
   return (
     <div className="rounded-xl bg-gray-50 p-4 space-y-4">
+      <div>
+        <label htmlFor="layout-label" className="block text-[11px] uppercase tracking-wide text-gray-600 font-medium mb-1.5">
+          Раскладка отведений
+        </label>
+        <select
+          id="layout-label"
+          value={layoutLabel}
+          onChange={(e) => onLayoutLabelChange(e.target.value as ECGLayoutLabel)}
+          className="w-full bg-white rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 shadow-sm transition-all outline-none focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
+        >
+          {ECG_LAYOUT_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+        {activeHint && (
+          <p className="mt-1.5 text-[11px] text-gray-500">{activeHint}</p>
+        )}
+      </div>
+
       <div className="flex items-center gap-4">
         <div className="flex-1 min-w-0">
           <label htmlFor="age" className="block text-[11px] uppercase tracking-wide text-gray-600 font-medium mb-1.5">Возраст</label>

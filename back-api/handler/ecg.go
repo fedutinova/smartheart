@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/fedutinova/smartheart/back-api/apperr"
+	"github.com/fedutinova/smartheart/back-api/cv"
 	"github.com/fedutinova/smartheart/back-api/models"
 	"github.com/fedutinova/smartheart/back-api/service"
 )
@@ -28,13 +29,15 @@ var (
 )
 
 type ekgAnalyzeRequest struct {
-	ImageTempURL  string                    `json:"image_temp_url"            validate:"required,url"`
-	Age           *int                      `json:"age,omitempty"             validate:"omitempty,min=1,max=150"`
-	Sex           string                    `json:"sex,omitempty"             validate:"omitempty,oneof=male female"`
-	PaperSpeedMMS *float64                  `json:"paper_speed_mms,omitempty" validate:"omitempty,min=10,max=100"`
-	MmPerMvLimb   *float64                  `json:"mm_per_mv_limb,omitempty"  validate:"omitempty,min=1,max=40"`
-	MmPerMvChest  *float64                  `json:"mm_per_mv_chest,omitempty" validate:"omitempty,min=1,max=40"`
-	ClientMeta    *models.RequestClientMeta `json:"client_meta,omitempty"`
+	ImageTempURL   string                    `json:"image_temp_url"             validate:"required,url"`
+	Age            *int                      `json:"age,omitempty"              validate:"omitempty,min=1,max=150"`
+	Sex            string                    `json:"sex,omitempty"              validate:"omitempty,oneof=male female"`
+	PaperSpeedMMS  *float64                  `json:"paper_speed_mms,omitempty"  validate:"omitempty,min=10,max=100"`
+	MmPerMvLimb    *float64                  `json:"mm_per_mv_limb,omitempty"   validate:"omitempty,min=1,max=40"`
+	MmPerMvChest   *float64                  `json:"mm_per_mv_chest,omitempty"  validate:"omitempty,min=1,max=40"`
+	LayoutLabel    string                    `json:"layout_label,omitempty"     validate:"omitempty,oneof=3x4_rhythm 3x4 6x2 6x2_rhythm 12x1"`
+	PreprocessName string                    `json:"preprocess_name,omitempty"  validate:"omitempty,oneof=synthmatch raw light"`
+	ClientMeta     *models.RequestClientMeta `json:"client_meta,omitempty"`
 }
 
 // resolveHostWithCache performs DNS lookup with caching to avoid blocking on every request.
@@ -123,11 +126,13 @@ func (h *ECGHandler) SubmitECGAnalyze(w http.ResponseWriter, r *http.Request) {
 
 func ecgParamsFromRequest(req *ekgAnalyzeRequest) service.ECGParams {
 	p := service.ECGParams{
-		Age:           req.Age,
-		Sex:           req.Sex,
-		PaperSpeedMMS: 25,
-		MmPerMvLimb:   10,
-		MmPerMvChest:  10,
+		Age:            req.Age,
+		Sex:            req.Sex,
+		PaperSpeedMMS:  25,
+		MmPerMvLimb:    10,
+		MmPerMvChest:   10,
+		LayoutLabel:    cv.DefaultLayout,
+		PreprocessName: cv.DefaultPreprocess,
 	}
 	if req.PaperSpeedMMS != nil {
 		p.PaperSpeedMMS = *req.PaperSpeedMMS
@@ -137,6 +142,12 @@ func ecgParamsFromRequest(req *ekgAnalyzeRequest) service.ECGParams {
 	}
 	if req.MmPerMvChest != nil {
 		p.MmPerMvChest = *req.MmPerMvChest
+	}
+	if req.LayoutLabel != "" {
+		p.LayoutLabel = req.LayoutLabel
+	}
+	if req.PreprocessName != "" {
+		p.PreprocessName = req.PreprocessName
 	}
 	p.ClientMeta = req.ClientMeta
 	return p
@@ -204,10 +215,26 @@ func (h *ECGHandler) submitECGFile(w http.ResponseWriter, r *http.Request) {
 	defer func() { _ = file.Close() }()
 
 	params := service.ECGParams{
-		Sex:           r.FormValue("sex"),
-		PaperSpeedMMS: 25,
-		MmPerMvLimb:   10,
-		MmPerMvChest:  10,
+		Sex:            r.FormValue("sex"),
+		PaperSpeedMMS:  25,
+		MmPerMvLimb:    10,
+		MmPerMvChest:   10,
+		LayoutLabel:    cv.DefaultLayout,
+		PreprocessName: cv.DefaultPreprocess,
+	}
+	if v := r.FormValue("layout_label"); v != "" {
+		if !cv.IsValidLayout(v) {
+			writeError(w, http.StatusBadRequest, "invalid layout_label")
+			return
+		}
+		params.LayoutLabel = v
+	}
+	if v := r.FormValue("preprocess_name"); v != "" {
+		if !cv.IsValidPreprocess(v) {
+			writeError(w, http.StatusBadRequest, "invalid preprocess_name")
+			return
+		}
+		params.PreprocessName = v
 	}
 	if rawClientMeta := r.FormValue("client_meta"); rawClientMeta != "" {
 		var clientMeta models.RequestClientMeta

@@ -13,7 +13,7 @@ import { useImageInput, type ImageStep } from '@/hooks/useImageInput';
 import { usePendingJobs } from '@/hooks/usePendingJobs';
 import { useQuota } from '@/hooks/useQuota';
 import { getApiError } from '@/utils/apiError';
-import type { ECGCalibrationParams, ECGClientMeta, QuotaInfo, RedactionBox } from '@/types';
+import type { ECGCalibrationParams, ECGClientMeta, ECGLayoutLabel, QuotaInfo, RedactionBox } from '@/types';
 
 type Mode = 'file' | 'camera' | 'url';
 
@@ -35,6 +35,7 @@ export function Analyze() {
   const [paperSpeed, setPaperSpeed] = useState(25);
   const [mmPerMvLimb, setMmPerMvLimb] = useState(10);
   const [mmPerMvChest, setMmPerMvChest] = useState(10);
+  const [layoutLabel, setLayoutLabel] = useState<ECGLayoutLabel>('3x4_rhythm');
 
   // URL mode state
   const [imageUrl, setImageUrl, clearImageUrl] = useDraft('analyze_url');
@@ -50,6 +51,7 @@ export function Analyze() {
     paper_speed_mms: paperSpeed,
     mm_per_mv_limb: mmPerMvLimb,
     mm_per_mv_chest: mmPerMvChest,
+    layout_label: layoutLabel,
   });
 
   const mutation = useMutation({
@@ -236,10 +238,12 @@ export function Analyze() {
               <CalibrationForm
                 age={age} sex={sex} paperSpeed={paperSpeed}
                 mmPerMvLimb={mmPerMvLimb} mmPerMvChest={mmPerMvChest}
+                layoutLabel={layoutLabel}
                 onAgeChange={setAge} onSexChange={setSex}
                 onPaperSpeedChange={setPaperSpeed}
                 onMmPerMvLimbChange={setMmPerMvLimb}
                 onMmPerMvChestChange={setMmPerMvChest}
+                onLayoutLabelChange={setLayoutLabel}
               />
             )}
 

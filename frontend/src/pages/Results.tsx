@@ -10,7 +10,7 @@ import { RequestImage } from '@/components/RequestImage';
 import { ECGChat } from '@/components/ECGChat';
 import { useEventSource } from '@/hooks/useEventSource';
 import { usePendingJobs } from '@/hooks/usePendingJobs';
-import type { ECGAnalysisResult, ECGStructuredResult, InterpretationItem } from '@/types';
+import type { ECGAnalysisResult, ECGRhythmResult, ECGStructuredResult, InterpretationItem } from '@/types';
 
 const LEADS_ORDER = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6'];
 
@@ -247,6 +247,12 @@ export function Results() {
           <RequestImage requestId={request.id} fileId={request.files[0].id} />
         )}
 
+        {/* Rhythm classification (cv_service). Shown above measurements
+            because the rhythm answer is the first thing a clinician looks for. */}
+        {ecgResult?.rhythm_result && (
+          <RhythmResultView result={ecgResult.rhythm_result} />
+        )}
+
         {/* Structured ECG Results */}
         {isStructured && ecgResult?.structured_result && (
           <StructuredResultView result={ecgResult.structured_result} />
@@ -288,7 +294,11 @@ export function Results() {
 
         {/* ECG-contextual chat */}
         {request?.status === 'completed' && id && (
-          <ECGChat requestId={id} structuredResult={ecgResult?.structured_result} />
+          <ECGChat
+            requestId={id}
+            structuredResult={ecgResult?.structured_result}
+            rhythmResult={ecgResult?.rhythm_result}
+          />
         )}
 
         <p className="mt-6 text-xs text-gray-500 text-center leading-relaxed">
@@ -297,6 +307,80 @@ export function Results() {
         </p>
       </div>
     </Layout>
+  );
+}
+
+// --- Rhythm classifier (cv_service) ---
+
+function RhythmResultView({ result }: { result: ECGRhythmResult }) {
+  const pct = (p: number) => `${(p * 100).toFixed(0)}%`;
+  const top = result.top3 ?? [];
+  const flags = result.binary_flags ?? [];
+  const topConfidence = top[0]?.prob ?? 0;
+
+  return (
+    <div className="bg-gradient-to-br from-rose-50 to-orange-50 border border-rose-200 shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-lg font-bold text-gray-900">Ритм</h2>
+        <span className="text-[11px] uppercase tracking-wide text-gray-500">ML-классификатор</span>
+      </div>
+
+      <div className="bg-white rounded-lg px-4 py-3 border border-rose-100 mb-4">
+        <p className="text-xs text-gray-500 mb-1">Предполагаемый ритм</p>
+        <p className="text-xl font-semibold text-gray-900">{result.pred_label_ru}</p>
+        <p className="mt-1 text-[11px] text-gray-500">
+          <span className="font-mono">{result.pred_code}</span>
+          {' · уверенность '}
+          {pct(topConfidence)}
+        </p>
+      </div>
+
+      {top.length > 0 && (
+        <div className="mb-4">
+          <p className="text-xs text-gray-600 uppercase tracking-wide mb-2">Распределение вероятностей</p>
+          <ul className="space-y-2">
+            {top.map((c) => (
+              <li key={c.code} className="bg-white/70 rounded-md px-3 py-2 border border-rose-100">
+                <div className="flex items-center justify-between gap-3 mb-1">
+                  <span className="text-sm text-gray-900 truncate">{c.label_ru}</span>
+                  <span className="text-xs font-mono text-gray-600 shrink-0">{pct(c.prob)}</span>
+                </div>
+                <div className="h-1.5 rounded bg-rose-100 overflow-hidden">
+                  <div
+                    className="h-full bg-rose-400"
+                    style={{ width: `${Math.max(0, Math.min(100, c.prob * 100))}%` }}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {flags.length > 0 && (
+        <div>
+          <p className="text-xs text-gray-600 uppercase tracking-wide mb-2">Дополнительные признаки</p>
+          <div className="flex flex-wrap gap-2">
+            {flags.map((f) => (
+              <span
+                key={f.code}
+                className="inline-flex items-center gap-1.5 rounded-full bg-white border border-amber-200 px-3 py-1 text-xs text-amber-900"
+                title={`${f.code} · вероятность ${pct(f.prob)}`}
+              >
+                <span>{f.label_ru}</span>
+                <span className="font-mono text-amber-700">{pct(f.prob)}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <p className="mt-4 text-[11px] text-gray-500">
+        Раскладка: <span className="font-mono">{result.layout_label}</span>
+        {' · предобработка: '}
+        <span className="font-mono">{result.preprocess_name}</span>
+      </p>
+    </div>
   );
 }
 

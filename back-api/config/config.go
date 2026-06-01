@@ -114,6 +114,12 @@ type RAGConfig struct {
 	URL string // Base URL of the RAG service (e.g. http://rag:8000)
 }
 
+// CVConfig holds settings for the cv_service ECG rhythm classifier.
+type CVConfig struct {
+	URL     string        // Base URL of cv_service (e.g. http://cv:8000). Empty disables CV calls.
+	Timeout time.Duration // Per-request timeout for /predict (CPU inference is slow).
+}
+
 type Config struct {
 	HTTPAddr    string
 	JWT         JWTConfig
@@ -128,6 +134,7 @@ type Config struct {
 	RateLimit   RateLimitConfig
 	Quota       QuotaConfig
 	RAG         RAGConfig
+	CV          CVConfig
 	YooKassa    YooKassaConfig
 	SMTP        SMTPConfig
 	FrontendURL string // base URL of the frontend app (for links in emails)
@@ -363,6 +370,10 @@ func Load() Config {
 		},
 		RAG: RAGConfig{
 			URL: envString("RAG_URL", "http://localhost:8000"),
+		},
+		CV: CVConfig{
+			URL:     envString("CV_URL", ""),
+			Timeout: envDuration("CV_TIMEOUT", 30*time.Second),
 		},
 		YooKassa: YooKassaConfig{
 			ShopID:                   envString("YOOKASSA_SHOP_ID", ""),
