@@ -64,8 +64,6 @@ type ECGJobPayload struct {
 	ImageFileKey string    `json:"image_file_key,omitempty"`
 	Notes        string    `json:"notes,omitempty"`
 	UserID       uuid.UUID `json:"user_id"`
-	// RequestID identifies an existing request row. When uuid.Nil, processEKG
-	// creates the row inside its transaction and writes the new ID back here.
 	RequestID     uuid.UUID `json:"request_id"`
 	Age           *int      `json:"age,omitempty"`
 	Sex           string    `json:"sex,omitempty"`

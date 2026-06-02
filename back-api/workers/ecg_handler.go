@@ -212,30 +212,9 @@ func (h *ECGWorker) processEKG(ctx context.Context, j *job.Job, payload *job.ECG
 		return fmt.Errorf("failed to marshal response: %w", err)
 	}
 
-	// Persist in transaction
-	needsCreate := payload.RequestID == uuid.Nil
 	requestID := payload.RequestID
-	if needsCreate {
-		requestID = uuid.New()
-		payload.RequestID = requestID // propagate back for sync callers
-	}
-
 	if err := h.txb.WithTx(ctx, func(tx database.Tx) error {
 		txRepo := repository.NewTxScoped(tx)
-
-		if needsCreate {
-			request := &models.Request{
-				ID:     requestID,
-				UserID: payload.UserID,
-				Status: models.StatusCompleted,
-			}
-			if payload.Notes != "" {
-				request.TextQuery = &payload.Notes
-			}
-			if err := txRepo.CreateRequest(ctx, request); err != nil {
-				return fmt.Errorf("create request: %w", err)
-			}
-		}
 
 		response := &models.Response{
 			ID:               uuid.New(),
@@ -247,19 +226,6 @@ func (h *ECGWorker) processEKG(ctx context.Context, j *job.Job, payload *job.ECG
 		}
 		if err := txRepo.CreateResponse(ctx, response); err != nil {
 			return fmt.Errorf("save response: %w", err)
-		}
-
-		// Create file record
-		fileModel := &models.File{
-			ID:               uuid.New(),
-			RequestID:        requestID,
-			OriginalFilename: fmt.Sprintf("ekg_%s.jpg", j.ID.String()[:8]),
-			FileType:         "image/jpeg",
-			FileSize:         int64(len(imageData)),
-			S3Key:            imageKey,
-		}
-		if err := txRepo.CreateFile(ctx, fileModel); err != nil {
-			return fmt.Errorf("create file record: %w", err)
 		}
 
 		if err := txRepo.UpdateRequestStatus(ctx, requestID, models.StatusCompleted); err != nil {

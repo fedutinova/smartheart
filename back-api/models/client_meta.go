@@ -11,7 +11,7 @@ const (
 
 func (m RedactionMode) Valid() bool {
 	switch m {
-	case RedactionModeBand, RedactionModeOCR:
+	case "", RedactionModeBand, RedactionModeOCR:
 		return true
 	default:
 		return false
