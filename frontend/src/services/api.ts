@@ -3,7 +3,6 @@ import axiosRetry from 'axios-retry';
 import type {
   LoginRequest,
   RegisterRequest,
-  ECGAnalysisRequest,
   ECGCalibrationParams,
   ECGClientMeta,
   ECGFeedback,
@@ -174,11 +173,6 @@ export const profileAPI = {
 type ECGSubmitResponse = { job_id: string; request_id: string; status: string; message: string };
 
 export const ecgAPI = {
-  submitAnalysis: async (data: ECGAnalysisRequest & Partial<ECGCalibrationParams>) => {
-    const response = await api.post<ECGSubmitResponse>('/v1/ecg/analyze', data);
-    return response.data;
-  },
-
   submitAnalysisFile: async (imageBlob: Blob, notes?: string, params?: ECGCalibrationParams, clientMeta?: ECGClientMeta) => {
     const formData = new FormData();
     formData.append('image', imageBlob, 'ecg-image.jpg');

@@ -15,7 +15,7 @@ import { useQuota } from '@/hooks/useQuota';
 import { getApiError } from '@/utils/apiError';
 import type { ECGCalibrationParams, ECGClientMeta, ECGLayoutLabel, QuotaInfo, RedactionBox } from '@/types';
 
-type Mode = 'file' | 'camera' | 'url';
+type Mode = 'file' | 'camera';
 
 export function Analyze() {
   const [mode, setMode] = useState<Mode>('file');
@@ -36,9 +36,6 @@ export function Analyze() {
   const [mmPerMvLimb, setMmPerMvLimb] = useState(10);
   const [mmPerMvChest, setMmPerMvChest] = useState(10);
   const [layoutLabel, setLayoutLabel] = useState<ECGLayoutLabel>('3x4_rhythm');
-
-  // URL mode state
-  const [imageUrl, setImageUrl, clearImageUrl] = useDraft('analyze_url');
   const [noPersonalData, setNoPersonalData] = useState(false);
 
   // File inputs
@@ -57,14 +54,13 @@ export function Analyze() {
   const mutation = useMutation({
     mutationFn: () => {
       const params = getCalibrationParams();
-      if ((mode === 'file' || mode === 'camera') && image.croppedBlob) {
-        return ecgAPI.submitAnalysisFile(image.croppedBlob, undefined, params, image.clientMeta ?? undefined);
+      if (!image.croppedBlob) {
+        throw new Error('Изображение не готово');
       }
-      return ecgAPI.submitAnalysis({ image_temp_url: imageUrl, ...params });
+      return ecgAPI.submitAnalysisFile(image.croppedBlob, undefined, params, image.clientMeta ?? undefined);
     },
     onSuccess: (response) => {
       clearNotes();
-      clearImageUrl();
       addJob(response.request_id);
       queryClient.invalidateQueries({ queryKey: ['quota'] });
       navigate(`/results/${response.request_id}`);
@@ -92,26 +88,9 @@ export function Analyze() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if ((mode === 'file' || mode === 'camera') && !image.croppedBlob) {
+    if (!image.croppedBlob) {
       image.setError(mode === 'camera' ? 'Сделайте фото и обрежьте изображение' : 'Выберите и обрежьте изображение');
       return;
-    }
-    if (mode === 'url') {
-      const trimmed = imageUrl.trim();
-      if (!trimmed) {
-        image.setError('Введите URL изображения');
-        return;
-      }
-      try {
-        const parsed = new URL(trimmed);
-        if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
-          image.setError('URL должен начинаться с https:// или http://');
-          return;
-        }
-      } catch {
-        image.setError('Некорректный формат URL');
-        return;
-      }
     }
     image.setError('');
     mutation.mutate();
@@ -119,24 +98,16 @@ export function Analyze() {
 
   const switchMode = (newMode: Mode) => {
     image.reset();
-    clearImageUrl();
     setNoPersonalData(false);
     setMode(newMode);
   };
 
-  const canSubmit =
-    noPersonalData && (
-      (mode === 'file' || mode === 'camera')
-        ? (image.step === 'ready' || image.step === 'review') && image.croppedBlob !== null
-        : imageUrl.trim() !== ''
-    );
+  const isImageReady = image.step === 'ready' || image.step === 'review';
+  const canSubmit = noPersonalData && isImageReady && image.croppedBlob !== null;
 
   const submitHint: string | null = (() => {
     if (canSubmit || mutation.isPending) return null;
-    if (mode === 'file' || mode === 'camera') {
-      if ((image.step === 'ready' || image.step === 'review') && !noPersonalData) return 'Установите флажок подтверждения обезличивания выше';
-    }
-    if (mode === 'url' && !imageUrl.trim()) return 'Введите ссылку на изображение';
+    if (isImageReady && !noPersonalData) return 'Установите флажок подтверждения обезличивания выше';
     return null;
   })();
 
@@ -156,13 +127,11 @@ export function Analyze() {
 
         <div className="bg-white shadow rounded-lg p-4 sm:p-6">
           <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
-            {(mode === 'file' || mode === 'camera') && (
-              <AnalysisStepIndicator
-                imageStep={image.step}
-                isProcessingOCR={image.isProcessingOCR}
-                isSubmitting={mutation.isPending}
-              />
-            )}
+            <AnalysisStepIndicator
+              imageStep={image.step}
+              isProcessingOCR={image.isProcessingOCR}
+              isSubmitting={mutation.isPending}
+            />
 
             {image.error && (
               <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded text-sm">
@@ -176,13 +145,10 @@ export function Analyze() {
             {/* Image source — select step (hidden while OCR runs) */}
             {image.step === 'select' && !image.isProcessingOCR && (
               <ImageSelectStep
-                mode={mode}
-                imageUrl={imageUrl}
                 fileInputRef={fileInputRef}
                 cameraInputRef={cameraInputRef}
                 onInputChange={handleInputChange}
                 onDrop={handleDrop}
-                onUrlChange={setImageUrl}
                 onSwitchMode={switchMode}
               />
             )}
@@ -227,14 +193,14 @@ export function Analyze() {
               />
             )}
 
-            {/* Calibration params and confirmation — only after OCR or for URL mode */}
-            {(mode === 'url' || image.step === 'review' || image.step === 'ready') && (
+            {/* Calibration params and confirmation — only after image is ready */}
+            {isImageReady && (
               <div className="flex items-center gap-3">
                 <span className="text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Параметры плёнки</span>
                 <div className="flex-1 h-px bg-gray-200" />
               </div>
             )}
-            {(mode === 'url' || image.step === 'review' || image.step === 'ready') && (
+            {isImageReady && (
               <CalibrationForm
                 age={age} sex={sex} paperSpeed={paperSpeed}
                 mmPerMvLimb={mmPerMvLimb} mmPerMvChest={mmPerMvChest}
@@ -247,7 +213,7 @@ export function Analyze() {
               />
             )}
 
-            {(mode === 'url' || image.step === 'review' || image.step === 'ready') && (
+            {isImageReady && (
               <label className="flex items-start gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
@@ -271,7 +237,7 @@ export function Analyze() {
                 >
                   Отмена
                 </button>
-                {(mode === 'url' || image.step === 'review' || image.step === 'ready') ? (
+                {isImageReady && (
                   <button
                     type="submit"
                     disabled={mutation.isPending || !canSubmit}
@@ -279,7 +245,7 @@ export function Analyze() {
                   >
                     {mutation.isPending ? 'Отправка...' : 'Запустить анализ'}
                   </button>
-                ) : null}
+                )}
               </div>
               {submitHint && (
                 <p className="text-xs text-amber-700 text-right">{submitHint}</p>
@@ -292,7 +258,6 @@ export function Analyze() {
           <div className="mt-6 sm:mt-8 flex flex-wrap gap-x-6 gap-y-2 text-xs text-gray-400">
             <span>JPEG, PNG, PDF до 10 MB</span>
             {mode === 'camera' && <span>Держите телефон параллельно бумаге</span>}
-            {mode === 'url' && <span>Используйте только ссылку на обезличенное изображение</span>}
           </div>
         )}
       </div>
@@ -345,14 +310,11 @@ function PaymentPrompt({ onShowPayment }: { onShowPayment: () => void }) {
   );
 }
 
-function ImageSelectStep({ mode, imageUrl, fileInputRef, cameraInputRef, onInputChange, onDrop, onUrlChange, onSwitchMode }: {
-  mode: Mode;
-  imageUrl: string;
+function ImageSelectStep({ fileInputRef, cameraInputRef, onInputChange, onDrop, onSwitchMode }: {
   fileInputRef: React.RefObject<HTMLInputElement>;
   cameraInputRef: React.RefObject<HTMLInputElement>;
   onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onDrop: (e: React.DragEvent) => void;
-  onUrlChange: (v: string) => void;
   onSwitchMode: (m: Mode) => void;
 }) {
   return (
@@ -363,13 +325,13 @@ function ImageSelectStep({ mode, imageUrl, fileInputRef, cameraInputRef, onInput
       {/* Mobile: split card */}
       <div className="sm:hidden rounded-xl border border-gray-200 overflow-hidden max-w-xs mx-auto">
         <div className="grid grid-cols-2 divide-x divide-gray-200">
-          <button type="button" onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center gap-2 py-6 hover:bg-rose-50 active:bg-rose-100 transition-colors group">
+          <button type="button" onClick={() => { onSwitchMode('file'); fileInputRef.current?.click(); }} className="flex flex-col items-center gap-2 py-6 hover:bg-rose-50 active:bg-rose-100 transition-colors group">
             <svg className="w-7 h-7 text-gray-400 group-hover:text-rose-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
             </svg>
             <span className="text-xs text-gray-600 group-hover:text-rose-600 font-medium transition-colors">Файл</span>
           </button>
-          <button type="button" onClick={() => cameraInputRef.current?.click()} className="flex flex-col items-center gap-2 py-6 hover:bg-rose-50 active:bg-rose-100 transition-colors group">
+          <button type="button" onClick={() => { onSwitchMode('camera'); cameraInputRef.current?.click(); }} className="flex flex-col items-center gap-2 py-6 hover:bg-rose-50 active:bg-rose-100 transition-colors group">
             <svg className="w-7 h-7 text-gray-400 group-hover:text-rose-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z" />
@@ -383,7 +345,7 @@ function ImageSelectStep({ mode, imageUrl, fileInputRef, cameraInputRef, onInput
       <div
         onDrop={onDrop}
         onDragOver={(e) => e.preventDefault()}
-        onClick={() => fileInputRef.current?.click()}
+        onClick={() => { onSwitchMode('file'); fileInputRef.current?.click(); }}
         className="hidden sm:flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 py-12 cursor-pointer hover:border-rose-300 hover:bg-rose-50/50 transition-all group"
       >
         <svg className="w-10 h-10 text-gray-300 group-hover:text-rose-400 transition-colors mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -394,60 +356,6 @@ function ImageSelectStep({ mode, imageUrl, fileInputRef, cameraInputRef, onInput
         </p>
         <p className="text-xs text-gray-400 mt-1">JPEG, PNG, PDF · до 10 МБ</p>
       </div>
-
-      {/* URL input */}
-      {mode !== 'url' ? (
-        <button
-          type="button"
-          onClick={() => onSwitchMode('url')}
-          className="w-full flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-400 hover:text-gray-600 hover:border-gray-300 transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
-          </svg>
-          Вставить ссылку на изображение
-        </button>
-      ) : (
-        <div className="rounded-xl border border-gray-200 overflow-hidden">
-          <div className="flex items-center gap-2 p-3">
-            <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
-            </svg>
-            <input
-              id="imageUrl"
-              type="url"
-              autoFocus
-              className="flex-1 border-0 bg-transparent focus:ring-0 text-sm p-0 placeholder-gray-400"
-              placeholder="https://example.com/ekg.jpg"
-              value={imageUrl}
-              onChange={(e) => onUrlChange(e.target.value)}
-            />
-            <button
-              type="button"
-              onClick={() => onSwitchMode('file')}
-              className="p-1 rounded text-gray-400 hover:text-gray-600 transition-colors"
-              aria-label="Закрыть"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          {imageUrl && (
-            <div className="border-t border-gray-200 bg-gray-50 p-2">
-              <img
-                src={imageUrl}
-                alt="Preview"
-                className="max-w-full h-auto block mx-auto rounded-lg"
-                onError={(e) => {
-                  e.currentTarget.src =
-                    'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="200"%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3EНе удалось загрузить изображение%3C/text%3E%3C/svg%3E';
-                }}
-              />
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
@@ -620,4 +528,3 @@ function OverlayButton({ onClick, title, children }: { onClick: () => void; titl
     </button>
   );
 }
-

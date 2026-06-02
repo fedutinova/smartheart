@@ -5,10 +5,9 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 import { Analyze } from './Analyze';
 
-const { mockAddJob, mockSetError, mockSubmitAnalysis, mockSubmitAnalysisFile } = vi.hoisted(() => ({
+const { mockAddJob, mockSetError, mockSubmitAnalysisFile } = vi.hoisted(() => ({
   mockAddJob: vi.fn(),
   mockSetError: vi.fn(),
-  mockSubmitAnalysis: vi.fn(),
   mockSubmitAnalysisFile: vi.fn(),
 }));
 
@@ -35,7 +34,6 @@ const mockImageState = {
 
 vi.mock('@/services/api', () => ({
   ecgAPI: {
-    submitAnalysis: mockSubmitAnalysis,
     submitAnalysisFile: mockSubmitAnalysisFile,
   },
 }));
@@ -104,7 +102,6 @@ describe('Analyze', () => {
   beforeEach(() => {
     mockAddJob.mockReset();
     mockSetError.mockReset();
-    mockSubmitAnalysis.mockReset();
     mockSubmitAnalysisFile.mockReset();
 
     mockImageState.confirmPreview.mockReset();
@@ -119,19 +116,6 @@ describe('Analyze', () => {
     sessionStorage.clear();
   });
 
-  it('shows an error when URL mode is submitted without a link', async () => {
-    const user = userEvent.setup();
-    renderAnalyze();
-
-    await user.click(screen.getByRole('button', { name: 'Вставить ссылку на изображение' }));
-    await user.click(screen.getByRole('checkbox'));
-
-    fireEvent.submit(screen.getByRole('button', { name: 'Запустить анализ' }).closest('form')!);
-
-    expect(mockSetError).toHaveBeenCalledWith('Введите URL изображения');
-    expect(mockSubmitAnalysis).not.toHaveBeenCalled();
-  });
-
   it('shows an error when file mode is submitted without a prepared image', async () => {
     const user = userEvent.setup();
     mockImageState.step = 'ready';
@@ -144,37 +128,6 @@ describe('Analyze', () => {
 
     expect(mockSetError).toHaveBeenCalledWith('Выберите и обрежьте изображение');
     expect(mockSubmitAnalysisFile).not.toHaveBeenCalled();
-  });
-
-  it('submits URL analysis and redirects to the result page', async () => {
-    const user = userEvent.setup();
-    mockSubmitAnalysis.mockResolvedValue({
-      request_id: 'req-123',
-      job_id: 'job-123',
-      status: 'pending',
-      message: 'queued',
-    });
-
-    renderAnalyze();
-
-    await user.click(screen.getByRole('button', { name: 'Вставить ссылку на изображение' }));
-    await user.type(screen.getByPlaceholderText('https://example.com/ekg.jpg'), 'https://example.com/ekg.jpg');
-    await user.click(screen.getByRole('checkbox'));
-    await user.click(screen.getByRole('button', { name: 'Запустить анализ' }));
-
-    await waitFor(() => {
-      expect(mockSubmitAnalysis).toHaveBeenCalledWith({
-        image_temp_url: 'https://example.com/ekg.jpg',
-        age: undefined,
-        sex: undefined,
-        paper_speed_mms: 25,
-        mm_per_mv_limb: 10,
-        mm_per_mv_chest: 10,
-        layout_label: '3x4_rhythm',
-      });
-    });
-    expect(mockAddJob).toHaveBeenCalledWith('req-123');
-    expect(await screen.findByText('Результат анализа')).toBeInTheDocument();
   });
 
   it('submits redacted file analysis with client_meta', async () => {

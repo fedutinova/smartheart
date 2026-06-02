@@ -98,9 +98,6 @@ LOG_LEVEL=debug
 
 	fmt.Println("\nTest data setup complete!")
 
-	// Print test examples
-	fixtures.PrintTestExamples()
-
 	fmt.Println("\nNext steps:")
 	fmt.Println("1. Copy .env.example to .env and configure your settings")
 	fmt.Println("2. Run 'make docker-compose-up' to start dependencies")

@@ -36,18 +36,6 @@ export const ECG_LAYOUT_OPTIONS: { value: ECGLayoutLabel; label: string; hint: s
   { value: '12x1',       label: '12×1',       hint: 'Все 12 отведений одним столбцом' },
 ];
 
-export interface ECGAnalysisRequest {
-  image_temp_url: string;
-  notes?: string;
-  age?: number;
-  sex?: string;
-  paper_speed_mms?: number;
-  mm_per_mv_limb?: number;
-  mm_per_mv_chest?: number;
-  layout_label?: ECGLayoutLabel;
-  client_meta?: ECGClientMeta;
-}
-
 export interface ECGCalibrationParams {
   age?: number;
   sex?: string;

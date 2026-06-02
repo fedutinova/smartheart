@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"net"
 	"strings"
 	"testing"
 
@@ -266,63 +265,3 @@ func TestCreateFallbackResponse_RequestNotFound(t *testing.T) {
 	}
 }
 
-// --- validateImageURL tests ---
-
-func TestValidateImageURL(t *testing.T) {
-	tests := []struct {
-		name    string
-		url     string
-		wantErr bool
-	}{
-		{"valid https", "https://example.com/image.jpg", false},
-		{"valid http", "http://example.com/image.jpg", false},
-		{"empty", "", true},
-		{"ftp scheme", "ftp://example.com/file", true},
-		{"localhost", "http://localhost/image.jpg", true},
-		{"127.0.0.1", "http://127.0.0.1/image.jpg", true},
-		{"ipv6 loopback", "http://[::1]/image.jpg", true},
-		{"0.0.0.0", "http://0.0.0.0/image.jpg", true},
-		{"file scheme", "file:///etc/passwd", true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := validateImageURL(tt.url)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("validateImageURL(%q) error = %v, wantErr %v", tt.url, err, tt.wantErr)
-			}
-		})
-	}
-}
-
-// --- isPrivateIP tests ---
-
-func TestIsPrivateIP(t *testing.T) {
-	tests := []struct {
-		name string
-		ip   string
-		want bool
-	}{
-		{"loopback v4", "127.0.0.1", true},
-		{"loopback v6", "::1", true},
-		{"private 10.x", "10.0.0.1", true},
-		{"private 192.168.x", "192.168.1.1", true},
-		{"private 172.16.x", "172.16.0.1", true},
-		{"link-local", "169.254.1.1", true},
-		{"unspecified v4", "0.0.0.0", true},
-		{"public IP", "8.8.8.8", false},
-		{"public IP 2", "1.1.1.1", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ip := net.ParseIP(tt.ip)
-			if ip == nil {
-				t.Fatalf("failed to parse IP: %s", tt.ip)
-			}
-			if got := isPrivateIP(ip); got != tt.want {
-				t.Errorf("isPrivateIP(%s) = %v, want %v", tt.ip, got, tt.want)
-			}
-		})
-	}
-}
