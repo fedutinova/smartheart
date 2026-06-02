@@ -9,6 +9,40 @@ import { queryClient } from './services/queryClient';
 import { ensureFreshToken } from './services/api';
 import './index.css';
 
+// Recover from stale dynamic-import chunks after a redeploy.
+//
+// Vite hashes lazy-loaded chunk filenames (e.g. piiDetector-<hash>.js). When a
+// new build is deployed, an open tab still holds the old index.html and tries
+// to fetch a chunk that no longer exists on the server — the fetch fails with
+// "Failed to fetch dynamically imported module" and React surfaces it as a
+// user-facing error. Caddy already serves index.html with no-cache, but some
+// browsers (Safari iOS, bfcache, aggressive proxies) ignore that and keep the
+// old document. The cleanest fix is a one-shot reload that pulls the current
+// index.html with current chunk names.
+//
+// `vite:preloadError` is fired by Vite's preload helper before the SyntaxError
+// reaches React. We guard with sessionStorage so a *real* missing file doesn't
+// reload-loop the page.
+if (typeof window !== 'undefined') {
+  window.addEventListener('vite:preloadError', (event) => {
+    const RELOAD_KEY = 'vite_preload_reload_attempt';
+    if (sessionStorage.getItem(RELOAD_KEY)) {
+      // We already tried reloading once and the chunk is still missing — let
+      // the error propagate so the user sees something rather than spinning
+      // in a reload loop.
+      return;
+    }
+    sessionStorage.setItem(RELOAD_KEY, '1');
+    event.preventDefault();
+    window.location.reload();
+  });
+  // Clear the guard once the page has loaded successfully, so the next
+  // genuine stale-chunk event can trigger a fresh reload.
+  window.addEventListener('load', () => {
+    sessionStorage.removeItem('vite_preload_reload_attempt');
+  });
+}
+
 /** Max time we wait for the initial silent-refresh before giving up.
  *  Prevents a blank screen on devices where the network request hangs. */
 const INIT_TIMEOUT_MS = 10_000;
