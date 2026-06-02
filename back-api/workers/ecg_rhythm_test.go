@@ -9,7 +9,7 @@ import (
 )
 
 func TestRhythmFromCV_Nil(t *testing.T) {
-	if got := rhythmFromCV(nil); got != nil {
+	if got := rhythmFromCV(nil, nil); got != nil {
 		t.Errorf("expected nil for nil input, got %+v", got)
 	}
 }
@@ -31,9 +31,18 @@ func TestRhythmFromCV_MapsAllFields(t *testing.T) {
 		},
 	}
 
-	got := rhythmFromCV(pred)
+	explanation := &models.ECGRhythmExplanation{
+		PredictionLine:  "Ритм: фибрилляция предсердий.",
+		DescriptionText: "Нерегулярные RR, нет чётких P.",
+		ConclusionText:  "Картина соответствует фибрилляции предсердий.",
+		NoteText:        "Не заменяет очного врача.",
+	}
+	got := rhythmFromCV(pred, explanation)
 	if got == nil {
 		t.Fatal("expected non-nil")
+	}
+	if got.Explanation == nil || got.Explanation.PredictionLine == "" {
+		t.Errorf("explanation not propagated: %+v", got.Explanation)
 	}
 	if got.PredCode != "AFIB" || got.PredLabelRU != "фибрилляция предсердий" {
 		t.Errorf("pred mapping wrong: %+v", got)
@@ -57,9 +66,12 @@ func TestRhythmFromCV_EmptySlices(t *testing.T) {
 	pred := &cv.RhythmPrediction{
 		PredCode: "SINUS_GROUP",
 	}
-	got := rhythmFromCV(pred)
+	got := rhythmFromCV(pred, nil)
 	if got == nil {
 		t.Fatal("expected non-nil")
+	}
+	if got.Explanation != nil {
+		t.Errorf("expected nil explanation when not provided, got %+v", got.Explanation)
 	}
 	if got.Top3 == nil || got.BinaryFlags == nil {
 		t.Error("expected non-nil empty slices for stable JSON marshalling")

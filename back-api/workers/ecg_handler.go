@@ -163,11 +163,12 @@ func (h *ECGWorker) processEKG(ctx context.Context, j *job.Job, payload *job.ECG
 	})
 	if h.cvClient != nil {
 		eg.Go(func() error {
+			filename := fmt.Sprintf("ekg_%s.jpg", j.ID.String()[:8])
 			pred, cerr := h.cvClient.Predict(
 				egCtx,
 				imageData,
 				"image/jpeg",
-				fmt.Sprintf("ekg_%s.jpg", j.ID.String()[:8]),
+				filename,
 				payload.LayoutLabel,
 				payload.PreprocessName,
 			)
@@ -176,7 +177,15 @@ func (h *ECGWorker) processEKG(ctx context.Context, j *job.Job, payload *job.ECG
 					"job_id", j.ID, "error", cerr)
 				return nil
 			}
-			rhythmResult = rhythmFromCV(pred)
+			// CV succeeded — turn the prediction into a medical-grade text
+			// conclusion via vision LLM. Soft-failure: if the LLM call fails,
+			// we still publish the rhythm code without a narrative block.
+			explanation, lerr := buildRhythmExplanation(egCtx, h.gptClient, imageKey, filename, payload.LayoutLabel, pred)
+			if lerr != nil {
+				slog.WarnContext(egCtx, "Rhythm explanation generation failed; publishing rhythm without explanation",
+					"job_id", j.ID, "error", lerr)
+			}
+			rhythmResult = rhythmFromCV(pred, explanation)
 			return nil
 		})
 	}

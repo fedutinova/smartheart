@@ -10,9 +10,7 @@ import { RequestImage } from '@/components/RequestImage';
 import { ECGChat } from '@/components/ECGChat';
 import { useEventSource } from '@/hooks/useEventSource';
 import { usePendingJobs } from '@/hooks/usePendingJobs';
-import type { ECGAnalysisResult, ECGRhythmResult, ECGStructuredResult, InterpretationItem } from '@/types';
-
-const LEADS_ORDER = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6'];
+import type { ECGAnalysisResult, ECGRhythmResult, ECGStructuredResult } from '@/types';
 
 function fmt(v: number | null | undefined, decimals = 1): string {
   if (v == null) return '—';
@@ -310,118 +308,68 @@ export function Results() {
   );
 }
 
-// --- Rhythm classifier (cv_service) ---
+// --- Rhythm classifier (cv_service) + vision-LLM narrative ---
 
 function RhythmResultView({ result }: { result: ECGRhythmResult }) {
-  const pct = (p: number) => `${(p * 100).toFixed(0)}%`;
-  const top = result.top3 ?? [];
-  const flags = result.binary_flags ?? [];
-  const topConfidence = top[0]?.prob ?? 0;
+  const exp = result.explanation;
+  const copyText = exp
+    ? [exp.prediction_line, exp.description_text, exp.conclusion_text].filter(Boolean).join('\n\n')
+    : result.pred_label_ru;
 
   return (
     <div className="bg-gradient-to-br from-rose-50 to-orange-50 border border-rose-200 shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-bold text-gray-900">Ритм</h2>
-        <span className="text-[11px] uppercase tracking-wide text-gray-500">ML-классификатор</span>
+        <h2 className="text-lg font-bold text-gray-900">Заключение</h2>
+        {copyText && <CopyButton text={copyText} />}
       </div>
 
       <div className="bg-white rounded-lg px-4 py-3 border border-rose-100 mb-4">
         <p className="text-xs text-gray-500 mb-1">Предполагаемый ритм</p>
         <p className="text-xl font-semibold text-gray-900">{result.pred_label_ru}</p>
-        <p className="mt-1 text-[11px] text-gray-500">
-          <span className="font-mono">{result.pred_code}</span>
-          {' · уверенность '}
-          {pct(topConfidence)}
-        </p>
+        {exp?.prediction_line && (
+          <p className="mt-2 text-sm text-gray-700">{exp.prediction_line}</p>
+        )}
       </div>
 
-      {top.length > 0 && (
-        <div className="mb-4">
-          <p className="text-xs text-gray-600 uppercase tracking-wide mb-2">Распределение вероятностей</p>
-          <ul className="space-y-2">
-            {top.map((c) => (
-              <li key={c.code} className="bg-white/70 rounded-md px-3 py-2 border border-rose-100">
-                <div className="flex items-center justify-between gap-3 mb-1">
-                  <span className="text-sm text-gray-900 truncate">{c.label_ru}</span>
-                  <span className="text-xs font-mono text-gray-600 shrink-0">{pct(c.prob)}</span>
-                </div>
-                <div className="h-1.5 rounded bg-rose-100 overflow-hidden">
-                  <div
-                    className="h-full bg-rose-400"
-                    style={{ width: `${Math.max(0, Math.min(100, c.prob * 100))}%` }}
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
+      {exp ? (
+        <div className="space-y-3 text-sm text-gray-800">
+          {exp.description_text && (
+            <p className="leading-relaxed whitespace-pre-line">{exp.description_text}</p>
+          )}
+          {exp.conclusion_text && (
+            <div className="bg-white/70 border border-rose-100 rounded-md px-4 py-3">
+              <p className="text-[11px] uppercase tracking-wide text-gray-500 mb-1">Заключение</p>
+              <p className="leading-relaxed whitespace-pre-line">{exp.conclusion_text}</p>
+            </div>
+          )}
+          {exp.note_text && (
+            <p className="text-[11px] text-gray-500 leading-relaxed">{exp.note_text}</p>
+          )}
         </div>
+      ) : (
+        <p className="text-xs text-gray-500">
+          Текстовое заключение в этот раз не сформировано — показан только результат классификатора.
+        </p>
       )}
-
-      {flags.length > 0 && (
-        <div>
-          <p className="text-xs text-gray-600 uppercase tracking-wide mb-2">Дополнительные признаки</p>
-          <div className="flex flex-wrap gap-2">
-            {flags.map((f) => (
-              <span
-                key={f.code}
-                className="inline-flex items-center gap-1.5 rounded-full bg-white border border-amber-200 px-3 py-1 text-xs text-amber-900"
-                title={`${f.code} · вероятность ${pct(f.prob)}`}
-              >
-                <span>{f.label_ru}</span>
-                <span className="font-mono text-amber-700">{pct(f.prob)}</span>
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <p className="mt-4 text-[11px] text-gray-500">
-        Раскладка: <span className="font-mono">{result.layout_label}</span>
-        {' · предобработка: '}
-        <span className="font-mono">{result.preprocess_name}</span>
-      </p>
     </div>
   );
 }
 
 // --- Structured Result Components ---
+//
+// The deterministic "Интерпретация" card (LVH/RVH/axis summary chips +
+// items list + text_summary) and the per-lead R/S measurements table were
+// dropped in favour of the vision-LLM narrative rendered by RhythmResultView.
+// What's still useful from structured_result are the high-level interval
+// numbers (HR/QRS/RR) and the empty-state fallback when the GPT measurement
+// pass produced nothing — both kept below.
 
 function StructuredResultView({ result }: { result: ECGStructuredResult }) {
-  const hasInterpretation = result.interpretation && (result.interpretation.items?.length || result.interpretation.summary?.length);
   const hasMeasurements = Object.values(result.measurements).some((v) => v != null);
 
   return (
     <>
-      {/* Interpretation */}
-      {hasInterpretation ? (
-        <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-bold text-gray-900">Интерпретация</h2>
-            {result.interpretation?.text_summary && (
-              <CopyButton text={result.interpretation.text_summary} />
-            )}
-          </div>
-          <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4 text-xs text-amber-800">
-            Результат автоматической обработки. Не является медицинским заключением и не заменяет консультацию врача.
-          </div>
-          {result.interpretation?.summary && result.interpretation.summary.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
-              {result.interpretation.summary.map((s, i) => (
-                <div key={i} className="bg-white rounded-lg px-4 py-3 border border-purple-100 flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-xs text-gray-500">{s.label}</p>
-                    <p className="text-sm font-medium text-gray-900">{s.value}</p>
-                  </div>
-                  <StatusBadge status={s.status} />
-                </div>
-              ))}
-            </div>
-          )}
-          {result.interpretation?.items && result.interpretation.items.length > 0 && (
-            <InterpretationItems items={result.interpretation.items} />
-          )}
-        </div>
-      ) : !hasMeasurements ? (
+      {!hasMeasurements && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
           <h2 className="text-lg font-bold text-gray-900 mb-2">Анализ ЭКГ</h2>
           <div className="text-sm text-yellow-800 space-y-2">
@@ -439,37 +387,6 @@ function StructuredResultView({ result }: { result: ECGStructuredResult }) {
             </ul>
           </div>
         </div>
-      ) : null}
-
-      {/* Measurements Table */}
-      {Object.values(result.measurements).some((v) => v != null) && (
-      <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 overflow-x-auto animate-fade-in-up">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Измерения по отведениям</h2>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-200">
-              <th className="text-left py-2 pr-3 text-gray-500 font-medium">Отведение</th>
-              <th className="text-right py-2 px-3 text-gray-500 font-medium">R, мм</th>
-              <th className="text-right py-2 pl-3 text-gray-500 font-medium">S, мм</th>
-            </tr>
-          </thead>
-          <tbody>
-            {LEADS_ORDER.map((lead) => {
-              const rKey = `R_${lead}_mm`;
-              const sKey = `S_${lead}_mm`;
-              const rVal = result.measurements[rKey];
-              const sVal = result.measurements[sKey];
-              return (
-                <tr key={lead} className="border-b border-gray-100">
-                  <td className="py-2 pr-3 font-medium text-gray-800">{lead}</td>
-                  <td className="py-2 px-3 text-right font-mono text-gray-700">{fmt(rVal)}</td>
-                  <td className="py-2 pl-3 text-right font-mono text-gray-700">{fmt(sVal)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
       )}
 
       {/* Rhythm & Intervals */}
@@ -526,68 +443,6 @@ function CopyButton({ text }: { text: string }) {
         </>
       )}
     </button>
-  );
-}
-
-const STATUS_STYLES: Record<string, string> = {
-  positive: 'bg-red-100 text-red-700',
-  abnormal: 'bg-red-100 text-red-700',
-  negative: 'bg-green-100 text-green-700',
-  normal: 'bg-green-100 text-green-700',
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  positive: 'положительный',
-  negative: 'отрицательный',
-  normal: 'норма',
-  abnormal: 'отклонение',
-};
-
-function StatusBadge({ status }: { status: string }) {
-  return (
-    <span className={`text-xs px-1.5 py-0.5 rounded whitespace-nowrap ${STATUS_STYLES[status] ?? 'bg-gray-100 text-gray-600'}`}>
-      {STATUS_LABELS[status] ?? status}
-    </span>
-  );
-}
-
-const GROUP_LABELS: Record<string, string> = {
-  lvh: 'Критерии ГЛЖ',
-  rvh: 'Критерии ГПЖ',
-  rhythm: 'Ритм и проводимость',
-};
-
-function InterpretationItems({ items }: { items: InterpretationItem[] }) {
-  const groups = new Map<string, InterpretationItem[]>();
-  for (const it of items) {
-    const g = it.group || 'other';
-    if (!groups.has(g)) groups.set(g, []);
-    groups.get(g)!.push(it);
-  }
-
-  return (
-    <div className="space-y-3">
-      {Array.from(groups.entries()).map(([group, groupItems]) => (
-        <div key={group}>
-          {GROUP_LABELS[group] && (
-            <p className="text-xs font-medium text-gray-500 mb-1.5">{GROUP_LABELS[group]}</p>
-          )}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {groupItems.map((it, i) => (
-              <div key={i} className="bg-white rounded-lg px-4 py-3 border border-purple-100">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-gray-900">{it.label}: {it.value}</p>
-                  <StatusBadge status={it.status} />
-                </div>
-                {it.threshold && (
-                  <p className="text-xs text-gray-400 mt-1">{it.threshold}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
   );
 }
 

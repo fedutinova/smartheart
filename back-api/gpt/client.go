@@ -21,6 +21,12 @@ import (
 type Processor interface {
 	ProcessRequest(ctx context.Context, textQuery string, fileKeys []string) (*ProcessResult, error)
 	ProcessStructuredECG(ctx context.Context, fileKeys []string, systemPrompt, userPrompt string) (*ProcessResult, error)
+	// ExplainECGRhythm builds a vision-LLM call that turns the CV rhythm
+	// classification result + the original image into a four-field medical
+	// narrative. systemPrompt and userPrompt come from BuildRhythmExplainPrompt.
+	// Returns the same ProcessResult shape as ProcessStructuredECG so callers
+	// can uniformly parse Content via ParseRhythmExplanation.
+	ExplainECGRhythm(ctx context.Context, fileKey, systemPrompt, userPrompt string) (*ProcessResult, error)
 }
 
 type Client struct {
@@ -321,6 +327,75 @@ func (c *Client) ProcessStructuredECG(ctx context.Context, fileKeys []string, sy
 	}
 
 	slog.InfoContext(ctx, "Structured ECG response received",
+		"model", resp.Model, "tokens", resp.Usage.TotalTokens, "response_len", len(responseContent))
+
+	return &ProcessResult{
+		Content:          responseContent,
+		Model:            resp.Model,
+		TokensUsed:       resp.Usage.TotalTokens,
+		ProcessingTimeMs: int(time.Since(start).Milliseconds()),
+	}, nil
+}
+
+// ExplainECGRhythm calls the vision LLM to produce a medical explanation on
+// top of the CV rhythm result. Uses a low (but non-zero) temperature so the
+// wording is natural, and forces JSON response_format so callers can rely on
+// ParseRhythmExplanation.
+func (c *Client) ExplainECGRhythm(ctx context.Context, fileKey, systemPrompt, userPrompt string) (*ProcessResult, error) {
+	start := time.Now()
+
+	reqCtx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+
+	messages := []openai.ChatCompletionMessage{
+		{Role: openai.ChatMessageRoleSystem, Content: systemPrompt},
+	}
+
+	var content []openai.ChatMessagePart
+	filePart, err := c.createMessagePartFromFile(reqCtx, fileKey)
+	if err != nil {
+		return nil, fmt.Errorf("rhythm explain: prepare image: %w", err)
+	}
+	if filePart != nil {
+		content = append(content, *filePart)
+	}
+	content = append(content, openai.ChatMessagePart{
+		Type: openai.ChatMessagePartTypeText,
+		Text: userPrompt,
+	})
+
+	messages = append(messages, openai.ChatCompletionMessage{
+		Role:         openai.ChatMessageRoleUser,
+		MultiContent: content,
+	})
+
+	slog.InfoContext(ctx, "Sending rhythm-explain request to OpenAI",
+		"model", c.model, "file_key", fileKey)
+
+	temp := float32(0.18) // mirrors the bundle's BothubECGExplainer temperature.
+	resp, err := c.openAI.CreateChatCompletion(reqCtx, openai.ChatCompletionRequest{
+		Model:       c.model,
+		Messages:    messages,
+		MaxTokens:   1200,
+		Temperature: temp,
+		ResponseFormat: &openai.ChatCompletionResponseFormat{
+			Type: openai.ChatCompletionResponseFormatTypeJSONObject,
+		},
+	})
+	if err != nil {
+		return nil, classifyOpenAIError(reqCtx, err, c.timeout)
+	}
+
+	if len(resp.Choices) == 0 {
+		return nil, errors.New("no response from OpenAI")
+	}
+
+	responseContent := resp.Choices[0].Message.Content
+	if IsRefusal(responseContent) {
+		slog.WarnContext(ctx, "OpenAI returned refusal for rhythm explain", "tokens", resp.Usage.TotalTokens)
+	}
+
+	slog.InfoContext(ctx, "Rhythm explain response received",
 		"model", resp.Model, "tokens", resp.Usage.TotalTokens, "response_len", len(responseContent))
 
 	return &ProcessResult{

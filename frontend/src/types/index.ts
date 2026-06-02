@@ -189,6 +189,17 @@ export interface ECGRhythmResult {
   preprocess_name: string;
   top3: RhythmClassProb[];
   binary_flags: RhythmBinaryFlag[];
+  // explanation is the vision-LLM narrative built on top of the CV result.
+  // Absent when the LLM call failed (graceful degradation) — frontend shows
+  // pred_label_ru alone in that case.
+  explanation?: ECGRhythmExplanation;
+}
+
+export interface ECGRhythmExplanation {
+  prediction_line: string;
+  description_text: string;
+  conclusion_text: string;
+  note_text: string;
 }
 
 export interface RhythmClassProb {

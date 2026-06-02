@@ -117,3 +117,25 @@ func (m *MockProcessor) ProcessStructuredECG(ctx context.Context, _ []string, _,
 		ProcessingTimeMs: int(m.Delay.Milliseconds()),
 	}, nil
 }
+
+// Static rhythm explanation — valid JSON matching the four-field LLM contract.
+const mockRhythmExplanation = `{
+  "prediction_line": "Ритм: симулированный синусовый.",
+  "description_text": "Тестовое заключение, сгенерированное в режиме GPT_MOCK для нагрузочных и интеграционных проверок.",
+  "conclusion_text": "Без клинической интерпретации — это mock-ответ.",
+  "note_text": "Заключение носит информационный характер и не заменяет очного врача."
+}`
+
+func (m *MockProcessor) ExplainECGRhythm(ctx context.Context, _, _, _ string) (*ProcessResult, error) {
+	done := m.trackConcurrency()
+	defer done()
+	if err := simulateWork(ctx, m.Delay); err != nil {
+		return nil, err
+	}
+	return &ProcessResult{
+		Content:          mockRhythmExplanation,
+		Model:            "mock",
+		TokensUsed:       80,
+		ProcessingTimeMs: int(m.Delay.Milliseconds()),
+	}, nil
+}
