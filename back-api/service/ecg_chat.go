@@ -340,10 +340,10 @@ func extractECGSummary(content string) string {
 			idxParts = append(idxParts, fmt.Sprintf("Соколов-Лайон: %.1f мВ", *sl))
 		}
 		if cv := sd.Indices.CornellVoltage; cv != nil {
-			idxParts = append(idxParts, fmt.Sprintf("Cornell: %.1f мВ", *cv))
+			idxParts = append(idxParts, fmt.Sprintf("Корнельский: %.1f мВ", *cv))
 		}
 		if plp := sd.Indices.PegueroLoPresti; plp != nil {
-			idxParts = append(idxParts, fmt.Sprintf("Peguero-Lo-Presti: %.1f мВ", *plp))
+			idxParts = append(idxParts, fmt.Sprintf("Пегеро-Ло Прести: %.1f мВ", *plp))
 		}
 		if idxParts != nil {
 			parts = append(parts, "Индексы ГЛЖ: "+strings.Join(idxParts, "; "))

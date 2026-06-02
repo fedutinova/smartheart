@@ -253,7 +253,7 @@ func TestExtractECGSummary_ComprehensiveData(t *testing.T) {
 	assert.Contains(t, got, "Ось QRS: 45°")
 	assert.Contains(t, got, "Классификация оси: normal")
 	assert.Contains(t, got, "Соколов-Лайон: 42.5 мВ")
-	assert.Contains(t, got, "Cornell: 38.2 мВ")
+	assert.Contains(t, got, "Корнельский: 38.2 мВ")
 	assert.Contains(t, got, "RV1: 4.2 мВ")
 	assert.Contains(t, got, "RII: 15.2 мВ")
 	assert.Contains(t, got, "Зона переходности: V3")

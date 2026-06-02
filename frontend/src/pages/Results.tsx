@@ -570,6 +570,7 @@ function StructuredResultView({ result }: { result: ECGStructuredResult }) {
 }
 
 type IndexRow = {
+  id: string;
   label: string;
   value: number | null | undefined;
   unit: string;
@@ -578,18 +579,18 @@ type IndexRow = {
 };
 
 const LVH_INDEX_DEFS: Omit<IndexRow, 'value'>[] = [
-  { label: 'Sokolow-Lyon',     unit: 'мВ', threshold: '> 3.5 мВ',           decimals: 2 },
-  { label: 'Cornell voltage',  unit: 'мВ', threshold: '> 2.8 мВ (М) / > 2.0 (Ж)', decimals: 2 },
-  { label: 'Peguero-Lo Presti',unit: 'мВ', threshold: '> 2.8 мВ (М) / > 2.3 (Ж)', decimals: 2 },
-  { label: 'Gubner',           unit: 'мВ', threshold: '> 2.5 мВ',           decimals: 2 },
-  { label: 'Lewis',            unit: 'мВ', threshold: '> 1.7 мВ',           decimals: 2 },
+  { id: 'sokolow_lyon',     label: 'Соколов-Лайон',        unit: 'мВ', threshold: '> 3.5 мВ',                 decimals: 2 },
+  { id: 'cornell_voltage',  label: 'Корнельский вольтажный', unit: 'мВ', threshold: '> 2.8 мВ (М) / > 2.0 (Ж)', decimals: 2 },
+  { id: 'peguero_lo_presti',label: 'Пегеро-Ло Прести',     unit: 'мВ', threshold: '> 2.8 мВ (М) / > 2.3 (Ж)', decimals: 2 },
+  { id: 'gubner',           label: 'Губнер',               unit: 'мВ', threshold: '> 2.5 мВ',                 decimals: 2 },
+  { id: 'lewis',            label: 'Льюис',                unit: 'мВ', threshold: '> 1.7 мВ',                 decimals: 2 },
 ];
 
 const RVH_INDEX_DEFS: Omit<IndexRow, 'value'>[] = [
-  { label: 'R в V1',     unit: 'мВ', threshold: '> 0.7 мВ',  decimals: 2 },
-  { label: 'R/S в V1',   unit: '',   threshold: '> 1.0',     decimals: 2 },
-  { label: 'RV1 + SV5',  unit: 'мВ', threshold: '> 1.05 мВ', decimals: 2 },
-  { label: 'RV1 + SV6',  unit: 'мВ', threshold: '> 1.05 мВ', decimals: 2 },
+  { id: 'rv1',         label: 'R в V1',    unit: 'мВ', threshold: '> 0.7 мВ',  decimals: 2 },
+  { id: 'r_over_s_v1', label: 'R/S в V1',  unit: '',   threshold: '> 1.0',     decimals: 2 },
+  { id: 'rv1_plus_sv5',label: 'RV1 + SV5', unit: 'мВ', threshold: '> 1.05 мВ', decimals: 2 },
+  { id: 'rv1_plus_sv6',label: 'RV1 + SV6', unit: 'мВ', threshold: '> 1.05 мВ', decimals: 2 },
 ];
 
 function IndicesCard({
@@ -602,21 +603,21 @@ function IndicesCard({
   const lvhRows: IndexRow[] = LVH_INDEX_DEFS.map((d) => ({
     ...d,
     value:
-      d.label === 'Sokolow-Lyon' ? indices?.sokolow_lyon_mV :
-      d.label === 'Cornell voltage' ? indices?.cornell_voltage_mV :
-      d.label === 'Peguero-Lo Presti' ? indices?.peguero_lo_presti_mV :
-      d.label === 'Gubner' ? indices?.gubner_mV :
-      d.label === 'Lewis' ? indices?.lewis_mV :
+      d.id === 'sokolow_lyon' ? indices?.sokolow_lyon_mV :
+      d.id === 'cornell_voltage' ? indices?.cornell_voltage_mV :
+      d.id === 'peguero_lo_presti' ? indices?.peguero_lo_presti_mV :
+      d.id === 'gubner' ? indices?.gubner_mV :
+      d.id === 'lewis' ? indices?.lewis_mV :
       null,
   })).filter((r) => r.value != null);
 
   const rvhRows: IndexRow[] = RVH_INDEX_DEFS.map((d) => ({
     ...d,
     value:
-      d.label === 'R в V1' ? rvh?.RV1_mV :
-      d.label === 'R/S в V1' ? rvh?.R_over_S_V1 :
-      d.label === 'RV1 + SV5' ? rvh?.RV1_plus_SV5_mV :
-      d.label === 'RV1 + SV6' ? rvh?.RV1_plus_SV6_mV :
+      d.id === 'rv1' ? rvh?.RV1_mV :
+      d.id === 'r_over_s_v1' ? rvh?.R_over_S_V1 :
+      d.id === 'rv1_plus_sv5' ? rvh?.RV1_plus_SV5_mV :
+      d.id === 'rv1_plus_sv6' ? rvh?.RV1_plus_SV6_mV :
       null,
   })).filter((r) => r.value != null);
 
@@ -630,7 +631,7 @@ function IndicesCard({
         <div className={rvhRows.length > 0 ? 'mb-4' : ''}>
           <p className="text-xs font-medium text-gray-500 mb-2">Гипертрофия левого желудочка</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {lvhRows.map((r) => <IndexRowCard key={r.label} row={r} />)}
+            {lvhRows.map((r) => <IndexRowCard key={r.id} row={r} />)}
           </div>
         </div>
       )}
@@ -639,7 +640,7 @@ function IndicesCard({
         <div>
           <p className="text-xs font-medium text-gray-500 mb-2">Гипертрофия правого желудочка</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {rvhRows.map((r) => <IndexRowCard key={r.label} row={r} />)}
+            {rvhRows.map((r) => <IndexRowCard key={r.id} row={r} />)}
           </div>
         </div>
       )}
