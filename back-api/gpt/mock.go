@@ -3,6 +3,8 @@ package gpt
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/json"
+	"fmt"
 	"sync/atomic"
 	"time"
 )
@@ -118,24 +120,48 @@ func (m *MockProcessor) ProcessStructuredECG(ctx context.Context, _ []string, _,
 	}, nil
 }
 
-// Static rhythm explanation — valid JSON matching the four-field LLM contract.
-const mockRhythmExplanation = `{
-  "prediction_line": "Ритм: симулированный синусовый.",
-  "description_text": "Тестовое заключение, сгенерированное в режиме GPT_MOCK для нагрузочных и интеграционных проверок.",
-  "conclusion_text": "Без клинической интерпретации — это mock-ответ.",
-  "note_text": "Заключение носит информационный характер и не заменяет очного врача."
-}`
-
-func (m *MockProcessor) ExplainECGRhythm(ctx context.Context, _, _, _ string) (*ProcessResult, error) {
+// ExplainECGRhythm returns a deterministic mock explanation that always
+// echoes the rhythm name the CV worker just passed in. Without this echo the
+// mock used to say "симулированный синусовый" regardless of pred_label_ru,
+// which produced a visible contradiction on the result page whenever the
+// real CV model predicted anything other than sinus rhythm.
+func (m *MockProcessor) ExplainECGRhythm(ctx context.Context, _, _, userPrompt string) (*ProcessResult, error) {
 	done := m.trackConcurrency()
 	defer done()
 	if err := simulateWork(ctx, m.Delay); err != nil {
 		return nil, err
 	}
+	rhythm := extractMockRhythmLabel(userPrompt)
+	body, _ := json.Marshal(map[string]string{
+		"prediction_line":  fmt.Sprintf("Ритм: %s (тестовый ответ режима GPT_MOCK).", rhythm),
+		"description_text": "Тестовое заключение, сгенерированное в режиме GPT_MOCK. Содержание отражает результат классификатора без клинической интерпретации.",
+		"conclusion_text":  fmt.Sprintf("Заключение mock-сервиса: %s.", rhythm),
+		"note_text":        "Заключение носит информационный характер и не заменяет очного врача.",
+	})
 	return &ProcessResult{
-		Content:          mockRhythmExplanation,
+		Content:          string(body),
 		Model:            "mock",
 		TokensUsed:       80,
 		ProcessingTimeMs: int(m.Delay.Milliseconds()),
 	}, nil
+}
+
+// extractMockRhythmLabel pulls model_result.pred_label_ru out of the JSON
+// payload BuildRhythmExplainPrompt embeds into the user message. Falls back
+// to a neutral string if the payload is shaped differently — keeps the mock
+// resilient to prompt evolution.
+func extractMockRhythmLabel(userPrompt string) string {
+	const fallback = "результат классификатора"
+	var payload struct {
+		ModelResult struct {
+			PredLabelRU string `json:"pred_label_ru"`
+		} `json:"model_result"`
+	}
+	if err := json.Unmarshal([]byte(userPrompt), &payload); err != nil {
+		return fallback
+	}
+	if payload.ModelResult.PredLabelRU == "" {
+		return fallback
+	}
+	return payload.ModelResult.PredLabelRU
 }
