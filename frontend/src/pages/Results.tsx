@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
-import { requestAPI } from '@/services/api';
+import { ecgFeedbackAPI, requestAPI } from '@/services/api';
 import { ROUTES } from '@/config';
 import { formatDate, formatStatus, getStatusColor, formatECGParams } from '@/utils/format';
 import { Layout } from '@/components/Layout';
@@ -10,7 +10,7 @@ import { RequestImage } from '@/components/RequestImage';
 import { ECGChat } from '@/components/ECGChat';
 import { useEventSource } from '@/hooks/useEventSource';
 import { usePendingJobs } from '@/hooks/usePendingJobs';
-import type { ECGAnalysisResult, ECGRhythmResult, ECGStructuredResult } from '@/types';
+import type { ECGAnalysisResult, ECGFeedbackRating, ECGRhythmResult, ECGStructuredResult, InterpretationItem } from '@/types';
 
 function fmt(v: number | null | undefined, decimals = 1): string {
   if (v == null) return '—';
@@ -247,8 +247,8 @@ export function Results() {
 
         {/* Rhythm classification (cv_service). Shown above measurements
             because the rhythm answer is the first thing a clinician looks for. */}
-        {ecgResult?.rhythm_result && (
-          <RhythmResultView result={ecgResult.rhythm_result} />
+        {ecgResult?.rhythm_result && id && (
+          <RhythmResultView result={ecgResult.rhythm_result} requestId={id} />
         )}
 
         {/* Structured ECG Results */}
@@ -310,7 +310,7 @@ export function Results() {
 
 // --- Rhythm classifier (cv_service) + vision-LLM narrative ---
 
-function RhythmResultView({ result }: { result: ECGRhythmResult }) {
+function RhythmResultView({ result, requestId }: { result: ECGRhythmResult; requestId: string }) {
   const exp = result.explanation;
   const copyText = exp
     ? [exp.prediction_line, exp.description_text, exp.conclusion_text].filter(Boolean).join('\n\n')
@@ -351,21 +351,168 @@ function RhythmResultView({ result }: { result: ECGRhythmResult }) {
           Текстовое заключение в этот раз не сформировано — показан только результат классификатора.
         </p>
       )}
+
+      <FeedbackButtons requestId={requestId} />
+    </div>
+  );
+}
+
+const FEEDBACK_OPTIONS: { value: ECGFeedbackRating; label: string; emoji: string }[] = [
+  { value: 'helpful',    label: 'Помогло',     emoji: '👍' },
+  { value: 'inaccurate', label: 'Не точное',   emoji: '👎' },
+  { value: 'unclear',    label: 'Непонятно',   emoji: '🤔' },
+];
+
+const COMMENT_MAX = 1000;
+
+function FeedbackButtons({ requestId }: { requestId: string }) {
+  const [current, setCurrent] = useState<ECGFeedbackRating | null>(null);
+  const [savedComment, setSavedComment] = useState<string>('');
+  const [commentDraft, setCommentDraft] = useState<string>('');
+  const [pending, setPending] = useState<ECGFeedbackRating | 'comment' | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [commentSaved, setCommentSaved] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    ecgFeedbackAPI
+      .get(requestId)
+      .then((fb) => {
+        if (cancelled || !fb) return;
+        setCurrent(fb.rating);
+        setSavedComment(fb.comment ?? '');
+        setCommentDraft(fb.comment ?? '');
+      })
+      .catch(() => { /* silently fall back to "not voted" */ });
+    return () => { cancelled = true; };
+  }, [requestId]);
+
+  const vote = async (rating: ECGFeedbackRating) => {
+    if (pending) return;
+    setPending(rating);
+    setError(null);
+    setCommentSaved(false);
+    try {
+      // Re-voting carries the existing comment only when the new rating is
+      // still "inaccurate" — otherwise the comment loses context and we
+      // drop it on the server side.
+      const carryComment = rating === 'inaccurate' ? savedComment : '';
+      const fb = await ecgFeedbackAPI.submit(requestId, rating, carryComment);
+      setCurrent(fb.rating);
+      setSavedComment(fb.comment ?? '');
+      if (rating !== 'inaccurate') setCommentDraft('');
+    } catch {
+      setError('Не удалось сохранить оценку. Попробуйте ещё раз.');
+    } finally {
+      setPending(null);
+    }
+  };
+
+  const saveComment = async () => {
+    if (pending || current !== 'inaccurate') return;
+    const trimmed = commentDraft.trim().slice(0, COMMENT_MAX);
+    setPending('comment');
+    setError(null);
+    try {
+      const fb = await ecgFeedbackAPI.submit(requestId, 'inaccurate', trimmed);
+      setSavedComment(fb.comment ?? '');
+      setCommentDraft(fb.comment ?? '');
+      setCommentSaved(true);
+      window.setTimeout(() => setCommentSaved(false), 2500);
+    } catch {
+      setError('Не удалось сохранить комментарий. Попробуйте ещё раз.');
+    } finally {
+      setPending(null);
+    }
+  };
+
+  const commentDirty = current === 'inaccurate' && commentDraft.trim() !== savedComment;
+
+  return (
+    <div className="mt-5 pt-4 border-t border-rose-200">
+      <p className="text-[11px] uppercase tracking-wide text-gray-600 mb-2">Оцените заключение</p>
+      <div className="flex flex-wrap gap-2">
+        {FEEDBACK_OPTIONS.map((opt) => {
+          const isCurrent = current === opt.value;
+          const isPending = pending === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => vote(opt.value)}
+              disabled={!!pending}
+              aria-pressed={isCurrent}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm transition-colors ${
+                isCurrent
+                  ? 'bg-rose-500 border-rose-500 text-white shadow-sm'
+                  : 'bg-white border-rose-200 text-gray-800 hover:border-rose-300 hover:bg-rose-50'
+              } ${pending && !isPending ? 'opacity-50' : ''} ${pending ? 'cursor-wait' : ''}`}
+            >
+              <span aria-hidden>{opt.emoji}</span>
+              <span>{opt.label}</span>
+              {isPending && <span className="ml-1 text-xs">…</span>}
+            </button>
+          );
+        })}
+      </div>
+
+      {current === 'inaccurate' && (
+        <div className="mt-3 space-y-2">
+          <label htmlFor="rhythm-feedback-comment" className="block text-xs text-gray-700">
+            Что было неточно? <span className="text-gray-400">(необязательно — поможет улучшить модель)</span>
+          </label>
+          <textarea
+            id="rhythm-feedback-comment"
+            value={commentDraft}
+            onChange={(e) => setCommentDraft(e.target.value.slice(0, COMMENT_MAX))}
+            placeholder="Например: реальный ритм — синусовый; модель ошиблась с фибрилляцией."
+            rows={3}
+            disabled={pending === 'comment'}
+            className="w-full rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm outline-none focus:border-rose-300 focus:ring-4 focus:ring-rose-100 disabled:opacity-60"
+          />
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[11px] text-gray-400">
+              {commentDraft.length}/{COMMENT_MAX}
+            </span>
+            <div className="flex items-center gap-2">
+              {commentSaved && (
+                <span className="text-[11px] text-green-700">Сохранено</span>
+              )}
+              <button
+                type="button"
+                onClick={saveComment}
+                disabled={!commentDirty || pending === 'comment'}
+                className="rounded-lg bg-rose-500 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {pending === 'comment' ? 'Сохраняем…' : 'Сохранить'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {current && current !== 'inaccurate' && (
+        <p className="mt-2 text-xs text-gray-600">Спасибо! Ваша оценка сохранена — её можно изменить в любой момент.</p>
+      )}
+      {error && (
+        <p className="mt-2 text-xs text-red-600">{error}</p>
+      )}
     </div>
   );
 }
 
 // --- Structured Result Components ---
 //
-// The deterministic "Интерпретация" card (LVH/RVH/axis summary chips +
-// items list + text_summary) and the per-lead R/S measurements table were
-// dropped in favour of the vision-LLM narrative rendered by RhythmResultView.
-// What's still useful from structured_result are the high-level interval
-// numbers (HR/QRS/RR) and the empty-state fallback when the GPT measurement
-// pass produced nothing — both kept below.
+// The vision-LLM narrative (RhythmResultView) is the main conclusion surface
+// now, so the old "Интерпретация" card was reduced to its summary chips
+// (axis classification + LVH/RVH presence). The per-lead R/S table and the
+// per-criterion items list were dropped because they showed raw numbers we
+// no longer want on screen — the underlying indices are still computed and
+// used by the backend, just not visible to the user.
 
 function StructuredResultView({ result }: { result: ECGStructuredResult }) {
   const hasMeasurements = Object.values(result.measurements).some((v) => v != null);
+  const summary = result.interpretation?.summary ?? [];
 
   return (
     <>
@@ -389,6 +536,18 @@ function StructuredResultView({ result }: { result: ECGStructuredResult }) {
         </div>
       )}
 
+      {/* Indices summary — axis classification, LVH / RVH presence. */}
+      {summary.length > 0 && (
+        <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+          <h2 className="text-lg font-bold text-gray-900 mb-3">Признаки</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {summary.map((s, i) => (
+              <SummaryCard key={i} item={s} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Rhythm & Intervals */}
       {result.rhythm && (result.rhythm.QRS_ms != null || result.rhythm.RR_ms != null || result.rhythm.HR_bpm != null) && (
         <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
@@ -402,6 +561,40 @@ function StructuredResultView({ result }: { result: ECGStructuredResult }) {
       )}
 
     </>
+  );
+}
+
+function SummaryCard({ item }: { item: InterpretationItem }) {
+  return (
+    <div className="bg-gray-50 rounded-lg px-4 py-3 border border-gray-200 flex items-center justify-between gap-2">
+      <div>
+        <p className="text-xs text-gray-500">{item.label}</p>
+        <p className="text-sm font-medium text-gray-900">{item.value}</p>
+      </div>
+      <StatusBadge status={item.status} />
+    </div>
+  );
+}
+
+const STATUS_STYLES: Record<string, string> = {
+  positive: 'bg-red-100 text-red-700',
+  abnormal: 'bg-red-100 text-red-700',
+  negative: 'bg-green-100 text-green-700',
+  normal: 'bg-green-100 text-green-700',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  positive: 'есть',
+  negative: 'нет',
+  normal: 'норма',
+  abnormal: 'отклонение',
+};
+
+function StatusBadge({ status }: { status: string }) {
+  return (
+    <span className={`text-xs px-1.5 py-0.5 rounded whitespace-nowrap ${STATUS_STYLES[status] ?? 'bg-gray-100 text-gray-600'}`}>
+      {STATUS_LABELS[status] ?? status}
+    </span>
   );
 }
 

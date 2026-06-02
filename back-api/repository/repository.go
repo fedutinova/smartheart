@@ -60,6 +60,14 @@ type RAGFeedbackRepo interface {
 	CreateRAGFeedback(ctx context.Context, feedback *models.RAGFeedback) error
 }
 
+// ECGFeedbackRepo provides user-feedback persistence for the ML rhythm
+// conclusion. Upsert semantics — a single row per request, repeat votes
+// overwrite the rating.
+type ECGFeedbackRepo interface {
+	UpsertECGFeedback(ctx context.Context, feedback *models.ECGFeedback) error
+	GetECGFeedback(ctx context.Context, requestID uuid.UUID) (*models.ECGFeedback, error)
+}
+
 // KBCacheRepo provides hybrid cache for knowledge-base queries.
 type KBCacheRepo interface {
 	FindCachedAnswer(ctx context.Context, question string, embedding []float64, trigramThreshold, vectorThreshold float64) (*models.KBCacheEntry, error)
@@ -116,6 +124,7 @@ type Store interface {
 	RoleRepo
 	QuotaRepo
 	RAGFeedbackRepo
+	ECGFeedbackRepo
 	KBCacheRepo
 	ECGChatRepo
 	PaymentRepo

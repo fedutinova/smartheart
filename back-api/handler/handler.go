@@ -59,6 +59,7 @@ type Handler struct {
 	Events   *EventsHandler
 	RAG      *RAGHandler
 	ECGChat  *ECGChatHandler
+	ECGFB    *ECGFeedbackHandler
 	Payment  *PaymentHandler
 	Profile  *ProfileHandler
 	Admin    *AdminHandler
@@ -91,6 +92,7 @@ func NewHandler(
 		Events:   &EventsHandler{Hub: hub},
 		RAG:      NewRAGHandler(cfg.RAG.URL, repo, cfg.GPT.APIKey),
 		ECGChat:  &ECGChatHandler{Service: ecgChatSvc},
+		ECGFB:    &ECGFeedbackHandler{Repo: repo},
 		Payment:  &PaymentHandler{Service: paymentSvc},
 		Profile:  &ProfileHandler{Repo: repo},
 		Admin:    &AdminHandler{Repo: repo},
@@ -153,6 +155,8 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 
 		r.With(auth.RequirePerm(auth.PermJobReadOwn)).Get("/v1/ecg/{id}/chat", h.ECGChat.GetMessages)
 		r.With(auth.RequirePerm(auth.PermJobReadOwn)).Post("/v1/ecg/{id}/chat/messages", h.ECGChat.PostMessage)
+		r.With(auth.RequirePerm(auth.PermJobReadOwn)).Get("/v1/ecg/{id}/feedback", h.ECGFB.GetFeedback)
+		r.With(auth.RequirePerm(auth.PermJobReadOwn)).Post("/v1/ecg/{id}/feedback", h.ECGFB.SubmitFeedback)
 
 		r.Get("/v1/me", h.Profile.GetMe)
 

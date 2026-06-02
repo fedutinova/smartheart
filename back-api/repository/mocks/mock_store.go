@@ -1026,6 +1026,65 @@ func (_c *MockStore_GetECGChatMessages_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
+// GetECGFeedback provides a mock function with given fields: ctx, requestID
+func (_m *MockStore) GetECGFeedback(ctx context.Context, requestID uuid.UUID) (*models.ECGFeedback, error) {
+	ret := _m.Called(ctx, requestID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetECGFeedback")
+	}
+
+	var r0 *models.ECGFeedback
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (*models.ECGFeedback, error)); ok {
+		return rf(ctx, requestID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) *models.ECGFeedback); ok {
+		r0 = rf(ctx, requestID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.ECGFeedback)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, requestID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStore_GetECGFeedback_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetECGFeedback'
+type MockStore_GetECGFeedback_Call struct {
+	*mock.Call
+}
+
+// GetECGFeedback is a helper method to define mock.On call
+//   - ctx context.Context
+//   - requestID uuid.UUID
+func (_e *MockStore_Expecter) GetECGFeedback(ctx interface{}, requestID interface{}) *MockStore_GetECGFeedback_Call {
+	return &MockStore_GetECGFeedback_Call{Call: _e.mock.On("GetECGFeedback", ctx, requestID)}
+}
+
+func (_c *MockStore_GetECGFeedback_Call) Run(run func(ctx context.Context, requestID uuid.UUID)) *MockStore_GetECGFeedback_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(uuid.UUID))
+	})
+	return _c
+}
+
+func (_c *MockStore_GetECGFeedback_Call) Return(_a0 *models.ECGFeedback, _a1 error) *MockStore_GetECGFeedback_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStore_GetECGFeedback_Call) RunAndReturn(run func(context.Context, uuid.UUID) (*models.ECGFeedback, error)) *MockStore_GetECGFeedback_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetFilesByRequestID provides a mock function with given fields: ctx, requestID
 func (_m *MockStore) GetFilesByRequestID(ctx context.Context, requestID uuid.UUID) ([]models.File, error) {
 	ret := _m.Called(ctx, requestID)
@@ -2745,6 +2804,53 @@ func (_c *MockStore_UpdateUserPassword_Call) Return(_a0 error) *MockStore_Update
 }
 
 func (_c *MockStore_UpdateUserPassword_Call) RunAndReturn(run func(context.Context, uuid.UUID, string) error) *MockStore_UpdateUserPassword_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpsertECGFeedback provides a mock function with given fields: ctx, feedback
+func (_m *MockStore) UpsertECGFeedback(ctx context.Context, feedback *models.ECGFeedback) error {
+	ret := _m.Called(ctx, feedback)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpsertECGFeedback")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *models.ECGFeedback) error); ok {
+		r0 = rf(ctx, feedback)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockStore_UpsertECGFeedback_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpsertECGFeedback'
+type MockStore_UpsertECGFeedback_Call struct {
+	*mock.Call
+}
+
+// UpsertECGFeedback is a helper method to define mock.On call
+//   - ctx context.Context
+//   - feedback *models.ECGFeedback
+func (_e *MockStore_Expecter) UpsertECGFeedback(ctx interface{}, feedback interface{}) *MockStore_UpsertECGFeedback_Call {
+	return &MockStore_UpsertECGFeedback_Call{Call: _e.mock.On("UpsertECGFeedback", ctx, feedback)}
+}
+
+func (_c *MockStore_UpsertECGFeedback_Call) Run(run func(ctx context.Context, feedback *models.ECGFeedback)) *MockStore_UpsertECGFeedback_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*models.ECGFeedback))
+	})
+	return _c
+}
+
+func (_c *MockStore_UpsertECGFeedback_Call) Return(_a0 error) *MockStore_UpsertECGFeedback_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockStore_UpsertECGFeedback_Call) RunAndReturn(run func(context.Context, *models.ECGFeedback) error) *MockStore_UpsertECGFeedback_Call {
 	_c.Call.Return(run)
 	return _c
 }

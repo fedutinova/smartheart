@@ -202,6 +202,17 @@ export interface ECGRhythmExplanation {
   note_text: string;
 }
 
+// User's evaluation of the rhythm conclusion. Persisted in rhythm_feedback;
+// backend's allow-list is the source of truth — keep this union in sync.
+export type ECGFeedbackRating = 'helpful' | 'inaccurate' | 'unclear';
+
+// Stored feedback row. Comment is typically filled when rating is "inaccurate"
+// so the user can describe what was wrong — a retraining signal.
+export interface ECGFeedback {
+  rating: ECGFeedbackRating;
+  comment?: string;
+}
+
 export interface RhythmClassProb {
   code: string;
   label_ru: string;

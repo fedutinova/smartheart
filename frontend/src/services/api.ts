@@ -6,6 +6,8 @@ import type {
   ECGAnalysisRequest,
   ECGCalibrationParams,
   ECGClientMeta,
+  ECGFeedback,
+  ECGFeedbackRating,
   Job,
   Request,
   PaginatedResponse,
@@ -198,6 +200,30 @@ export const ecgAPI = {
       headers: { 'Content-Type': 'multipart/form-data' },
       timeout: API_TIMEOUT_UPLOAD,
     });
+    return response.data;
+  },
+};
+
+export const ecgFeedbackAPI = {
+  // Returns the stored feedback for this request, or null when the user
+  // hasn't voted yet (backend signals that with HTTP 204).
+  get: async (requestId: string): Promise<ECGFeedback | null> => {
+    const response = await api.get<ECGFeedback | ''>(`/v1/ecg/${requestId}/feedback`, {
+      // Treat 204 as a normal "no vote yet" response, not an error.
+      validateStatus: (s) => s === 200 || s === 204,
+    });
+    if (response.status === 204) return null;
+    return response.data as ECGFeedback;
+  },
+
+  submit: async (
+    requestId: string,
+    rating: ECGFeedbackRating,
+    comment?: string,
+  ): Promise<ECGFeedback> => {
+    const body: { rating: ECGFeedbackRating; comment?: string } = { rating };
+    if (comment && comment.trim() !== '') body.comment = comment.trim();
+    const response = await api.post<ECGFeedback>(`/v1/ecg/${requestId}/feedback`, body);
     return response.data;
   },
 };
