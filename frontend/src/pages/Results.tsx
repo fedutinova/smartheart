@@ -548,6 +548,11 @@ function StructuredResultView({ result }: { result: ECGStructuredResult }) {
         </div>
       )}
 
+      {/* Computed indices — numeric values + thresholds for each clinical formula.
+          Threshold strings are clinical defaults; status badges come from the
+          backend's summary block above. */}
+      <IndicesCard indices={result.indices} rvh={result.rvh} />
+
       {/* Rhythm & Intervals */}
       {result.rhythm && (result.rhythm.QRS_ms != null || result.rhythm.RR_ms != null || result.rhythm.HR_bpm != null) && (
         <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
@@ -561,6 +566,100 @@ function StructuredResultView({ result }: { result: ECGStructuredResult }) {
       )}
 
     </>
+  );
+}
+
+type IndexRow = {
+  label: string;
+  value: number | null | undefined;
+  unit: string;
+  threshold: string;
+  decimals?: number;
+};
+
+const LVH_INDEX_DEFS: Omit<IndexRow, 'value'>[] = [
+  { label: 'Sokolow-Lyon',     unit: 'мВ', threshold: '> 3.5 мВ',           decimals: 2 },
+  { label: 'Cornell voltage',  unit: 'мВ', threshold: '> 2.8 мВ (М) / > 2.0 (Ж)', decimals: 2 },
+  { label: 'Peguero-Lo Presti',unit: 'мВ', threshold: '> 2.8 мВ (М) / > 2.3 (Ж)', decimals: 2 },
+  { label: 'Gubner',           unit: 'мВ', threshold: '> 2.5 мВ',           decimals: 2 },
+  { label: 'Lewis',            unit: 'мВ', threshold: '> 1.7 мВ',           decimals: 2 },
+];
+
+const RVH_INDEX_DEFS: Omit<IndexRow, 'value'>[] = [
+  { label: 'R в V1',     unit: 'мВ', threshold: '> 0.7 мВ',  decimals: 2 },
+  { label: 'R/S в V1',   unit: '',   threshold: '> 1.0',     decimals: 2 },
+  { label: 'RV1 + SV5',  unit: 'мВ', threshold: '> 1.05 мВ', decimals: 2 },
+  { label: 'RV1 + SV6',  unit: 'мВ', threshold: '> 1.05 мВ', decimals: 2 },
+];
+
+function IndicesCard({
+  indices,
+  rvh,
+}: {
+  indices?: ECGStructuredResult['indices'];
+  rvh?: ECGStructuredResult['rvh'];
+}) {
+  const lvhRows: IndexRow[] = LVH_INDEX_DEFS.map((d) => ({
+    ...d,
+    value:
+      d.label === 'Sokolow-Lyon' ? indices?.sokolow_lyon_mV :
+      d.label === 'Cornell voltage' ? indices?.cornell_voltage_mV :
+      d.label === 'Peguero-Lo Presti' ? indices?.peguero_lo_presti_mV :
+      d.label === 'Gubner' ? indices?.gubner_mV :
+      d.label === 'Lewis' ? indices?.lewis_mV :
+      null,
+  })).filter((r) => r.value != null);
+
+  const rvhRows: IndexRow[] = RVH_INDEX_DEFS.map((d) => ({
+    ...d,
+    value:
+      d.label === 'R в V1' ? rvh?.RV1_mV :
+      d.label === 'R/S в V1' ? rvh?.R_over_S_V1 :
+      d.label === 'RV1 + SV5' ? rvh?.RV1_plus_SV5_mV :
+      d.label === 'RV1 + SV6' ? rvh?.RV1_plus_SV6_mV :
+      null,
+  })).filter((r) => r.value != null);
+
+  if (lvhRows.length === 0 && rvhRows.length === 0) return null;
+
+  return (
+    <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+      <h2 className="text-lg font-bold text-gray-900 mb-3">Индексы</h2>
+
+      {lvhRows.length > 0 && (
+        <div className={rvhRows.length > 0 ? 'mb-4' : ''}>
+          <p className="text-xs font-medium text-gray-500 mb-2">Гипертрофия левого желудочка</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {lvhRows.map((r) => <IndexRowCard key={r.label} row={r} />)}
+          </div>
+        </div>
+      )}
+
+      {rvhRows.length > 0 && (
+        <div>
+          <p className="text-xs font-medium text-gray-500 mb-2">Гипертрофия правого желудочка</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {rvhRows.map((r) => <IndexRowCard key={r.label} row={r} />)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function IndexRowCard({ row }: { row: IndexRow }) {
+  const v = row.value!;
+  return (
+    <div className="bg-gray-50 rounded-lg px-4 py-3 border border-gray-200">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm text-gray-700">{row.label}</p>
+        <p className="text-sm font-semibold text-gray-900 font-mono">
+          {v.toFixed(row.decimals ?? 1)}
+          {row.unit && <span className="text-gray-500 font-sans font-normal"> {row.unit}</span>}
+        </p>
+      </div>
+      <p className="text-[11px] text-gray-400 mt-1">порог {row.threshold}</p>
+    </div>
   );
 }
 
