@@ -66,16 +66,10 @@ func buildRhythmExplanation(
 		PredCode:    pred.PredCode,
 		PredLabelRU: pred.PredLabelRU,
 		Top3:        make([]gpt.RhythmExplainClass, 0, len(pred.Top3)),
-		BinaryFlags: make([]gpt.RhythmExplainBinary, 0, len(pred.BinaryFlags)),
 	}
 	for _, c := range pred.Top3 {
 		modelResult.Top3 = append(modelResult.Top3, gpt.RhythmExplainClass{
 			Code: c.Code, LabelRU: c.LabelRU, Prob: c.Prob,
-		})
-	}
-	for _, f := range pred.BinaryFlags {
-		modelResult.BinaryFlags = append(modelResult.BinaryFlags, gpt.RhythmExplainBinary{
-			Code: f.Code, LabelRU: f.LabelRU, Prob: f.Prob,
 		})
 	}
 
@@ -89,15 +83,14 @@ func buildRhythmExplanation(
 		return nil, fmt.Errorf("gpt explain rhythm: %w", err)
 	}
 
-	parsed, err := gpt.ParseRhythmExplanation(res.Content)
-	if err != nil {
+	if _, err := gpt.ParseRhythmExplanation(res.Content); err != nil {
 		return nil, fmt.Errorf("parse rhythm explanation: %w", err)
 	}
 
 	return &models.ECGRhythmExplanation{
-		PredictionLine:  parsed.PredictionLine,
-		DescriptionText: parsed.DescriptionText,
-		ConclusionText:  parsed.ConclusionText,
-		NoteText:        parsed.NoteText,
+		PredictionLine:  pred.PredLabelRU,
+		DescriptionText: "",
+		ConclusionText:  "",
+		NoteText:        "Результат автоматического анализа носит информационный характер и требует клинической корреляции.",
 	}, nil
 }

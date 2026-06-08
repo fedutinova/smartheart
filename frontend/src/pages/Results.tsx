@@ -312,9 +312,7 @@ export function Results() {
 
 function RhythmResultView({ result, requestId }: { result: ECGRhythmResult; requestId: string }) {
   const exp = result.explanation;
-  const copyText = exp
-    ? [result.pred_label_ru, exp.description_text, exp.conclusion_text].filter(Boolean).join('\n\n')
-    : result.pred_label_ru;
+  const copyText = result.pred_label_ru;
 
   return (
     <div className="bg-gradient-to-br from-rose-50 to-orange-50 border border-rose-200 shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
@@ -328,21 +326,8 @@ function RhythmResultView({ result, requestId }: { result: ECGRhythmResult; requ
         <p className="text-xl font-semibold text-gray-900">{result.pred_label_ru}</p>
       </div>
 
-      {exp ? (
-        <div className="space-y-3 text-sm text-gray-800">
-          {exp.description_text && (
-            <p className="leading-relaxed whitespace-pre-line">{exp.description_text}</p>
-          )}
-          {exp.conclusion_text && (
-            <div className="bg-white/70 border border-rose-100 rounded-md px-4 py-3">
-              <p className="text-[11px] uppercase tracking-wide text-gray-500 mb-1">Итог</p>
-              <p className="leading-relaxed whitespace-pre-line">{exp.conclusion_text}</p>
-            </div>
-          )}
-          {exp.note_text && (
-            <p className="text-[11px] text-gray-500 leading-relaxed">{exp.note_text}</p>
-          )}
-        </div>
+      {exp?.note_text ? (
+        <p className="text-[11px] text-gray-500 leading-relaxed">{exp.note_text}</p>
       ) : (
         <p className="text-xs text-gray-500">
           Текстовое заключение в этот раз не сформировано — показан только результат классификатора.
@@ -747,4 +732,3 @@ function MetricCard({ label, value, unit }: { label: string; value: string; unit
     </div>
   );
 }
-

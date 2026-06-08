@@ -30,11 +30,6 @@ function buildSuggestions(
   if (rhythm && rhythm.top3?.[0] && rhythm.top3[0].prob < 0.6) {
     suggestions.push('Почему модель не уверена в ритме?');
   }
-  for (const flag of rhythm?.binary_flags ?? []) {
-    if (suggestions.length >= 4) break;
-    suggestions.push(`Что означает признак: ${flag.label_ru.toLowerCase()}?`);
-  }
-
   // Measurement-driven prompts.
   const interpretationItems = structured?.interpretation?.items ?? [];
   const hasLVH = interpretationItems.some((it) => it.group === 'lvh' && it.status === 'positive');
