@@ -221,14 +221,15 @@ def build_single_hybrid_batch(pil_img, layout_name, has_rhythm_strip, device):
 class ECGPredictor:
     def __init__(self, checkpoint_path=None, style_ref_path=None, device=None, default_preprocess="synthmatch",
                  binary_thresholds_path=None, binary_threshold_mode="thresholds_f1", super_prior_alpha=0.3,
-                 clinical_guards=True):
+                 clinical_guards=True, localized_binary_head=False):
         self.device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
         self.style_ref = load_style_ref(style_ref_path)
         self.binary_threshold_mode = binary_threshold_mode
         self.binary_thresholds = load_binary_thresholds(binary_thresholds_path, mode=binary_threshold_mode)
         self.super_prior_alpha = float(super_prior_alpha)
         self.clinical_guards = bool(clinical_guards)
-        self.model = build_model(device=self.device)
+        self.localized_binary_head = bool(localized_binary_head)
+        self.model = build_model(device=self.device, localized_binary_head=self.localized_binary_head)
         self.checkpoint_path = checkpoint_path
         self.checkpoint_info = None
         self.default_preprocess = default_preprocess

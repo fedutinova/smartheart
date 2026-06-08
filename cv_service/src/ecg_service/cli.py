@@ -20,6 +20,8 @@ def main():
                         help="Strength of the super-class hierarchical prior over rhythm classes; 0 disables")
     parser.add_argument("--clinical-guards", action=argparse.BooleanOptionalAction, default=True,
                         help="Suppress clinically impossible binary findings (e.g. BBB in a ventricular rhythm)")
+    parser.add_argument("--localized-binary-head", action="store_true",
+                        help="Feed inferior/anteroseptal lead pools to the findings head; needs a checkpoint retrained with this flag")
     parser.add_argument("--explain", action="store_true")
     args = parser.parse_args()
 
@@ -30,7 +32,8 @@ def main():
         binary_thresholds_path=args.binary_thresholds,
         binary_threshold_mode=args.threshold_mode,
         super_prior_alpha=args.super_prior_alpha,
-        clinical_guards=args.clinical_guards
+        clinical_guards=args.clinical_guards,
+        localized_binary_head=args.localized_binary_head
     )
 
     if args.explain:

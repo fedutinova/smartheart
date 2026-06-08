@@ -21,6 +21,8 @@ def get_predictor():
         binary_threshold_mode = os.getenv("ECG_BINARY_THRESHOLD_MODE", "thresholds_f1")
         super_prior_alpha = float(os.getenv("ECG_SUPER_PRIOR_ALPHA", "0.3"))
         clinical_guards = os.getenv("ECG_CLINICAL_GUARDS", "1").strip().lower() not in ("0", "false", "no", "")
+        # Enable ONLY with a checkpoint retrained with the localized binary head.
+        localized_binary_head = os.getenv("ECG_LOCALIZED_BINARY_HEAD", "0").strip().lower() in ("1", "true", "yes")
         _PREDICTOR = ECGPredictor(
             checkpoint_path=ckpt,
             style_ref_path=style_ref,
@@ -28,7 +30,8 @@ def get_predictor():
             binary_thresholds_path=binary_thresholds,
             binary_threshold_mode=binary_threshold_mode,
             super_prior_alpha=super_prior_alpha,
-            clinical_guards=clinical_guards
+            clinical_guards=clinical_guards,
+            localized_binary_head=localized_binary_head
         )
     return _PREDICTOR
 
@@ -45,6 +48,7 @@ def health():
         "binary_thresholds": predictor.binary_thresholds,
         "super_prior_alpha": predictor.super_prior_alpha,
         "clinical_guards": predictor.clinical_guards,
+        "localized_binary_head": predictor.localized_binary_head,
     }
 
 @app.post("/predict")

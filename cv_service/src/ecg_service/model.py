@@ -8,8 +8,17 @@ RHYTHM_SUPER_CLASSES = ["SINUS", "ATRIAL", "VENTRICULAR", "PACE", "OTHER"]
 ATRIAL_AUX_CLASSES = ["AFIB", "AFLT", "SVTAC"]
 
 class ECGV9ContextResidual(nn.Module):
-    def __init__(self, n_rhythm, n_binary, n_layout, d_model=192, dropout=0.25):
+    def __init__(self, n_rhythm, n_binary, n_layout, d_model=192, dropout=0.25,
+                 localized_binary_head=False):
         super().__init__()
+
+        # When True, the binary (findings) head additionally receives the
+        # inferior (II/III/aVF) and anteroseptal (V1-V3) lead pools, giving
+        # territory-localized signal to imi/asmi instead of only the global
+        # all-leads mean. Changes binary_head input shape, so it is only
+        # compatible with a checkpoint trained with the same flag (default off
+        # keeps the shipped checkpoint loadable).
+        self.localized_binary_head = localized_binary_head
 
         self.backbone = efficientnet_b3(weights=None)
         self.full_dim = self.backbone.classifier[-1].in_features
@@ -69,7 +78,7 @@ class ECGV9ContextResidual(nn.Module):
         rhythm_fusion_dim = d_model * 6 + 16
         atrial_fusion_dim = d_model * 4 + 16
         pace_fusion_dim = d_model * 3 + 16
-        binary_fusion_dim = d_model * 3
+        binary_fusion_dim = d_model * 5 if localized_binary_head else d_model * 3
         super_fusion_dim = d_model * 3
         layout_fusion_dim = d_model * 2
 
@@ -149,6 +158,9 @@ class ECGV9ContextResidual(nn.Module):
         self.register_buffer("idx_inferior", torch.tensor([
             LEAD_TO_IDX["II"], LEAD_TO_IDX["III"], LEAD_TO_IDX["aVF"]
         ], dtype=torch.long))
+        self.register_buffer("idx_anteroseptal", torch.tensor([
+            LEAD_TO_IDX["V1"], LEAD_TO_IDX["V2"], LEAD_TO_IDX["V3"]
+        ], dtype=torch.long))
 
     def pool_idx(self, x, idx):
         return x.index_select(1, idx).mean(dim=1)
@@ -194,7 +206,11 @@ class ECGV9ContextResidual(nn.Module):
         rhythm_fusion = torch.cat([cls_out, page_out, strip_pool, ii_pool, v1_pool, inferior_pool, strip_flag], dim=1)
         atrial_fusion = torch.cat([ii_pool, v1_pool, strip_pool, inferior_pool, strip_flag], dim=1)
         pace_fusion = torch.cat([cls_out, page_out, strip_pool, strip_flag], dim=1)
-        binary_fusion = torch.cat([cls_out, page_out, all_pool], dim=1)
+        if self.localized_binary_head:
+            anteroseptal_pool = self.pool_idx(lead_out, self.idx_anteroseptal)
+            binary_fusion = torch.cat([cls_out, page_out, all_pool, inferior_pool, anteroseptal_pool], dim=1)
+        else:
+            binary_fusion = torch.cat([cls_out, page_out, all_pool], dim=1)
         super_fusion = torch.cat([cls_out, page_out, inferior_pool], dim=1)
         layout_fusion = torch.cat([cls_out, page_out], dim=1)
 
@@ -225,13 +241,14 @@ class ECGV9ContextResidual(nn.Module):
             "pace_aux_logits": self.pace_aux_head(pace_fusion).squeeze(1),
         }
 
-def build_model(device=None, n_rhythm=7, n_binary=9, n_layout=5):
+def build_model(device=None, n_rhythm=6, n_binary=9, n_layout=5, localized_binary_head=False):
     model = ECGV9ContextResidual(
         n_rhythm=n_rhythm,
         n_binary=n_binary,
         n_layout=n_layout,
         d_model=192,
-        dropout=0.25
+        dropout=0.25,
+        localized_binary_head=localized_binary_head
     )
     if device is not None:
         model = model.to(device)

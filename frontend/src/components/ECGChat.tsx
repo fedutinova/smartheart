@@ -13,7 +13,7 @@ interface ECGChatProps {
 // suggestion. Anything outside this set (SINUS_GROUP, etc.) is treated as
 // normal and skipped.
 const NOTABLE_RHYTHM_CODES = new Set([
-  'AFIB', 'AFLT', 'SVTAC', 'VTAC', 'VFIB_VFLT', 'PACE',
+  'AFIB', 'AFLT', 'SVTAC', 'VTAC', 'PACE',
 ]);
 
 function buildSuggestions(

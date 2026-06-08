@@ -2,8 +2,13 @@ RHYTHM_CLASSES = [
     "SINUS_GROUP", "AFIB", "AFLT", "SVTAC", "VTAC", "VFIB_VFLT", "PACE", "OTHER_UNKNOWN"
 ]
 
+# The shipped checkpoint (stage_oldv9) was trained with a 6-class rhythm head in
+# THIS exact order (matches the prob_* columns in the training prediction CSVs).
+# Do not add classes here without a matching checkpoint: build_model uses
+# len()-derived n_rhythm, and a mismatch makes the final rhythm layer fail to
+# load (partial_load_by_shape skips it) and stay randomly initialised.
 ACTIVE_RHYTHM_CLASS_NAMES = [
-    "SINUS_GROUP", "AFIB", "AFLT", "SVTAC", "VTAC", "VFIB_VFLT", "PACE"
+    "SINUS_GROUP", "AFIB", "AFLT", "SVTAC", "VTAC", "PACE"
 ]
 
 # Coarse rhythm super-classes emitted by model.rhythm_super_head. Kept in sync
@@ -16,7 +21,7 @@ RHYTHM_SUPER_CLASSES = ["SINUS", "ATRIAL", "VENTRICULAR", "PACE", "OTHER"]
 SUPER_TO_ACTIVE = {
     "SINUS": ["SINUS_GROUP"],
     "ATRIAL": ["AFIB", "AFLT", "SVTAC"],
-    "VENTRICULAR": ["VTAC", "VFIB_VFLT"],
+    "VENTRICULAR": ["VTAC"],
     "PACE": ["PACE"],
     "OTHER": [],
 }
@@ -53,7 +58,7 @@ BINARY_FRIENDLY_RU = {
 
 # Rhythm classes whose wide QRS is intrinsic (ventricular origin), so any
 # bundle-branch / fascicular-block label is not interpretable.
-VENTRICULAR_RHYTHMS = {"VTAC", "VFIB_VFLT"}
+VENTRICULAR_RHYTHMS = {"VTAC"}
 
 # Rule A — rhythm-conditioned suppression: when pred_code is in `rhythms`, the
 # binary findings in `suppress` are not clinically interpretable in that context.
@@ -69,9 +74,9 @@ RHYTHM_BINARY_GUARDS = [
         "reason": "желудочковая стимуляция имитирует морфологию ЛНПГ — это не истинная блокада",
     },
     {
-        "rhythms": {"AFIB", "AFLT", "SVTAC", "VTAC", "VFIB_VFLT"},
+        "rhythms": {"AFIB", "AFLT", "SVTAC", "VTAC", "PACE"},
         "suppress": {"1avb"},
-        "reason": "AV-блокада I степени требует измеримого PR с различимыми P (синусовый контекст)",
+        "reason": "AV-блокада I степени требует измеримого нативного PR с различимыми P (недостоверна при этом ритме)",
     },
 ]
 

@@ -37,6 +37,8 @@ ENV ECG_BINARY_THRESHOLDS_PATH=/app/config/binary_thresholds.json
 ENV ECG_BINARY_THRESHOLD_MODE=thresholds_f1
 ENV ECG_SUPER_PRIOR_ALPHA=0.3
 ENV ECG_CLINICAL_GUARDS=1
+# Enable ONLY together with a checkpoint retrained with the localized binary head.
+ENV ECG_LOCALIZED_BINARY_HEAD=0
 
 EXPOSE 8000
 
