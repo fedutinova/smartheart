@@ -6,7 +6,9 @@
     "dev": "vite",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build": "vite build",
+    "build": "vite build && node scripts/prerender.mjs",
+    "build:nostatic": "vite build",
+    "prerender": "node scripts/prerender.mjs",
     "preview": "vite preview",
     "lint": "eslint . --ext js,jsx,ts,tsx"
   },

@@ -25,7 +25,9 @@ http://admin.{$DOMAIN_NAME} {
 
 {$DOMAIN_NAME}, www.{$DOMAIN_NAME} {
 	root * /var/www/frontend
-	try_files {path} /index.html
+	# Prefer a prerendered static page for the route ({path}/index.html),
+	# fall back to the SPA shell for everything else.
+	try_files {path} {path}/index.html /index.html
 	file_server
 	encode gzip
 
@@ -33,8 +35,10 @@ http://admin.{$DOMAIN_NAME} {
 	@assets path /assets/*
 	header @assets Cache-Control "public, max-age=31536000, immutable"
 
-	# HTML — never cache so users always get fresh chunk references
-	@html path / /index.html
+	# HTML (SPA shell + prerendered routes like /qtc) — never cache, so users
+	# always get fresh chunk references. Matches "/", "*.html" and every
+	# extensionless route; static files keep their own caching.
+	@html not path /assets/* *.js *.css *.svg *.ico *.png *.jpg *.jpeg *.webp *.gif *.woff *.woff2 *.ttf *.json *.map *.webmanifest *.txt *.xml
 	header @html Cache-Control "no-cache, no-store, must-revalidate"
 
 	# Security headers

@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth';
 import { Layout } from '@/components/Layout';
 import { ROUTES } from '@/config';
+import { useMetaTags } from '@/hooks/useMetaTags';
+import { getPageMeta, getPageUrl } from '@/config/pageMeta';
 
 const teamMembers = [
   {
@@ -87,6 +89,14 @@ function ContactsContent() {
 
 export function Contacts() {
   const { isAuthenticated } = useAuthStore();
+  const meta = getPageMeta('contacts');
+  useMetaTags({
+    title: meta.title,
+    description: meta.description,
+    keywords: meta.keywords,
+    ogDescription: meta.ogDescription,
+    canonical: getPageUrl('/contacts'),
+  });
 
   if (isAuthenticated) {
     return (
