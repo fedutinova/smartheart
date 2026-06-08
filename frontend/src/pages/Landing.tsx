@@ -129,11 +129,11 @@ const FEATURES = [
     ),
   },
   {
-    title: '3 бесплатных анализа',
-    description: 'Попробуйте без оплаты. Нужно больше? Месячная подписка с безлимитными анализами',
+    title: 'Конфиденциальность данных',
+    description: 'Перед анализом изображение автоматически обезличивается: ФИО и персональные данные пациента удаляются',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.25v8.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 1 0 9.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1 1 14.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
       </svg>
     ),
   },
@@ -162,9 +162,17 @@ export function Landing() {
       {/* Header */}
       <header className="fixed top-0 inset-x-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
-          <span className="text-lg sm:text-xl text-rose-600 shrink-0" style={{ fontFamily: "'Prosto One', cursive" }}>
-            Умное сердце
-          </span>
+          <div className="flex items-center gap-4 sm:gap-6">
+            <span className="text-lg sm:text-xl text-rose-600 shrink-0" style={{ fontFamily: "'Prosto One', cursive" }}>
+              Умное сердце
+            </span>
+            <a
+              href="#tools"
+              className="hidden sm:inline-block text-sm text-gray-600 hover:text-gray-900 transition-colors py-2 whitespace-nowrap"
+            >
+              Калькуляторы
+            </a>
+          </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <Link
               to={ROUTES.LOGIN}
@@ -185,13 +193,16 @@ export function Landing() {
       {/* Hero */}
       <section className="pt-32 pb-16 sm:pt-40 sm:pb-24 px-4 sm:px-6">
         <div className="max-w-3xl mx-auto text-center animate-fade-in-up">
+          <span className="inline-block text-sm font-medium text-rose-700 bg-rose-50 border border-rose-100 rounded-full px-4 py-1.5 mb-5">
+            Для врачей, ординаторов и студентов-медиков
+          </span>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 tracking-tight leading-tight">
             Анализ ЭКГ с помощью{' '}
             <span className="text-rose-600">искусственного интеллекта</span>
           </h1>
           <p className="mt-6 text-lg sm:text-xl text-gray-500 max-w-2xl mx-auto leading-relaxed">
-            Загрузите фото электрокардиограммы и получите структурированные измерения,
-            расчёт индексов гипертрофии и справочную интерпретацию
+            Загрузите фото электрокардиограммы и примерно за 30 секунд получите измерения
+            по 12 отведениям, расчёт индексов гипертрофии и справочную интерпретацию
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
@@ -216,6 +227,45 @@ export function Landing() {
         </div>
       </section>
 
+      {/* Trust strip */}
+      <section className="pb-12 sm:pb-16 px-4 sm:px-6">
+        <div className="max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+          {[
+            {
+              title: 'Обезличивание данных',
+              description: 'ФИО и персональные данные пациента автоматически удаляются с изображения перед анализом',
+              icon: (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
+              ),
+            },
+            {
+              title: 'На основе клинических рекомендаций',
+              description: 'Интерпретация и ответы чат-бота опираются на медицинскую литературу и клинические рекомендации',
+              icon: (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+              ),
+            },
+            {
+              title: '12 отведений и индексы ГЛЖ',
+              description: 'Амплитуды, интервалы, ЧСС, ось QRS и расчёт индексов гипертрофии левого желудочка',
+              icon: (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h3l2.25 6 4.5-12 2.25 6h4.5" />
+              ),
+            },
+          ].map((item) => (
+            <div key={item.title} className="flex flex-col items-center text-center sm:items-start sm:text-left">
+              <div className="w-10 h-10 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center mb-3">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  {item.icon}
+                </svg>
+              </div>
+              <h3 className="text-sm font-semibold text-gray-900">{item.title}</h3>
+              <p className="text-sm text-gray-500 mt-1 leading-relaxed">{item.description}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Product demos */}
       <section className="pb-16 sm:pb-20 px-4 sm:px-6">
         <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -226,6 +276,78 @@ export function Landing() {
           <div>
             <p className="text-sm text-gray-400 mb-3">Пример работы чат-бота</p>
             <ChatDemo />
+          </div>
+        </div>
+      </section>
+
+      {/* Free tools — no signup */}
+      <section id="tools" className="scroll-mt-20 pb-16 sm:pb-20 px-4 sm:px-6">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-8">
+            <span className="inline-block text-xs font-medium text-rose-700 bg-rose-50 border border-rose-100 rounded-full px-3 py-1 mb-3">
+              Бесплатно, без регистрации
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Калькуляторы</h2>
+            <p className="text-gray-500 mt-2">Попробуйте сервис без регистрации — клинические шкалы прямо в браузере</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+            {/* QTc */}
+            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 flex flex-col">
+              <div className="w-12 h-12 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center mb-4">
+                <svg className="w-7 h-7 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h3l2.25 6 4.5-12 2.25 6h4.5" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-1.5">Калькулятор QTc</h3>
+              <p className="text-sm text-gray-500 leading-relaxed mb-5 flex-1">
+                Корригированный интервал QT по формулам Базетта, Фридерисии, Фрамингема и Ходжеса.
+                Введите QT и ЧСС — RR подставится автоматически.
+              </p>
+              <Link
+                to={ROUTES.QTC}
+                className="inline-block self-start px-6 py-2.5 text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 active:scale-95 rounded-xl transition-all duration-150 shadow-lg shadow-rose-200"
+              >
+                Открыть
+              </Link>
+            </div>
+            {/* Killip */}
+            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 flex flex-col">
+              <div className="w-12 h-12 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center mb-4">
+                <svg className="w-7 h-7 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-1.5">Классификация по Killip</h3>
+              <p className="text-sm text-gray-500 leading-relaxed mb-5 flex-1">
+                Стратификация риска при остром инфаркте миокарда по признакам острой сердечной
+                недостаточности с оценкой госпитальной летальности.
+              </p>
+              <Link
+                to={ROUTES.KILLIP}
+                className="inline-block self-start px-6 py-2.5 text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 active:scale-95 rounded-xl transition-all duration-150 shadow-lg shadow-rose-200"
+              >
+                Открыть
+              </Link>
+            </div>
+            {/* CHA2DS2-VASc */}
+            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 flex flex-col">
+              <div className="w-12 h-12 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center mb-4">
+                <svg className="w-7 h-7 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-1.5">Шкала CHA₂DS₂-VASc</h3>
+              <p className="text-sm text-gray-500 leading-relaxed mb-5 flex-1">
+                Оценка риска ишемического инсульта при фибрилляции предсердий и показаний
+                к антикоагулянтной терапии.
+              </p>
+              <Link
+                to={ROUTES.CHA2DS2VASC}
+                className="inline-block self-start px-6 py-2.5 text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 active:scale-95 rounded-xl transition-all duration-150 shadow-lg shadow-rose-200"
+              >
+                Открыть
+              </Link>
+            </div>
           </div>
         </div>
       </section>
@@ -303,49 +425,85 @@ export function Landing() {
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center mb-12">
             Стоимость
           </h2>
-          <div className="max-w-sm mx-auto">
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
-              <div className="p-6 sm:p-8 text-center">
-                <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">Подписка</p>
-                <div className="flex items-baseline justify-center gap-1 mb-2">
-                  <span className="text-4xl sm:text-5xl font-bold text-gray-900">1 990</span>
-                  <span className="text-lg text-gray-500">&#8381;/мес</span>
-                </div>
-                <p className="text-sm text-gray-500 mb-6">
-                  Доступ к информационно-справочному сервису анализа ЭКГ на 1 месяц
-                </p>
-                <ul className="text-sm text-gray-600 space-y-3 text-left mb-8">
-                  <li className="flex items-start gap-2.5">
-                    <svg className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                    </svg>
-                    Безлимитные анализы ЭКГ
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <svg className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                    </svg>
-                    Справочный чат-бот по кардиологии
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <svg className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                    </svg>
-                    История всех анализов
-                  </li>
-                </ul>
-                <Link
-                  to={ROUTES.REGISTER}
-                  className="block w-full px-6 py-3 text-base font-medium text-white bg-rose-600 hover:bg-rose-700 active:scale-95 rounded-xl transition-all duration-150 shadow-lg shadow-rose-200"
-                >
-                  Попробовать бесплатно
-                </Link>
-                <p className="mt-3 text-xs text-gray-400">
-                  3 бесплатных анализа без подписки
-                </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-3xl mx-auto items-stretch">
+            {/* Free */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8 flex flex-col">
+              <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">Бесплатно</p>
+              <div className="flex items-baseline gap-1 mb-2">
+                <span className="text-4xl sm:text-5xl font-bold text-gray-900">0</span>
+                <span className="text-lg text-gray-500">&#8381;</span>
               </div>
+              <p className="text-sm text-gray-500 mb-6">Чтобы попробовать сервис без оплаты</p>
+              <ul className="text-sm text-gray-600 space-y-3 text-left mb-8 flex-1">
+                <li className="flex items-start gap-2.5">
+                  <svg className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                  </svg>
+                  3 анализа ЭКГ
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <svg className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                  </svg>
+                  Все калькуляторы и шкалы
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <svg className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                  </svg>
+                  Без привязки карты
+                </li>
+              </ul>
+              <Link
+                to={ROUTES.REGISTER}
+                className="block w-full px-6 py-3 text-base font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 active:scale-95 rounded-xl transition-all duration-150 text-center"
+              >
+                Начать бесплатно
+              </Link>
+            </div>
+
+            {/* Subscription */}
+            <div className="relative bg-white rounded-2xl shadow-lg border-2 border-rose-500 p-6 sm:p-8 flex flex-col">
+              <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-xs font-semibold text-white bg-rose-600 rounded-full px-3 py-1">
+                Полный доступ
+              </span>
+              <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">Подписка</p>
+              <div className="flex items-baseline gap-1 mb-2">
+                <span className="text-4xl sm:text-5xl font-bold text-gray-900">1 990</span>
+                <span className="text-lg text-gray-500">&#8381;/мес</span>
+              </div>
+              <p className="text-sm text-gray-500 mb-6">Доступ к сервису анализа ЭКГ на 1 месяц</p>
+              <ul className="text-sm text-gray-600 space-y-3 text-left mb-8 flex-1">
+                <li className="flex items-start gap-2.5">
+                  <svg className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                  </svg>
+                  Безлимитные анализы ЭКГ
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <svg className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                  </svg>
+                  Справочный чат-бот по кардиологии
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <svg className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                  </svg>
+                  История всех анализов
+                </li>
+              </ul>
+              <Link
+                to={ROUTES.REGISTER}
+                className="block w-full px-6 py-3 text-base font-medium text-white bg-rose-600 hover:bg-rose-700 active:scale-95 rounded-xl transition-all duration-150 shadow-lg shadow-rose-200 text-center"
+              >
+                Попробовать бесплатно
+              </Link>
             </div>
           </div>
+          <p className="text-center text-xs text-gray-400 mt-5">
+            Сначала 3 бесплатных анализа — подписка не требуется
+          </p>
         </div>
       </section>
 
@@ -383,6 +541,9 @@ export function Landing() {
         <div className="max-w-6xl mx-auto flex flex-col items-center gap-4 text-xs text-gray-400 sm:flex-row sm:justify-between">
           <span className="text-center sm:text-left">Самозанятая Федутинова А.А., ИНН 575212369164</span>
           <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
+            <Link to={ROUTES.QTC} className="hover:text-gray-600 transition-colors">Калькулятор QTc</Link>
+            <Link to={ROUTES.KILLIP} className="hover:text-gray-600 transition-colors">Killip</Link>
+            <Link to={ROUTES.CHA2DS2VASC} className="hover:text-gray-600 transition-colors">CHA₂DS₂-VASc</Link>
             <Link to={ROUTES.CONTACTS} className="hover:text-gray-600 transition-colors">О нас</Link>
             <Link to={ROUTES.TERMS} className="hover:text-gray-600 transition-colors">Оферта</Link>
             <Link to={ROUTES.PRIVACY} className="hover:text-gray-600 transition-colors">Конфиденциальность</Link>

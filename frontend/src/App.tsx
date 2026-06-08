@@ -44,6 +44,10 @@ const Dashboard = lazy(() => lazyRetry(() => import('@/pages/Dashboard').then((m
 const Analyze = lazy(() => lazyRetry(() => import('@/pages/Analyze').then((m) => ({ default: m.Analyze }))));
 const History = lazy(() => lazyRetry(() => import('@/pages/History').then((m) => ({ default: m.History }))));
 const KnowledgeBase = lazy(() => lazyRetry(() => import('@/pages/KnowledgeBase').then((m) => ({ default: m.KnowledgeBase }))));
+const QTcCalculator = lazy(() => lazyRetry(() => import('@/pages/QTcCalculator').then((m) => ({ default: m.QTcCalculator }))));
+const Killip = lazy(() => lazyRetry(() => import('@/pages/Killip').then((m) => ({ default: m.Killip }))));
+const Cha2ds2Vasc = lazy(() => lazyRetry(() => import('@/pages/Cha2ds2Vasc').then((m) => ({ default: m.Cha2ds2Vasc }))));
+const Calculators = lazy(() => lazyRetry(() => import('@/pages/Calculators').then((m) => ({ default: m.Calculators }))));
 const Contacts = lazy(() => lazyRetry(() => import('@/pages/Contacts').then((m) => ({ default: m.Contacts }))));
 const Results = lazy(() => lazyRetry(() => import('@/pages/Results').then((m) => ({ default: m.Results }))));
 const Account = lazy(() => lazyRetry(() => import('@/pages/Account').then((m) => ({ default: m.Account }))));
@@ -87,6 +91,10 @@ function App() {
           <Route path={ROUTES.PRIVACY} element={<Privacy />} />
           <Route path={ROUTES.TERMS} element={<Terms />} />
           <Route path={ROUTES.CONTACTS} element={<Contacts />} />
+          <Route path={ROUTES.QTC} element={<QTcCalculator />} />
+          <Route path={ROUTES.KILLIP} element={<Killip />} />
+          <Route path={ROUTES.CHA2DS2VASC} element={<Cha2ds2Vasc />} />
+          <Route path={ROUTES.CALCULATORS} element={<Calculators />} />
           <Route path={ROUTES.HOME} element={<Landing />} />
 
           <Route

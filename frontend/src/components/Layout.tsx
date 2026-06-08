@@ -10,7 +10,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
   const location = useLocation();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+  const toolsRef = useRef<HTMLDivElement>(null);
   const handleLogout = useLogout();
 
   const { data: profile } = useQuery({
@@ -20,20 +22,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
     staleTime: 60_000,
   });
 
-  // Close dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
         setProfileOpen(false);
+      }
+      if (toolsRef.current && !toolsRef.current.contains(e.target as Node)) {
+        setToolsOpen(false);
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Close dropdown on route change
+  // Close dropdowns on route change
   useEffect(() => {
     setProfileOpen(false);
+    setToolsOpen(false);
   }, [location.pathname]);
 
   const isActive = (path: string) => location.pathname === path;
@@ -49,6 +55,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { to: ROUTES.KNOWLEDGE_BASE, label: 'Чат-бот' },
     { to: ROUTES.PRICING, label: 'Тарифы' },
   ];
+
+  const toolLinks = [
+    { to: ROUTES.QTC, label: 'Калькулятор QTc' },
+    { to: ROUTES.KILLIP, label: 'Классификация по Killip' },
+    { to: ROUTES.CHA2DS2VASC, label: 'Шкала CHA₂DS₂-VASc' },
+  ];
+  const isToolActive = toolLinks.some((t) => isActive(t.to));
 
   const bottomTabs: { to: string; label: string; icon: React.ReactNode }[] = [
     {
@@ -124,6 +137,38 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     {link.label}
                   </Link>
                 ))}
+
+                {/* Tools dropdown */}
+                <div className="relative inline-flex items-center" ref={toolsRef}>
+                  <button
+                    onClick={() => setToolsOpen((v) => !v)}
+                    className={`inline-flex items-center gap-1 px-1 pt-1 text-sm font-medium ${
+                      isToolActive || toolsOpen
+                        ? 'text-rose-600 border-b-2 border-rose-600'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Калькуляторы
+                    <svg className={`w-4 h-4 transition-transform ${toolsOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </button>
+                  {toolsOpen && (
+                    <div className="absolute left-0 top-full mt-1 w-60 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50 animate-fade-in-down">
+                      {toolLinks.map((tool) => (
+                        <Link
+                          key={tool.to}
+                          to={tool.to}
+                          className={`block px-4 py-2 text-sm transition-colors hover:bg-gray-50 ${
+                            isActive(tool.to) ? 'text-rose-600' : 'text-gray-700'
+                          }`}
+                        >
+                          {tool.label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             <div className="hidden sm:flex items-center">

@@ -56,6 +56,27 @@ export function Dashboard() {
               <p className="text-purple-100 mt-0.5 sm:mt-1 text-sm">Задайте вопрос по ЭКГ и кардиологии</p>
             </div>
           </Link>
+
+          {/* Mobile-only — calculators are in the top-nav dropdown on desktop */}
+          <Link
+            to={ROUTES.CALCULATORS}
+            className="sm:hidden flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-xl shadow-sm p-5 active:scale-[0.99] transition-transform"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0">
+                <svg className="w-6 h-6 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h3l2.25 6 4.5-12 2.25 6h4.5" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-gray-900">Калькуляторы</h2>
+                <p className="text-gray-500 text-xs mt-0.5">QTc, Killip, CHA₂DS₂-VASc</p>
+              </div>
+            </div>
+            <svg className="w-5 h-5 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+            </svg>
+          </Link>
         </div>
 
         {/* Onboarding — shown only before the first analysis */}
