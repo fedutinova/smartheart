@@ -43,6 +43,7 @@
     "eslint-plugin-react-refresh": "^0.4.13",
     "jsdom": "^29.0.1",
     "postcss": "^8.4.41",
+    "puppeteer": "^25.1.0",
     "tailwindcss": "^3.4.7",
     "typescript": "^5.5.4",
     "vite": "^8.0.10",

@@ -50,11 +50,13 @@ type ClassProb struct {
 }
 
 // BinaryFlag is one auxiliary binary indicator (e.g. "stt_label").
-// Only flags above the cv_service threshold (currently 0.55) are returned.
+// Only flags whose probability clears the per-class calibrated threshold are
+// returned; Threshold reports the threshold that was applied for this code.
 type BinaryFlag struct {
-	Code    string  `json:"code"`
-	LabelRU string  `json:"label_ru"`
-	Prob    float64 `json:"prob"`
+	Code      string  `json:"code"`
+	LabelRU   string  `json:"label_ru"`
+	Prob      float64 `json:"prob"`
+	Threshold float64 `json:"threshold,omitempty"`
 }
 
 // RhythmPrediction is the structured response returned by POST /predict.

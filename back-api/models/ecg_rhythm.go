@@ -36,9 +36,11 @@ type RhythmClassProb struct {
 }
 
 // RhythmBinaryFlag is one auxiliary binary indicator (e.g. ST-T abnormalities).
-// cv_service emits flags above its internal probability threshold only.
+// cv_service emits flags whose probability clears the per-class calibrated
+// threshold; Threshold records the threshold that was applied (0 when unknown).
 type RhythmBinaryFlag struct {
-	Code    string  `json:"code"`
-	LabelRU string  `json:"label_ru"`
-	Prob    float64 `json:"prob"`
+	Code      string  `json:"code"`
+	LabelRU   string  `json:"label_ru"`
+	Prob      float64 `json:"prob"`
+	Threshold float64 `json:"threshold,omitempty"`
 }

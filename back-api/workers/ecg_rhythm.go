@@ -28,9 +28,10 @@ func rhythmFromCV(pred *cv.RhythmPrediction, explanation *models.ECGRhythmExplan
 	flags := make([]models.RhythmBinaryFlag, 0, len(pred.BinaryFlags))
 	for _, f := range pred.BinaryFlags {
 		flags = append(flags, models.RhythmBinaryFlag{
-			Code:    f.Code,
-			LabelRU: f.LabelRU,
-			Prob:    f.Prob,
+			Code:      f.Code,
+			LabelRU:   f.LabelRU,
+			Prob:      f.Prob,
+			Threshold: f.Threshold,
 		})
 	}
 	return &models.ECGRhythmResult{

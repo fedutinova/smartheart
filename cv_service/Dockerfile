@@ -7,11 +7,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt /app/requirements.txt
+# Install everything (incl. pinned torch/torchvision) in one pass. The CPU wheel
+# index keeps the image CUDA-free; PyPI provides the remaining packages. Versions
+# live solely in requirements.txt so the two cannot drift.
 RUN pip install --no-cache-dir \
         --index-url https://download.pytorch.org/whl/cpu \
         --extra-index-url https://pypi.org/simple \
-        torch==2.4.1 torchvision==0.19.1 \
-    && pip install --no-cache-dir -r /app/requirements.txt
+        -r /app/requirements.txt
 
 # Bake the rhythm classifier checkpoint into the image. The URL points to a
 # public GitHub Release asset, so no auth is required at build time. To roll
@@ -31,6 +33,10 @@ ENV PYTHONPATH=/app/src
 ENV ECG_CHECKPOINT_PATH=/app/models/stage_oldv9_residual_best.pt
 ENV ECG_STYLE_REF_PATH=/app/config/synth_style_ref.json
 ENV ECG_DEFAULT_PREPROCESS=synthmatch
+ENV ECG_BINARY_THRESHOLDS_PATH=/app/config/binary_thresholds.json
+ENV ECG_BINARY_THRESHOLD_MODE=thresholds_f1
+ENV ECG_SUPER_PRIOR_ALPHA=0.3
+ENV ECG_CLINICAL_GUARDS=1
 
 EXPOSE 8000
 

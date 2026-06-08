@@ -12,13 +12,25 @@ def main():
     parser.add_argument("--preprocess", default="synthmatch", choices=["raw", "light", "synthmatch"])
     parser.add_argument("--checkpoint", default=None)
     parser.add_argument("--style-ref", default=None)
+    parser.add_argument("--binary-thresholds", default=None,
+                        help="Path to binary_thresholds.json (per-class calibrated thresholds)")
+    parser.add_argument("--threshold-mode", default="thresholds_f1",
+                        choices=["thresholds_f1", "thresholds_clinical"])
+    parser.add_argument("--super-prior-alpha", type=float, default=0.3,
+                        help="Strength of the super-class hierarchical prior over rhythm classes; 0 disables")
+    parser.add_argument("--clinical-guards", action=argparse.BooleanOptionalAction, default=True,
+                        help="Suppress clinically impossible binary findings (e.g. BBB in a ventricular rhythm)")
     parser.add_argument("--explain", action="store_true")
     args = parser.parse_args()
 
     predictor = ECGPredictor(
         checkpoint_path=args.checkpoint,
         style_ref_path=args.style_ref,
-        default_preprocess=args.preprocess
+        default_preprocess=args.preprocess,
+        binary_thresholds_path=args.binary_thresholds,
+        binary_threshold_mode=args.threshold_mode,
+        super_prior_alpha=args.super_prior_alpha,
+        clinical_guards=args.clinical_guards
     )
 
     if args.explain:

@@ -17,10 +17,18 @@ def get_predictor():
         ckpt = os.getenv("ECG_CHECKPOINT_PATH", os.path.join(root, "models", "stage_oldv9_residual_best.pt"))
         style_ref = os.getenv("ECG_STYLE_REF_PATH", os.path.join(root, "config", "synth_style_ref.json"))
         default_preprocess = os.getenv("ECG_DEFAULT_PREPROCESS", "synthmatch")
+        binary_thresholds = os.getenv("ECG_BINARY_THRESHOLDS_PATH", os.path.join(root, "config", "binary_thresholds.json"))
+        binary_threshold_mode = os.getenv("ECG_BINARY_THRESHOLD_MODE", "thresholds_f1")
+        super_prior_alpha = float(os.getenv("ECG_SUPER_PRIOR_ALPHA", "0.3"))
+        clinical_guards = os.getenv("ECG_CLINICAL_GUARDS", "1").strip().lower() not in ("0", "false", "no", "")
         _PREDICTOR = ECGPredictor(
             checkpoint_path=ckpt,
             style_ref_path=style_ref,
-            default_preprocess=default_preprocess
+            default_preprocess=default_preprocess,
+            binary_thresholds_path=binary_thresholds,
+            binary_threshold_mode=binary_threshold_mode,
+            super_prior_alpha=super_prior_alpha,
+            clinical_guards=clinical_guards
         )
     return _PREDICTOR
 
@@ -33,6 +41,10 @@ def health():
         "checkpoint_path": predictor.checkpoint_path,
         "checkpoint_loaded": bool(predictor.checkpoint_path and os.path.exists(predictor.checkpoint_path)),
         "default_preprocess": predictor.default_preprocess,
+        "binary_threshold_mode": predictor.binary_threshold_mode,
+        "binary_thresholds": predictor.binary_thresholds,
+        "super_prior_alpha": predictor.super_prior_alpha,
+        "clinical_guards": predictor.clinical_guards,
     }
 
 @app.post("/predict")

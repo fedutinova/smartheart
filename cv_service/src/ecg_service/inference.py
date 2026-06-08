@@ -12,7 +12,9 @@ from .constants import (
     PAGE2X2_IMG_SIZE, PAGE2X2_TILE_SIZE, PAGE2X2_OVERLAP_FRAC, LEAD_IMG_SIZE,
     ACTIVE_RHYTHM_CLASS_NAMES, RHYTHM_FRIENDLY_RU,
     BINARY_TARGETS, BINARY_FRIENDLY_RU,
-    LAYOUT_FAMILY_TO_IDX, LEAD_NAMES, LEAD_TO_IDX, DEFAULT_STYLE_REF
+    LAYOUT_FAMILY_TO_IDX, LEAD_NAMES, LEAD_TO_IDX, DEFAULT_STYLE_REF,
+    RHYTHM_SUPER_CLASSES, SUPER_TO_ACTIVE,
+    RHYTHM_BINARY_GUARDS, MUTUALLY_EXCLUSIVE_BINARY, BINARY_DOMINANCE
 )
 from .layouts import extract_2x2_tiles, extract_lead_crops, layout_label_to_pair
 from .preprocessing import page_preproc_v2_border0
@@ -45,7 +47,110 @@ def load_style_ref(style_ref_path=None):
             pass
     return DEFAULT_STYLE_REF.copy()
 
-def refine_rhythm_probs(outputs):
+# Flat fallback applied when a class is missing from the thresholds file (or the
+# file is absent). Matches the historical hardcoded value so behaviour is
+# unchanged for any class the calibration does not cover.
+DEFAULT_BINARY_THRESHOLD = 0.55
+
+def load_binary_thresholds(thresholds_path=None, mode="thresholds_f1"):
+    """Load per-class decision thresholds calibrated by the ECG team.
+
+    The bundle ships ``binary_thresholds.json`` with two calibrated sets:
+    ``thresholds_f1`` (F1-optimal, balanced) and ``thresholds_clinical``
+    (precision-leaning). Returns a {code: threshold} map covering every entry in
+    BINARY_TARGETS, falling back to DEFAULT_BINARY_THRESHOLD for any class the
+    file does not specify or when the file is missing/unreadable.
+    """
+    table = {code: DEFAULT_BINARY_THRESHOLD for code in BINARY_TARGETS}
+    if not thresholds_path:
+        return table
+    try:
+        with open(thresholds_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return table
+    per_class = data.get(mode) or {}
+    for code in BINARY_TARGETS:
+        val = per_class.get(code)
+        if isinstance(val, (int, float)):
+            table[code] = float(val)
+    return table
+
+def apply_clinical_guards(pred_code, rows):
+    """Suppress clinically impossible binary findings given the predicted rhythm
+    and inter-finding incompatibilities (constants.RHYTHM_BINARY_GUARDS /
+    MUTUALLY_EXCLUSIVE_BINARY / BINARY_DOMINANCE).
+
+    Pure post-processing on the already-thresholded flags — probabilities are
+    untouched. Returns (kept, suppressed); each suppressed row keeps its fields
+    and gains a 'suppressed_reason'. Rules are applied in order so that mutual
+    exclusion and dominance only consider findings that survived earlier rules.
+    """
+    by_code = {r["code"]: r for r in rows}
+    suppressed = {}  # code -> reason (first reason wins)
+
+    def drop(code, reason):
+        if code in by_code and code not in suppressed:
+            suppressed[code] = reason
+
+    # Rule A — rhythm-conditioned suppression.
+    for guard in RHYTHM_BINARY_GUARDS:
+        if pred_code in guard["rhythms"]:
+            for code in guard["suppress"]:
+                drop(code, guard["reason"])
+
+    # Rule B — mutual exclusion: keep only the highest-prob survivor per group.
+    for rule in MUTUALLY_EXCLUSIVE_BINARY:
+        present = [c for c in rule["group"] if c in by_code and c not in suppressed]
+        if len(present) >= 2:
+            keeper = max(present, key=lambda c: by_code[c]["prob"])
+            for c in present:
+                if c != keeper:
+                    drop(c, rule["reason"])
+
+    # Rule C — dominance: a surviving dominant finding suppresses its subordinates.
+    for rule in BINARY_DOMINANCE:
+        if rule["dominant"] in by_code and rule["dominant"] not in suppressed:
+            for c in rule["suppress"]:
+                drop(c, rule["reason"])
+
+    kept = [r for r in rows if r["code"] not in suppressed]
+    sup = [{**by_code[c], "suppressed_reason": reason} for c, reason in suppressed.items()]
+    sup = sorted(sup, key=lambda x: x["prob"], reverse=True)
+    return kept, sup
+
+def apply_super_prior(probs, outputs, name_to_idx, alpha):
+    """Nudge fine rhythm probs toward the coarse SINUS/ATRIAL/VENTRICULAR/PACE
+    head (model.rhythm_super_head), which is otherwise unused at inference.
+
+    Each fine class is reweighted by P(parent_super_class)**alpha and the
+    distribution is renormalised — a soft hierarchical prior that pulls the fine
+    decision toward the coarse consensus. This directly counteracts fine-head
+    leakage such as SINUS->SVTAC: a confident super=SINUS damps a borderline
+    SVTAC. alpha=0 is a no-op (returns probs unchanged), preserving the exact
+    prior behaviour when the prior is disabled.
+    """
+    if not alpha or alpha <= 0.0 or "rhythm_super_logits" not in outputs:
+        return probs
+
+    super_probs = F.softmax(outputs["rhythm_super_logits"], dim=1)
+    super_idx = {name: i for i, name in enumerate(RHYTHM_SUPER_CLASSES)}
+
+    weights = torch.ones_like(probs)
+    for super_name, active_names in SUPER_TO_ACTIVE.items():
+        si = super_idx.get(super_name)
+        if si is None:
+            continue
+        parent_w = super_probs[:, si].clamp_min(1e-8) ** alpha  # (B,)
+        for active_name in active_names:
+            ai = name_to_idx.get(active_name)
+            if ai is not None:
+                weights[:, ai] = parent_w
+
+    probs = probs * weights
+    return probs / probs.sum(dim=1, keepdim=True).clamp_min(1e-8)
+
+def refine_rhythm_probs(outputs, super_prior_alpha=0.0):
     probs = F.softmax(outputs["rhythm_logits"], dim=1)
 
     name_to_idx = {name: i for i, name in enumerate(ACTIVE_RHYTHM_CLASS_NAMES)}
@@ -70,6 +175,9 @@ def refine_rhythm_probs(outputs):
         probs[:, pace_idx] = 0.94 * probs[:, pace_idx] + 0.06 * pace_prob
 
     probs = probs / probs.sum(dim=1, keepdim=True).clamp_min(1e-8)
+
+    # Hierarchical super-class prior (applied last, across rhythm groups).
+    probs = apply_super_prior(probs, outputs, name_to_idx, super_prior_alpha)
     return probs
 
 def build_single_hybrid_batch(pil_img, layout_name, has_rhythm_strip, device):
@@ -111,9 +219,15 @@ def build_single_hybrid_batch(pil_img, layout_name, has_rhythm_strip, device):
     return batch
 
 class ECGPredictor:
-    def __init__(self, checkpoint_path=None, style_ref_path=None, device=None, default_preprocess="synthmatch"):
+    def __init__(self, checkpoint_path=None, style_ref_path=None, device=None, default_preprocess="synthmatch",
+                 binary_thresholds_path=None, binary_threshold_mode="thresholds_f1", super_prior_alpha=0.3,
+                 clinical_guards=True):
         self.device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
         self.style_ref = load_style_ref(style_ref_path)
+        self.binary_threshold_mode = binary_threshold_mode
+        self.binary_thresholds = load_binary_thresholds(binary_thresholds_path, mode=binary_threshold_mode)
+        self.super_prior_alpha = float(super_prior_alpha)
+        self.clinical_guards = bool(clinical_guards)
         self.model = build_model(device=self.device)
         self.checkpoint_path = checkpoint_path
         self.checkpoint_info = None
@@ -163,7 +277,9 @@ class ECGPredictor:
             has_rhythm_strip=batch["has_rhythm_strip"]
         )
 
-        rhythm_probs = refine_rhythm_probs(outputs)[0].detach().cpu().numpy().astype(np.float32)
+        rhythm_probs = refine_rhythm_probs(
+            outputs, super_prior_alpha=self.super_prior_alpha
+        )[0].detach().cpu().numpy().astype(np.float32)
         rhythm_probs = rhythm_probs / max(float(rhythm_probs.sum()), 1e-12)
 
         order = np.argsort(rhythm_probs)[::-1]
@@ -173,12 +289,17 @@ class ECGPredictor:
         binary_probs = torch.sigmoid(outputs["binary_logits"])[0].detach().cpu().numpy().astype(np.float32)
         binary_rows = []
         for code, p in zip(BINARY_TARGETS, binary_probs):
-            if float(p) >= 0.55:
+            thr = self.binary_thresholds.get(code, DEFAULT_BINARY_THRESHOLD)
+            if float(p) >= thr:
                 binary_rows.append({
                     "code": code,
                     "label_ru": BINARY_FRIENDLY_RU.get(code, code),
-                    "prob": float(p)
+                    "prob": float(p),
+                    "threshold": thr
                 })
+        suppressed_flags = []
+        if self.clinical_guards:
+            binary_rows, suppressed_flags = apply_clinical_guards(pred_code, binary_rows)
         binary_rows = sorted(binary_rows, key=lambda x: x["prob"], reverse=True)
 
         return {
@@ -200,6 +321,7 @@ class ECGPredictor:
                 for i in order[:3]
             ],
             "binary_flags": binary_rows,
+            "suppressed_flags": suppressed_flags,
             "raw_probs": rhythm_probs.tolist()
         }
 

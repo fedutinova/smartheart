@@ -1,0 +1,98 @@
+{
+  "thresholds_f1": {
+    "lvh_label": 0.7999999999999999,
+    "stt_label": 0.49999999999999994,
+    "clbbb": 0.94,
+    "crbbb": 0.63,
+    "irbbb": 0.7499999999999999,
+    "lafb": 0.8599999999999999,
+    "1avb": 0.83,
+    "imi": 0.5199999999999999,
+    "asmi": 0.61
+  },
+  "thresholds_clinical": {
+    "lvh_label": 0.9299999999999999,
+    "stt_label": 0.8699999999999999,
+    "clbbb": 0.94,
+    "crbbb": 0.95,
+    "irbbb": 0.82,
+    "lafb": 0.9199999999999999,
+    "1avb": 0.8999999999999999,
+    "imi": 0.62,
+    "asmi": 0.8899999999999999
+  },
+  "reports": {
+    "lvh_label": {
+      "best_threshold_f1": 0.7999999999999999,
+      "best_f1": 0.6124401913875599,
+      "best_threshold_clinical": 0.9299999999999999,
+      "clinical_precision": 0.78,
+      "clinical_recall": 0.40625,
+      "clinical_f05": 0.6587837837837838
+    },
+    "stt_label": {
+      "best_threshold_f1": 0.49999999999999994,
+      "best_f1": 0.5953654188948306,
+      "best_threshold_clinical": 0.8699999999999999,
+      "clinical_precision": 0.7303370786516854,
+      "clinical_recall": 0.31100478468899523,
+      "clinical_f05": 0.5752212389380532
+    },
+    "clbbb": {
+      "best_threshold_f1": 0.94,
+      "best_f1": 0.7777777777777777,
+      "best_threshold_clinical": 0.94,
+      "clinical_precision": 0.7,
+      "clinical_recall": 0.875,
+      "clinical_f05": 0.7291666666666666
+    },
+    "crbbb": {
+      "best_threshold_f1": 0.63,
+      "best_f1": 0.7368421052631579,
+      "best_threshold_clinical": 0.95,
+      "clinical_precision": 0.78,
+      "clinical_recall": 0.5416666666666666,
+      "clinical_f05": 0.7169117647058826
+    },
+    "irbbb": {
+      "best_threshold_f1": 0.7499999999999999,
+      "best_f1": 0.296875,
+      "best_threshold_clinical": 0.82,
+      "clinical_precision": 0.29411764705882354,
+      "clinical_recall": 0.29411764705882354,
+      "clinical_f05": 0.29411764705882354
+    },
+    "lafb": {
+      "best_threshold_f1": 0.8599999999999999,
+      "best_f1": 0.8053097345132744,
+      "best_threshold_clinical": 0.9199999999999999,
+      "clinical_precision": 0.8260869565217391,
+      "clinical_recall": 0.6666666666666666,
+      "clinical_f05": 0.7883817427385892
+    },
+    "1avb": {
+      "best_threshold_f1": 0.83,
+      "best_f1": 0.37606837606837606,
+      "best_threshold_clinical": 0.8999999999999999,
+      "clinical_precision": 0.4583333333333333,
+      "clinical_recall": 0.22,
+      "clinical_f05": 0.37671232876712324
+    },
+    "imi": {
+      "best_threshold_f1": 0.5199999999999999,
+      "best_f1": 0.45390070921985815,
+      "best_threshold_clinical": 0.62,
+      "clinical_precision": 0.41904761904761906,
+      "clinical_recall": 0.43564356435643564,
+      "clinical_f05": 0.42226487523992323
+    },
+    "asmi": {
+      "best_threshold_f1": 0.61,
+      "best_f1": 0.6304347826086956,
+      "best_threshold_clinical": 0.8899999999999999,
+      "clinical_precision": 0.8888888888888888,
+      "clinical_recall": 0.18181818181818182,
+      "clinical_f05": 0.5000000000000001
+    }
+  }
+}

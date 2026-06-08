@@ -313,7 +313,7 @@ export function Results() {
 function RhythmResultView({ result, requestId }: { result: ECGRhythmResult; requestId: string }) {
   const exp = result.explanation;
   const copyText = exp
-    ? [exp.prediction_line, exp.description_text, exp.conclusion_text].filter(Boolean).join('\n\n')
+    ? [result.pred_label_ru, exp.description_text, exp.conclusion_text].filter(Boolean).join('\n\n')
     : result.pred_label_ru;
 
   return (
@@ -326,9 +326,6 @@ function RhythmResultView({ result, requestId }: { result: ECGRhythmResult; requ
       <div className="bg-white rounded-lg px-4 py-3 border border-rose-100 mb-4">
         <p className="text-xs text-gray-500 mb-1">Предполагаемый ритм</p>
         <p className="text-xl font-semibold text-gray-900">{result.pred_label_ru}</p>
-        {exp?.prediction_line && (
-          <p className="mt-2 text-sm text-gray-700">{exp.prediction_line}</p>
-        )}
       </div>
 
       {exp ? (
@@ -338,7 +335,7 @@ function RhythmResultView({ result, requestId }: { result: ECGRhythmResult; requ
           )}
           {exp.conclusion_text && (
             <div className="bg-white/70 border border-rose-100 rounded-md px-4 py-3">
-              <p className="text-[11px] uppercase tracking-wide text-gray-500 mb-1">Заключение</p>
+              <p className="text-[11px] uppercase tracking-wide text-gray-500 mb-1">Итог</p>
               <p className="leading-relaxed whitespace-pre-line">{exp.conclusion_text}</p>
             </div>
           )}

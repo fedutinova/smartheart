@@ -1,3 +1,11 @@
+# Torch is pinned to the versions the production image is built and tested
+# against (see Dockerfile, which installs these from the CPU wheel index first
+# so the image stays CUDA-free). A plain `pip install -r requirements.txt`
+# outside Docker pulls the default (CUDA) build from PyPI — for CPU/GPU parity
+# with production, prepend: --index-url https://download.pytorch.org/whl/cpu
+torch==2.4.1
+torchvision==0.19.1
+
 numpy<2
 pandas
 pillow
