@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type SyntheticEvent } from 'react';
 import { requestAPI } from '@/services/api';
 
 function isSafeImageURL(url: string): boolean {
@@ -11,7 +11,17 @@ function isSafeImageURL(url: string): boolean {
   }
 }
 
-export function RequestImage({ requestId, fileId }: { requestId: string; fileId: string }) {
+export function RequestImage({
+  requestId,
+  fileId,
+  onAspectRatioChange,
+  compact = false,
+}: {
+  requestId: string;
+  fileId: string;
+  onAspectRatioChange?: (aspectRatio: number) => void;
+  compact?: boolean;
+}) {
   const [src, setSrc] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [blobFallbackTried, setBlobFallbackTried] = useState(false);
@@ -90,8 +100,16 @@ export function RequestImage({ requestId, fileId }: { requestId: string; fileId:
     }
   }, [blobFallbackTried, fileId, requestId]);
 
+  const handleImageLoad = useCallback((event: SyntheticEvent<HTMLImageElement>) => {
+    setLoadFailed(false);
+    const img = event.currentTarget;
+    if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+      onAspectRatioChange?.(img.naturalWidth / img.naturalHeight);
+    }
+  }, [onAspectRatioChange]);
+
   if (!src && !loadFailed) return (
-    <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+    <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 sm:p-5 mb-4 sm:mb-6">
       <div className="h-6 w-48 bg-gray-200 rounded mb-4 animate-pulse" />
       <div className="h-48 bg-gray-200 rounded animate-pulse" />
     </div>
@@ -99,8 +117,8 @@ export function RequestImage({ requestId, fileId }: { requestId: string; fileId:
 
   if (loadFailed || !src) {
     return (
-      <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
-        <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Исходное изображение</h2>
+      <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 sm:p-5 mb-4 sm:mb-6">
+        <h2 className="text-sm font-medium text-gray-900 mb-3">Исходное изображение</h2>
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-6 text-sm text-amber-800">
           Не удалось загрузить изображение ЭКГ.
         </div>
@@ -110,16 +128,21 @@ export function RequestImage({ requestId, fileId }: { requestId: string; fileId:
 
   return (
     <>
-      <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
-        <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Исходное изображение</h2>
-        <div className="flex justify-center">
+      <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 sm:p-5 mb-4 sm:mb-6">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-sm font-medium text-gray-900">Исходное изображение</h2>
+          <span className="text-[11px] text-gray-400">Нажмите для просмотра</span>
+        </div>
+        <div className="flex justify-center rounded-lg border border-gray-200 bg-gray-50 p-2">
           <img
             src={src}
             alt="Исходное ЭКГ изображение"
             decoding="async"
-            className="max-w-full h-auto rounded-lg shadow-md cursor-pointer hover:opacity-90 transition-opacity"
+            className={`max-w-full rounded-md cursor-pointer object-contain transition-opacity hover:opacity-90 ${
+              compact ? 'max-h-[380px] w-auto' : 'h-auto'
+            }`}
             onError={() => { void handleImageError(); }}
-            onLoad={() => setLoadFailed(false)}
+            onLoad={handleImageLoad}
             onClick={() => setShowModal(true)}
           />
         </div>
@@ -263,7 +286,10 @@ function ImageModal({ src, onClose, onImageError, onImageLoad }: ImageModalProps
       onClick={onClose}
     >
       {/* Toolbar */}
-      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/60 to-transparent">
+      <div
+        className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/60 to-transparent"
+        onClick={(e) => e.stopPropagation()}
+      >
         <span className="text-white/70 text-sm font-medium">
           {Math.round(scale * 100)}%
         </span>
@@ -307,12 +333,6 @@ function ImageModal({ src, onClose, onImageError, onImageLoad }: ImageModalProps
         ref={containerRef}
         className="h-full w-full flex items-center justify-center pt-14"
         style={{ touchAction: 'none' }}
-        onClick={(e) => e.stopPropagation()}
-        onDoubleClick={(e) => {
-          e.stopPropagation();
-          if (scale > 1.1) resetView();
-          else zoomTo(2.5);
-        }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -327,6 +347,12 @@ function ImageModal({ src, onClose, onImageError, onImageLoad }: ImageModalProps
             transition: animating ? 'transform 200ms ease-out' : 'none',
           }}
           className="max-w-full max-h-full select-none"
+          onClick={(e) => e.stopPropagation()}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            if (scale > 1.1) resetView();
+            else zoomTo(2.5);
+          }}
           onError={onImageError}
           onLoad={onImageLoad}
           draggable={false}

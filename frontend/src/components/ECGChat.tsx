@@ -27,9 +27,6 @@ function buildSuggestions(
   if (rhythm && NOTABLE_RHYTHM_CODES.has(rhythm.pred_code)) {
     suggestions.push(`Что значит «${rhythm.pred_label_ru}» в моём заключении?`);
   }
-  if (rhythm && rhythm.top3?.[0] && rhythm.top3[0].prob < 0.6) {
-    suggestions.push('Почему модель не уверена в ритме?');
-  }
   // Measurement-driven prompts.
   const interpretationItems = structured?.interpretation?.items ?? [];
   const hasLVH = interpretationItems.some((it) => it.group === 'lvh' && it.status === 'positive');

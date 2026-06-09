@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
@@ -22,6 +22,7 @@ export function Results() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { removeJob } = usePendingJobs();
+  const [imageAspectRatio, setImageAspectRatio] = useState<number | null>(null);
 
   const onSSEEvent = useCallback(
     (evt: { request_id: string }) => {
@@ -82,6 +83,12 @@ export function Results() {
     : (request?.response && request.response.model !== 'ekg_direct_v2')
       ? request.response.content
       : null;
+  const firstFile = request?.files?.[0];
+  const isWideImage = imageAspectRatio != null && imageAspectRatio >= 1.35;
+
+  useEffect(() => {
+    setImageAspectRatio(null);
+  }, [firstFile?.id]);
 
   if (isLoading) {
     return (
@@ -187,112 +194,115 @@ export function Results() {
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 animate-fade-in">
-        <button
-          onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 transition-colors mb-4"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-          </svg>
-          Назад
-        </button>
-        <h1 className="text-2xl font-semibold text-gray-900 mb-6">Результаты анализа</h1>
-
-        {/* Request Info */}
-        <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <span
-              className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(request.status)}`}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 animate-fade-in">
+        <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <button
+              onClick={() => navigate(-1)}
+              className="mb-3 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 transition-colors"
             >
-              {formatStatus(request.status)}
-            </span>
-            <span className="text-xs text-gray-400">{formatDate(request.created_at)}</span>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+              </svg>
+              Назад
+            </button>
+            <h1 className="text-2xl font-semibold text-gray-950">Результаты анализа</h1>
+            <p className="mt-1 text-sm text-gray-500">{formatDate(request.created_at)}</p>
           </div>
-          {formatECGParams(request) && (
-            <div className="flex flex-wrap gap-2">
-              {request.ecg_sex && (
-                <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-700">
-                  {request.ecg_sex === 'male' ? 'Мужской' : 'Женский'}
-                </span>
-              )}
-              {request.ecg_age && (
-                <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-700">
-                  {request.ecg_age} лет
-                </span>
-              )}
-              {request.ecg_paper_speed_mms && (
-                <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-700">
-                  {request.ecg_paper_speed_mms} мм/с
-                </span>
-              )}
-              {request.ecg_mm_per_mv_limb && (
-                <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-700">
-                  конечн. {request.ecg_mm_per_mv_limb} мм/мВ
-                </span>
-              )}
-              {request.ecg_mm_per_mv_chest && (
-                <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-700">
-                  грудные {request.ecg_mm_per_mv_chest} мм/мВ
-                </span>
-              )}
-            </div>
-          )}
+          <span
+            className={`w-fit px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-md ${getStatusColor(request.status)}`}
+          >
+            {formatStatus(request.status)}
+          </span>
         </div>
 
-        {/* Original Image */}
-        {request.files && request.files.length > 0 && (
-          <RequestImage requestId={request.id} fileId={request.files[0].id} />
-        )}
+        <div className="mb-5 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+          <div className="grid gap-3 p-3 sm:gap-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.75fr)]">
+            <RhythmResultView result={ecgResult?.rhythm_result ?? null} />
 
-        {/* Rhythm classification (cv_service). Shown above measurements
-            because the rhythm answer is the first thing a clinician looks for. */}
-        {ecgResult?.rhythm_result && id && (
-          <RhythmResultView result={ecgResult.rhythm_result} />
-        )}
+            {formatECGParams(request) && (
+              <div className="rounded-lg bg-gray-50 p-3 sm:border sm:border-gray-200">
+                <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-gray-500 sm:text-xs">Параметры записи</p>
+                <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                  {request.ecg_sex && (
+                    <RecordParamChip>{request.ecg_sex === 'male' ? 'Мужской' : 'Женский'}</RecordParamChip>
+                  )}
+                  {request.ecg_age && (
+                    <RecordParamChip>{request.ecg_age} лет</RecordParamChip>
+                  )}
+                  {request.ecg_paper_speed_mms && (
+                    <RecordParamChip>{request.ecg_paper_speed_mms} мм/с</RecordParamChip>
+                  )}
+                  {request.ecg_mm_per_mv_limb && (
+                    <RecordParamChip>конечн. {request.ecg_mm_per_mv_limb} мм/мВ</RecordParamChip>
+                  )}
+                  {request.ecg_mm_per_mv_chest && (
+                    <RecordParamChip>грудные {request.ecg_mm_per_mv_chest} мм/мВ</RecordParamChip>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
 
-        {/* Structured ECG Results */}
-        {isStructured && ecgResult?.structured_result && (
-          <StructuredResultView result={ecgResult.structured_result} />
-        )}
-
-        {/* GPT Interpretation / Analysis Result (old format) */}
-        {!isStructured && gptContent && (
-          <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
-            <div className="flex items-center mb-3 sm:mb-4">
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Заключение</h2>
+        <div className={`grid gap-5 lg:items-start ${firstFile && !isWideImage ? 'lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.25fr)]' : ''}`}>
+          {firstFile && (
+            <div className={isWideImage ? '' : 'lg:sticky lg:top-20'}>
+              {/* Original Image */}
+              <RequestImage
+                requestId={request.id}
+                fileId={firstFile.id}
+                onAspectRatioChange={setImageAspectRatio}
+                compact={isWideImage}
+              />
             </div>
-            <div className="bg-white rounded-lg p-3 sm:p-4 border border-purple-100 mb-3 sm:mb-4">
-              <ReactMarkdown className="prose prose-sm max-w-none prose-gray">
-                {gptContent}
-              </ReactMarkdown>
-            </div>
-          </div>
-        )}
+          )}
 
-        {/* GPT interpretation pending/failed message for old EKG requests */}
-        {!isStructured && ecgResult && !gptContent && ecgResult.gpt_request_id && (
-          <div className="bg-yellow-50 border border-yellow-200 shadow rounded-lg p-6 mb-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Заключение</h2>
-            <p className="text-sm text-yellow-800">
-              {ecgResult.gpt_interpretation_status === 'failed'
-                ? 'GPT-интерпретация не удалась. Попробуйте повторить запрос.'
-                : 'GPT-интерпретация в обработке...'}
-            </p>
-          </div>
-        )}
+          <div>
+            {/* Structured ECG Results */}
+            {isStructured && ecgResult?.structured_result && (
+              <StructuredResultView result={ecgResult.structured_result} />
+            )}
 
-        {/* Notes */}
-        {ecgResult?.notes && (
-          <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
-            <h2 className="text-sm font-medium text-gray-400 mb-2">Примечания</h2>
-            <p className="text-sm text-gray-600">{ecgResult.notes}</p>
-          </div>
-        )}
+            {/* GPT Interpretation / Analysis Result (old format) */}
+            {!isStructured && gptContent && (
+              <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 shadow-sm rounded-xl p-4 sm:p-5 mb-4 sm:mb-6">
+                <div className="flex items-center mb-3 sm:mb-4">
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900">Заключение</h2>
+                </div>
+                <div className="bg-white rounded-lg p-3 sm:p-4 border border-purple-100 mb-3 sm:mb-4">
+                  <ReactMarkdown className="prose prose-sm max-w-none prose-gray">
+                    {gptContent}
+                  </ReactMarkdown>
+                </div>
+              </div>
+            )}
 
-        {ecgResult?.rhythm_result && id && (
-          <FeedbackButtons requestId={id} />
-        )}
+            {/* GPT interpretation pending/failed message for old EKG requests */}
+            {!isStructured && ecgResult && !gptContent && ecgResult.gpt_request_id && (
+              <div className="bg-yellow-50 border border-yellow-200 shadow-sm rounded-xl p-6 mb-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Заключение</h2>
+                <p className="text-sm text-yellow-800">
+                  {ecgResult.gpt_interpretation_status === 'failed'
+                    ? 'GPT-интерпретация не удалась. Попробуйте повторить запрос.'
+                    : 'GPT-интерпретация в обработке...'}
+                </p>
+              </div>
+            )}
+
+            {/* Notes */}
+            {ecgResult?.notes && (
+              <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 sm:p-5 mb-4 sm:mb-6">
+                <h2 className="text-sm font-medium text-gray-400 mb-2">Примечания</h2>
+                <p className="text-sm text-gray-600">{ecgResult.notes}</p>
+              </div>
+            )}
+
+            {ecgResult?.rhythm_result && id && (
+              <FeedbackButtons requestId={id} />
+            )}
+          </div>
+        </div>
 
         {/* ECG-contextual chat */}
         {request?.status === 'completed' && id && (
@@ -314,17 +324,31 @@ export function Results() {
 
 // --- Rhythm classifier (cv_service) + vision-LLM narrative ---
 
-function RhythmResultView({ result }: { result: ECGRhythmResult }) {
-  const copyText = result.pred_label_ru;
+function RecordParamChip({ children }: { children: ReactNode }) {
+  return (
+    <span className="inline-flex max-w-full items-center rounded-md border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-700 sm:px-2.5 sm:py-1 sm:text-sm">
+      {children}
+    </span>
+  );
+}
+
+function RhythmResultView({ result }: { result: ECGRhythmResult | null }) {
+  const copyText = result?.pred_label_ru ?? '';
 
   return (
-    <div className="bg-gradient-to-br from-rose-50 to-orange-50 border border-rose-200 shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
-      <div className="flex items-start justify-between gap-3">
-        <div>
+    <div className="rounded-lg border border-rose-100 bg-gradient-to-br from-rose-50 to-orange-50 p-3 sm:p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <p className="text-xs text-gray-500 mb-1">Предполагаемый ритм:</p>
-          <p className="text-xl font-semibold text-gray-900">{result.pred_label_ru}</p>
+          <p className="break-words text-xl font-semibold leading-snug text-gray-950 sm:text-2xl">
+            {result?.pred_label_ru ?? 'Ожидает обработки'}
+          </p>
         </div>
-        {copyText && <CopyButton text={copyText} />}
+        {copyText && (
+          <div className="sm:shrink-0">
+            <CopyButton text={copyText} />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -497,7 +521,7 @@ function StructuredResultView({ result }: { result: ECGStructuredResult }) {
   return (
     <>
       {!hasMeasurements && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 sm:p-5 mb-4 sm:mb-6">
           <h2 className="text-lg font-bold text-gray-900 mb-2">Анализ ЭКГ</h2>
           <div className="text-sm text-yellow-800 space-y-2">
             <p>Система не смогла автоматически обработать изображение. Это может быть из-за:</p>
@@ -518,8 +542,8 @@ function StructuredResultView({ result }: { result: ECGStructuredResult }) {
 
       {/* Indices summary — axis classification, LVH / RVH presence. */}
       {summary.length > 0 && (
-        <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">Признаки</h2>
+        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 sm:p-5 mb-4 sm:mb-6">
+          <h2 className="text-sm font-medium text-gray-900 mb-3">Признаки</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {summary.map((s, i) => (
               <SummaryCard key={i} item={s} />
@@ -535,8 +559,8 @@ function StructuredResultView({ result }: { result: ECGStructuredResult }) {
 
       {/* Rhythm & Intervals */}
       {result.rhythm && (result.rhythm.QRS_ms != null || result.rhythm.RR_ms != null || result.rhythm.HR_bpm != null) && (
-        <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">Интервалы и ритм</h2>
+        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 sm:p-5 mb-4 sm:mb-6">
+          <h2 className="text-sm font-medium text-gray-900 mb-3">Интервалы и ритм</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-center">
             <MetricCard label="QRS" value={fmt(result.rhythm.QRS_ms, 0)} unit="мс" />
             <MetricCard label="RR" value={fmt(result.rhythm.RR_ms, 0)} unit="мс" />
@@ -604,8 +628,8 @@ function IndicesCard({
   if (lvhRows.length === 0 && rvhRows.length === 0) return null;
 
   return (
-    <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
-      <h2 className="text-lg font-bold text-gray-900 mb-3">Индексы</h2>
+    <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 sm:p-5 mb-4 sm:mb-6">
+      <h2 className="text-sm font-medium text-gray-900 mb-3">Индексы</h2>
 
       {lvhRows.length > 0 && (
         <div className={rvhRows.length > 0 ? 'mb-4' : ''}>
@@ -698,7 +722,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-purple-200 text-purple-700 hover:bg-purple-100 transition-colors"
+      className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
     >
       {copied ? (
         <>
@@ -721,7 +745,7 @@ function CopyButton({ text }: { text: string }) {
 
 function MetricCard({ label, value, unit }: { label: string; value: string; unit?: string }) {
   return (
-    <div className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors duration-150">
+    <div className="bg-gray-50 rounded-lg border border-gray-200 p-3 transition-colors duration-150 hover:bg-gray-100">
       <p className="text-xs text-gray-500 mb-1">{label}</p>
       <p className="text-lg font-semibold text-gray-900">
         {value}
