@@ -248,7 +248,7 @@ export function Results() {
         {/* Rhythm classification (cv_service). Shown above measurements
             because the rhythm answer is the first thing a clinician looks for. */}
         {ecgResult?.rhythm_result && id && (
-          <RhythmResultView result={ecgResult.rhythm_result} requestId={id} />
+          <RhythmResultView result={ecgResult.rhythm_result} />
         )}
 
         {/* Structured ECG Results */}
@@ -290,6 +290,10 @@ export function Results() {
           </div>
         )}
 
+        {ecgResult?.rhythm_result && id && (
+          <FeedbackButtons requestId={id} />
+        )}
+
         {/* ECG-contextual chat */}
         {request?.status === 'completed' && id && (
           <ECGChat
@@ -310,39 +314,26 @@ export function Results() {
 
 // --- Rhythm classifier (cv_service) + vision-LLM narrative ---
 
-function RhythmResultView({ result, requestId }: { result: ECGRhythmResult; requestId: string }) {
-  const exp = result.explanation;
+function RhythmResultView({ result }: { result: ECGRhythmResult }) {
   const copyText = result.pred_label_ru;
 
   return (
     <div className="bg-gradient-to-br from-rose-50 to-orange-50 border border-rose-200 shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-bold text-gray-900">Заключение</h2>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs text-gray-500 mb-1">Предполагаемый ритм:</p>
+          <p className="text-xl font-semibold text-gray-900">{result.pred_label_ru}</p>
+        </div>
         {copyText && <CopyButton text={copyText} />}
       </div>
-
-      <div className="bg-white rounded-lg px-4 py-3 border border-rose-100 mb-4">
-        <p className="text-xs text-gray-500 mb-1">Предполагаемый ритм</p>
-        <p className="text-xl font-semibold text-gray-900">{result.pred_label_ru}</p>
-      </div>
-
-      {exp?.note_text ? (
-        <p className="text-[11px] text-gray-500 leading-relaxed">{exp.note_text}</p>
-      ) : (
-        <p className="text-xs text-gray-500">
-          Текстовое заключение в этот раз не сформировано — показан только результат классификатора.
-        </p>
-      )}
-
-      <FeedbackButtons requestId={requestId} />
     </div>
   );
 }
 
-const FEEDBACK_OPTIONS: { value: ECGFeedbackRating; label: string; emoji: string }[] = [
-  { value: 'helpful',    label: 'Помогло',     emoji: '👍' },
-  { value: 'inaccurate', label: 'Не точное',   emoji: '👎' },
-  { value: 'unclear',    label: 'Непонятно',   emoji: '🤔' },
+const FEEDBACK_OPTIONS: { value: ECGFeedbackRating; label: string }[] = [
+  { value: 'helpful',    label: 'Полезно' },
+  { value: 'inaccurate', label: 'Неточно' },
+  { value: 'unclear',    label: 'Непонятно' },
 ];
 
 const COMMENT_MAX = 1000;
@@ -411,37 +402,44 @@ function FeedbackButtons({ requestId }: { requestId: string }) {
   const commentDirty = current === 'inaccurate' && commentDraft.trim() !== savedComment;
 
   return (
-    <div className="mt-5 pt-4 border-t border-rose-200">
-      <p className="text-[11px] uppercase tracking-wide text-gray-600 mb-2">Оцените заключение</p>
-      <div className="flex flex-wrap gap-2">
-        {FEEDBACK_OPTIONS.map((opt) => {
-          const isCurrent = current === opt.value;
-          const isPending = pending === opt.value;
-          return (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => vote(opt.value)}
-              disabled={!!pending}
-              aria-pressed={isCurrent}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm transition-colors ${
-                isCurrent
-                  ? 'bg-rose-500 border-rose-500 text-white shadow-sm'
-                  : 'bg-white border-rose-200 text-gray-800 hover:border-rose-300 hover:bg-rose-50'
-              } ${pending && !isPending ? 'opacity-50' : ''} ${pending ? 'cursor-wait' : ''}`}
-            >
-              <span aria-hidden>{opt.emoji}</span>
-              <span>{opt.label}</span>
-              {isPending && <span className="ml-1 text-xs">…</span>}
-            </button>
-          );
-        })}
+    <div className="bg-white border border-gray-200 shadow-sm rounded-lg p-4 sm:p-5 mb-4 sm:mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-900">Оцените результаты</p>
+          <p className="mt-0.5 text-xs text-gray-500">Это помогает улучшать качество автоматического анализа.</p>
+        </div>
+        <div className="grid grid-cols-3 rounded-lg bg-gray-100 p-1 sm:min-w-[320px]">
+          {FEEDBACK_OPTIONS.map((opt) => {
+            const isCurrent = current === opt.value;
+            const isPending = pending === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => vote(opt.value)}
+                disabled={!!pending}
+                aria-pressed={isCurrent}
+                className={`relative inline-flex min-h-9 items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium transition-all ${
+                  isCurrent
+                    ? 'bg-white text-gray-950 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                } ${pending && !isPending ? 'opacity-50' : ''} ${pending ? 'cursor-wait' : ''}`}
+              >
+                {opt.value !== FEEDBACK_OPTIONS[0].value && !isCurrent && (
+                  <span className="pointer-events-none absolute left-0 top-1/2 h-4 -translate-y-1/2 border-l border-gray-300" />
+                )}
+                <span>{opt.label}</span>
+                {isPending && <span className="ml-1 text-xs">…</span>}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {current === 'inaccurate' && (
-        <div className="mt-3 space-y-2">
+        <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3 sm:p-4">
           <label htmlFor="rhythm-feedback-comment" className="block text-xs text-gray-700">
-            Что было неточно? <span className="text-gray-400">(необязательно — поможет улучшить модель)</span>
+            Что было неточно? <span className="text-gray-400">(необязательно)</span>
           </label>
           <textarea
             id="rhythm-feedback-comment"
@@ -450,9 +448,9 @@ function FeedbackButtons({ requestId }: { requestId: string }) {
             placeholder="Например: реальный ритм — синусовый; модель ошиблась с фибрилляцией."
             rows={3}
             disabled={pending === 'comment'}
-            className="w-full rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm outline-none focus:border-rose-300 focus:ring-4 focus:ring-rose-100 disabled:opacity-60"
+            className="mt-2 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm outline-none transition focus:border-gray-300 focus:ring-4 focus:ring-gray-100 disabled:opacity-60"
           />
-          <div className="flex items-center justify-between gap-3">
+          <div className="mt-2 flex items-center justify-between gap-3">
             <span className="text-[11px] text-gray-400">
               {commentDraft.length}/{COMMENT_MAX}
             </span>
@@ -464,7 +462,7 @@ function FeedbackButtons({ requestId }: { requestId: string }) {
                 type="button"
                 onClick={saveComment}
                 disabled={!commentDirty || pending === 'comment'}
-                className="rounded-lg bg-rose-500 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {pending === 'comment' ? 'Сохраняем…' : 'Сохранить'}
               </button>
@@ -474,7 +472,7 @@ function FeedbackButtons({ requestId }: { requestId: string }) {
       )}
 
       {current && current !== 'inaccurate' && (
-        <p className="mt-2 text-xs text-gray-600">Спасибо! Ваша оценка сохранена — её можно изменить в любой момент.</p>
+        <p className="mt-3 text-xs text-gray-500">Оценка сохранена. Её можно изменить в любой момент.</p>
       )}
       {error && (
         <p className="mt-2 text-xs text-red-600">{error}</p>
