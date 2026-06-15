@@ -3,11 +3,44 @@ package workers
 import (
 	"context"
 	"fmt"
+	"math"
 
 	"github.com/fedutinova/smartheart/back-api/cv"
 	"github.com/fedutinova/smartheart/back-api/gpt"
 	"github.com/fedutinova/smartheart/back-api/models"
 )
+
+const minMeasuredLeadsForRhythm = 4
+
+func hasEnoughECGSignalForRhythm(raw *gpt.RawECGMeasurement) bool {
+	return countMeasuredLeads(raw) >= minMeasuredLeadsForRhythm
+}
+
+func countMeasuredLeads(raw *gpt.RawECGMeasurement) int {
+	if raw == nil {
+		return 0
+	}
+	count := 0
+	for _, lead := range allLeads {
+		data, ok := raw.Leads[lead]
+		if !ok {
+			continue
+		}
+		if hasFiniteSample(data.RUpSq) || hasFiniteSample(data.SDownSq) {
+			count++
+		}
+	}
+	return count
+}
+
+func hasFiniteSample(vals []float64) bool {
+	for _, v := range vals {
+		if !math.IsNaN(v) && !math.IsInf(v, 0) {
+			return true
+		}
+	}
+	return false
+}
 
 // rhythmFromCV maps the cv_service prediction DTO to the persisted model.
 // Returns nil if pred is nil so callers can safely propagate the absence of

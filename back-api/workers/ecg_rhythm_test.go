@@ -2,11 +2,59 @@ package workers
 
 import (
 	"encoding/json"
+	"math"
 	"testing"
 
 	"github.com/fedutinova/smartheart/back-api/cv"
+	"github.com/fedutinova/smartheart/back-api/gpt"
 	"github.com/fedutinova/smartheart/back-api/models"
 )
+
+func TestHasEnoughECGSignalForRhythm_RejectsMissingOrSparseMeasurements(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  *gpt.RawECGMeasurement
+	}{
+		{name: "nil", raw: nil},
+		{name: "empty leads", raw: &gpt.RawECGMeasurement{Leads: map[string]gpt.LeadData{}}},
+		{
+			name: "one measured lead",
+			raw: &gpt.RawECGMeasurement{Leads: map[string]gpt.LeadData{
+				"I": {RUpSq: []float64{3}},
+			}},
+		},
+		{
+			name: "non finite samples only",
+			raw: &gpt.RawECGMeasurement{Leads: map[string]gpt.LeadData{
+				"I":   {RUpSq: []float64{math.NaN()}},
+				"II":  {RUpSq: []float64{math.Inf(1)}},
+				"III": {SDownSq: []float64{math.Inf(-1)}},
+				"aVR": {RUpSq: nil},
+			}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if hasEnoughECGSignalForRhythm(tt.raw) {
+				t.Fatalf("expected rhythm to be suppressed for %s", tt.name)
+			}
+		})
+	}
+}
+
+func TestHasEnoughECGSignalForRhythm_AcceptsMeasuredECG(t *testing.T) {
+	raw := &gpt.RawECGMeasurement{Leads: map[string]gpt.LeadData{
+		"I":   {RUpSq: []float64{3}},
+		"II":  {SDownSq: []float64{-2}},
+		"III": {RUpSq: []float64{1.5}},
+		"V1":  {SDownSq: []float64{-4}},
+	}}
+
+	if !hasEnoughECGSignalForRhythm(raw) {
+		t.Fatal("expected rhythm to be allowed for sufficiently measured ECG")
+	}
+}
 
 func TestRhythmFromCV_Nil(t *testing.T) {
 	if got := rhythmFromCV(nil, nil); got != nil {

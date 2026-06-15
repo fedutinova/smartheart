@@ -178,6 +178,13 @@ func (h *ECGWorker) processEKG(ctx context.Context, j *job.Job, payload *job.ECG
 	if rawMeasurements != nil && len(rawMeasurements.Leads) == 0 {
 		slog.WarnContext(ctx, "GPT returned no measurements", "job_id", j.ID)
 	}
+	if rhythmResult != nil && !hasEnoughECGSignalForRhythm(rawMeasurements) {
+		slog.WarnContext(ctx, "Suppressing rhythm result because ECG signal was not detected",
+			"job_id", j.ID,
+			"request_id", payload.RequestID,
+			"leads_detected", countMeasuredLeads(rawMeasurements))
+		rhythmResult = nil
+	}
 
 	// Post-process: convert small squares to mm/ms
 	msPerSq := 1000.0 / payload.PaperSpeedMMS
