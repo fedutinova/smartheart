@@ -141,9 +141,6 @@ type RawCalibration struct {
 // ParseECGMeasurementJSON parses GPT's JSON response, stripping markdown fences.
 func ParseECGMeasurementJSON(raw string) (*RawECGMeasurement, error) {
 	text := strings.TrimSpace(raw)
-	if len(text) > 2000 {
-		text = text[:2000] // truncate for logging
-	}
 
 	// Strip markdown code fences
 	if strings.HasPrefix(text, "```") {
@@ -165,7 +162,14 @@ func ParseECGMeasurementJSON(raw string) (*RawECGMeasurement, error) {
 
 	var result RawECGMeasurement
 	if err := json.Unmarshal([]byte(text), &result); err != nil {
-		return nil, fmt.Errorf("parse ECG JSON (first 2000 chars: %s...): %w", text, err)
+		return nil, fmt.Errorf("parse ECG JSON (first 2000 chars: %s...): %w", truncateForLog(text, 2000), err)
 	}
 	return &result, nil
+}
+
+func truncateForLog(s string, limit int) string {
+	if limit <= 0 || len(s) <= limit {
+		return s
+	}
+	return s[:limit]
 }
