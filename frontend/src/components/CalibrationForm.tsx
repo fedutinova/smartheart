@@ -88,7 +88,7 @@ export function CalibrationForm({
               inputMode="numeric"
               pattern="[0-9]*"
               maxLength={3}
-              placeholder="0–150"
+              placeholder="18–150"
               aria-describedby="age-hint"
               className="w-full bg-white rounded-xl border border-gray-200 pl-4 pr-12 py-3 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm transition-all outline-none focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
               value={age}

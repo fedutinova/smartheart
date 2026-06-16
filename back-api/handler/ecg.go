@@ -11,6 +11,13 @@ import (
 	"github.com/fedutinova/smartheart/back-api/service"
 )
 
+// Patient age bounds accepted for ECG analysis. The service is for adults only,
+// so anything below minPatientAge is rejected rather than silently dropped.
+const (
+	minPatientAge = 18
+	maxPatientAge = 150
+)
+
 // SubmitECGAnalyze handles EKG image analysis submission as a multipart/form-data
 // upload. URL-based submission was removed: a URL-fetched image cannot carry the
 // client-side OCR redaction that file uploads do, so multipart upload of a
@@ -68,9 +75,12 @@ func (h *ECGHandler) SubmitECGAnalyze(w http.ResponseWriter, r *http.Request) {
 		params.ClientMeta = &clientMeta
 	}
 	if v := r.FormValue("age"); v != "" {
-		if age, err := strconv.Atoi(v); err == nil && age > 0 && age <= 150 {
-			params.Age = &age
+		age, err := strconv.Atoi(v)
+		if err != nil || age < minPatientAge || age > maxPatientAge {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("age must be between %d and %d", minPatientAge, maxPatientAge))
+			return
 		}
+		params.Age = &age
 	}
 	if v := r.FormValue("paper_speed_mms"); v != "" {
 		if f, err := strconv.ParseFloat(v, 64); err == nil && f >= 10 && f <= 100 {

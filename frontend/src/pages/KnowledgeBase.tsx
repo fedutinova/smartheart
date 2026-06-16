@@ -5,6 +5,7 @@ import { ragAPI } from '@/services/api';
 import type { RAGSource, RAGQueryMeta } from '@/services/api';
 import { useSessionState } from '@/hooks/useSessionState';
 import { useDraft } from '@/hooks/useDraft';
+import { uniqueSourceNames } from '@/utils/sourceName';
 
 interface Message {
   id: number;
@@ -192,6 +193,19 @@ export function KnowledgeBase() {
                     </ReactMarkdown>
                   )}
                 </div>
+                {msg.role === 'assistant' && uniqueSourceNames(msg.sources).length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    <span className="text-[11px] font-medium text-gray-400">Источники:</span>
+                    {uniqueSourceNames(msg.sources).map((name) => (
+                      <span
+                        key={name}
+                        className="rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600"
+                      >
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 {msg.role === 'assistant' && (
                   <div className="mt-1 flex items-center gap-1">
                     {feedbackGiven[msg.id] !== undefined ? (

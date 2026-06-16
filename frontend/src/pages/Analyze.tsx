@@ -17,6 +17,9 @@ import type { ECGCalibrationParams, ECGClientMeta, ECGLayoutLabel, QuotaInfo, Re
 
 type Mode = 'file' | 'camera';
 
+// Minimum patient age accepted for ECG analysis (adults only).
+const MIN_AGE = 18;
+
 export function Analyze() {
   const [mode, setMode] = useState<Mode>('file');
   const [, , clearNotes] = useDraft('analyze_notes');
@@ -90,6 +93,12 @@ export function Analyze() {
     e.preventDefault();
     if (!image.croppedBlob) {
       image.setError(mode === 'camera' ? 'Сделайте фото и обрежьте изображение' : 'Выберите и обрежьте изображение');
+      return;
+    }
+    // The service is for adult ECGs only — reject ages below 18 when provided.
+    const ageNum = age ? parseInt(age, 10) : undefined;
+    if (ageNum !== undefined && ageNum < MIN_AGE) {
+      image.setError(`Возраст должен быть не меньше ${MIN_AGE} лет`);
       return;
     }
     image.setError('');

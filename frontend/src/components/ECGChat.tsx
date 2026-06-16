@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { ecgChatAPI, type ECGChatMessage as ApiMessage } from '@/services/api';
 import type { ECGRhythmResult, ECGStructuredResult } from '@/types';
+import { uniqueCitationNames } from '@/utils/sourceName';
 
 interface ECGChatProps {
   requestId: string;
@@ -318,6 +319,20 @@ function MessageBubble({ message }: { message: ApiMessage }) {
             </ReactMarkdown>
           )}
         </div>
+
+        {!isUser && uniqueCitationNames(message.citations).length > 0 && (
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-medium text-gray-400">Источники:</span>
+            {uniqueCitationNames(message.citations).map((name) => (
+              <span
+                key={name}
+                className="rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600"
+              >
+                {name}
+              </span>
+            ))}
+          </div>
+        )}
 
         <p className="text-[10px] text-gray-400 mt-1">
           {time.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
