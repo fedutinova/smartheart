@@ -123,6 +123,69 @@ func (r *Repository) FindCachedAnswer(
 	return &entry, nil
 }
 
+// ExpireCachedAnswer invalidates the cache entry that currently serves the
+// given question by setting its expires_at to now(). It is invoked when a user
+// dislikes an answer: the bad answer stops being served (the lookup query
+// filters on expires_at > now()) and is regenerated on the next query, while the
+// row is retained for cache-performance analytics until TTL cleanup.
+//
+// The entry is located with the same hybrid trigram/vector match used by
+// FindCachedAnswer, so it targets exactly the entry that produced the disliked
+// answer (whether it was a direct or a similarity hit). A no-op when nothing
+// matches above the thresholds.
+func (r *Repository) ExpireCachedAnswer(
+	ctx context.Context,
+	question string,
+	embedding []float64,
+	trigramThreshold,
+	vectorThreshold float64,
+) error {
+	normalized := NormalizeQuestion(question)
+
+	var err error
+	if len(embedding) > 0 {
+		_, err = r.querier.Exec(ctx, `
+			WITH best AS (
+				SELECT id
+				FROM kb_cache
+				WHERE expires_at > now()
+				  AND (
+				      similarity(question_normalized, $1) >= $3
+				      OR (
+				          question_embedding IS NOT NULL
+				          AND 1 - (question_embedding <=> $2::vector) >= $4
+				      )
+				  )
+				ORDER BY GREATEST(
+				    similarity(question_normalized, $1),
+				    CASE WHEN question_embedding IS NULL THEN 0
+				         ELSE 1 - (question_embedding <=> $2::vector) END
+				) DESC
+				LIMIT 1
+			)
+			UPDATE kb_cache SET expires_at = now()
+			WHERE id IN (SELECT id FROM best)
+		`, normalized, formatVector(embedding), trigramThreshold, vectorThreshold)
+	} else {
+		_, err = r.querier.Exec(ctx, `
+			WITH best AS (
+				SELECT id
+				FROM kb_cache
+				WHERE expires_at > now()
+				  AND similarity(question_normalized, $1) >= $2
+				ORDER BY similarity(question_normalized, $1) DESC
+				LIMIT 1
+			)
+			UPDATE kb_cache SET expires_at = now()
+			WHERE id IN (SELECT id FROM best)
+		`, normalized, trigramThreshold)
+	}
+	if err != nil {
+		return fmt.Errorf("expire cached answer: %w", err)
+	}
+	return nil
+}
+
 // SaveCacheEntry stores a new question-answer pair in kb_cache.
 func (r *Repository) SaveCacheEntry(ctx context.Context, question string, embedding []float64, answer, sourceMeta string) error {
 	normalized := NormalizeQuestion(question)

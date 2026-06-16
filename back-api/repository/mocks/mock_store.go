@@ -846,6 +846,56 @@ func (_c *MockStore_DecrementFreeAnalysesUsed_Call) RunAndReturn(run func(contex
 	return _c
 }
 
+// ExpireCachedAnswer provides a mock function with given fields: ctx, question, embedding, trigramThreshold, vectorThreshold
+func (_m *MockStore) ExpireCachedAnswer(ctx context.Context, question string, embedding []float64, trigramThreshold float64, vectorThreshold float64) error {
+	ret := _m.Called(ctx, question, embedding, trigramThreshold, vectorThreshold)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ExpireCachedAnswer")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, []float64, float64, float64) error); ok {
+		r0 = rf(ctx, question, embedding, trigramThreshold, vectorThreshold)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockStore_ExpireCachedAnswer_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ExpireCachedAnswer'
+type MockStore_ExpireCachedAnswer_Call struct {
+	*mock.Call
+}
+
+// ExpireCachedAnswer is a helper method to define mock.On call
+//   - ctx context.Context
+//   - question string
+//   - embedding []float64
+//   - trigramThreshold float64
+//   - vectorThreshold float64
+func (_e *MockStore_Expecter) ExpireCachedAnswer(ctx interface{}, question interface{}, embedding interface{}, trigramThreshold interface{}, vectorThreshold interface{}) *MockStore_ExpireCachedAnswer_Call {
+	return &MockStore_ExpireCachedAnswer_Call{Call: _e.mock.On("ExpireCachedAnswer", ctx, question, embedding, trigramThreshold, vectorThreshold)}
+}
+
+func (_c *MockStore_ExpireCachedAnswer_Call) Run(run func(ctx context.Context, question string, embedding []float64, trigramThreshold float64, vectorThreshold float64)) *MockStore_ExpireCachedAnswer_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].([]float64), args[3].(float64), args[4].(float64))
+	})
+	return _c
+}
+
+func (_c *MockStore_ExpireCachedAnswer_Call) Return(_a0 error) *MockStore_ExpireCachedAnswer_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockStore_ExpireCachedAnswer_Call) RunAndReturn(run func(context.Context, string, []float64, float64, float64) error) *MockStore_ExpireCachedAnswer_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // FindCachedAnswer provides a mock function with given fields: ctx, question, embedding, trigramThreshold, vectorThreshold
 func (_m *MockStore) FindCachedAnswer(ctx context.Context, question string, embedding []float64, trigramThreshold float64, vectorThreshold float64) (*models.KBCacheEntry, error) {
 	ret := _m.Called(ctx, question, embedding, trigramThreshold, vectorThreshold)
@@ -1970,6 +2020,68 @@ func (_c *MockStore_HasPendingPayment_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
+// HasRecentSimilarQuery provides a mock function with given fields: ctx, userID, question, embedding, within, trigramThreshold, vectorThreshold
+func (_m *MockStore) HasRecentSimilarQuery(ctx context.Context, userID uuid.UUID, question string, embedding []float64, within time.Duration, trigramThreshold float64, vectorThreshold float64) (bool, error) {
+	ret := _m.Called(ctx, userID, question, embedding, within, trigramThreshold, vectorThreshold)
+
+	if len(ret) == 0 {
+		panic("no return value specified for HasRecentSimilarQuery")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string, []float64, time.Duration, float64, float64) (bool, error)); ok {
+		return rf(ctx, userID, question, embedding, within, trigramThreshold, vectorThreshold)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string, []float64, time.Duration, float64, float64) bool); ok {
+		r0 = rf(ctx, userID, question, embedding, within, trigramThreshold, vectorThreshold)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, string, []float64, time.Duration, float64, float64) error); ok {
+		r1 = rf(ctx, userID, question, embedding, within, trigramThreshold, vectorThreshold)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStore_HasRecentSimilarQuery_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HasRecentSimilarQuery'
+type MockStore_HasRecentSimilarQuery_Call struct {
+	*mock.Call
+}
+
+// HasRecentSimilarQuery is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID uuid.UUID
+//   - question string
+//   - embedding []float64
+//   - within time.Duration
+//   - trigramThreshold float64
+//   - vectorThreshold float64
+func (_e *MockStore_Expecter) HasRecentSimilarQuery(ctx interface{}, userID interface{}, question interface{}, embedding interface{}, within interface{}, trigramThreshold interface{}, vectorThreshold interface{}) *MockStore_HasRecentSimilarQuery_Call {
+	return &MockStore_HasRecentSimilarQuery_Call{Call: _e.mock.On("HasRecentSimilarQuery", ctx, userID, question, embedding, within, trigramThreshold, vectorThreshold)}
+}
+
+func (_c *MockStore_HasRecentSimilarQuery_Call) Run(run func(ctx context.Context, userID uuid.UUID, question string, embedding []float64, within time.Duration, trigramThreshold float64, vectorThreshold float64)) *MockStore_HasRecentSimilarQuery_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(uuid.UUID), args[2].(string), args[3].([]float64), args[4].(time.Duration), args[5].(float64), args[6].(float64))
+	})
+	return _c
+}
+
+func (_c *MockStore_HasRecentSimilarQuery_Call) Return(_a0 bool, _a1 error) *MockStore_HasRecentSimilarQuery_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStore_HasRecentSimilarQuery_Call) RunAndReturn(run func(context.Context, uuid.UUID, string, []float64, time.Duration, float64, float64) (bool, error)) *MockStore_HasRecentSimilarQuery_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IncrementFreeAnalysesUsed provides a mock function with given fields: ctx, userID
 func (_m *MockStore) IncrementFreeAnalysesUsed(ctx context.Context, userID uuid.UUID) (int, error) {
 	ret := _m.Called(ctx, userID)
@@ -2330,6 +2442,55 @@ func (_c *MockStore_LoadRolePermissions_Call) Return(_a0 map[string][]string, _a
 }
 
 func (_c *MockStore_LoadRolePermissions_Call) RunAndReturn(run func(context.Context) (map[string][]string, error)) *MockStore_LoadRolePermissions_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// LogRecentQuery provides a mock function with given fields: ctx, userID, question, embedding
+func (_m *MockStore) LogRecentQuery(ctx context.Context, userID uuid.UUID, question string, embedding []float64) error {
+	ret := _m.Called(ctx, userID, question, embedding)
+
+	if len(ret) == 0 {
+		panic("no return value specified for LogRecentQuery")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string, []float64) error); ok {
+		r0 = rf(ctx, userID, question, embedding)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockStore_LogRecentQuery_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LogRecentQuery'
+type MockStore_LogRecentQuery_Call struct {
+	*mock.Call
+}
+
+// LogRecentQuery is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID uuid.UUID
+//   - question string
+//   - embedding []float64
+func (_e *MockStore_Expecter) LogRecentQuery(ctx interface{}, userID interface{}, question interface{}, embedding interface{}) *MockStore_LogRecentQuery_Call {
+	return &MockStore_LogRecentQuery_Call{Call: _e.mock.On("LogRecentQuery", ctx, userID, question, embedding)}
+}
+
+func (_c *MockStore_LogRecentQuery_Call) Run(run func(ctx context.Context, userID uuid.UUID, question string, embedding []float64)) *MockStore_LogRecentQuery_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(uuid.UUID), args[2].(string), args[3].([]float64))
+	})
+	return _c
+}
+
+func (_c *MockStore_LogRecentQuery_Call) Return(_a0 error) *MockStore_LogRecentQuery_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockStore_LogRecentQuery_Call) RunAndReturn(run func(context.Context, uuid.UUID, string, []float64) error) *MockStore_LogRecentQuery_Call {
 	_c.Call.Return(run)
 	return _c
 }

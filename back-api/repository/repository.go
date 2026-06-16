@@ -72,6 +72,12 @@ type ECGFeedbackRepo interface {
 type KBCacheRepo interface {
 	FindCachedAnswer(ctx context.Context, question string, embedding []float64, trigramThreshold, vectorThreshold float64) (*models.KBCacheEntry, error)
 	SaveCacheEntry(ctx context.Context, question string, embedding []float64, answer, sourceMeta string) error
+	// ExpireCachedAnswer invalidates the entry serving a disliked question.
+	ExpireCachedAnswer(ctx context.Context, question string, embedding []float64, trigramThreshold, vectorThreshold float64) error
+	// HasRecentSimilarQuery detects a user re-asking the same thing within a window.
+	HasRecentSimilarQuery(ctx context.Context, userID uuid.UUID, question string, embedding []float64, within time.Duration, trigramThreshold, vectorThreshold float64) (bool, error)
+	// LogRecentQuery records a user's question for future re-ask detection.
+	LogRecentQuery(ctx context.Context, userID uuid.UUID, question string, embedding []float64) error
 }
 
 // ECGChatRepo provides storage for contextual chat messages anchored to an ECG analysis.

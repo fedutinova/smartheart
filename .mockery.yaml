@@ -16,6 +16,7 @@ packages:
     interfaces:
       Store:
       RequestRepo:
+      KBCacheRepo:
   github.com/fedutinova/smartheart/back-api/job:
     interfaces:
       Queue:

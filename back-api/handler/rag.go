@@ -32,6 +32,23 @@ type RAGHandler struct {
 // background work running indefinitely.
 const ragGenerationTimeout = 120 * time.Second
 
+// Hybrid KB cache match thresholds. A candidate is accepted if EITHER the
+// trigram OR the vector cosine similarity clears its threshold.
+const (
+	kbTrigramThreshold = 0.8
+	kbVectorThreshold  = 0.88
+)
+
+// Re-ask detection: if the same user asks a semantically similar question within
+// reaskWindow, treat it as dissatisfaction with the previous answer and bypass
+// the cache. Thresholds are slightly looser than the cache thresholds so a
+// rephrasing ("the same thing in other words") still counts as a re-ask.
+const (
+	reaskWindow           = time.Hour
+	reaskTrigramThreshold = 0.6
+	reaskVectorThreshold  = 0.85
+)
+
 // NewRAGHandler creates a handler that forwards requests to the RAG service.
 func NewRAGHandler(ragURL string, repo repository.Store, apiKey string) *RAGHandler {
 	h := &RAGHandler{
@@ -111,14 +128,31 @@ func (h *RAGHandler) Query(w http.ResponseWriter, r *http.Request) {
 		slog.WarnContext(r.Context(), "Failed to embed RAG question for cache lookup", "request_id", requestID, "error", err)
 	}
 
+	// Re-ask detection: if this user already asked a similar question within the
+	// last hour, they are rephrasing because the previous answer didn't satisfy
+	// them — bypass the cache and generate a fresh answer.
+	reask, err := h.repo.HasRecentSimilarQuery(r.Context(), userID, req.Question, embedding, reaskWindow, reaskTrigramThreshold, reaskVectorThreshold)
+	if err != nil {
+		slog.WarnContext(r.Context(), "Failed to check recent re-ask; treating as not a re-ask",
+			"request_id", requestID, "error", err)
+	}
+	// Record this query (best-effort) so subsequent re-asks are detected.
+	if err := h.repo.LogRecentQuery(r.Context(), userID, req.Question, embedding); err != nil {
+		slog.WarnContext(r.Context(), "Failed to log recent RAG query", "request_id", requestID, "error", err)
+	}
+
 	// OR-logic hybrid cache lookup: accept if EITHER trigram OR vector similarity
 	// exceeds its threshold. False positives (antonym pairs, different-diagnosis
 	// same-domain) are filtered by the contradiction guard and LLM judge below.
-	const trigramThreshold = 0.8
-	const vectorThreshold = 0.88
-	cached, err := h.repo.FindCachedAnswer(r.Context(), req.Question, embedding, trigramThreshold, vectorThreshold)
-	if err != nil {
-		slog.WarnContext(r.Context(), "Failed to lookup RAG cache", "request_id", requestID, "error", err)
+	// Skipped entirely on a re-ask.
+	var cached *models.KBCacheEntry
+	if reask {
+		slog.Info("KB cache bypass: recent re-ask", "request_id", requestID)
+	} else {
+		cached, err = h.repo.FindCachedAnswer(r.Context(), req.Question, embedding, kbTrigramThreshold, kbVectorThreshold)
+		if err != nil {
+			slog.WarnContext(r.Context(), "Failed to lookup RAG cache", "request_id", requestID, "error", err)
+		}
 	}
 	if cached != nil {
 		normalized := repository.NormalizeQuestion(req.Question)
@@ -401,5 +435,29 @@ func (h *RAGHandler) Feedback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// A dislike means the cached answer for this question is bad — invalidate it
+	// so it stops being served and gets regenerated on the next query.
+	if req.Rating == -1 {
+		h.invalidateDislikedAnswer(r.Context(), req.Question)
+	}
+
 	writeJSON(w, http.StatusCreated, map[string]string{"status": "ok"})
+}
+
+// invalidateDislikedAnswer expires the cache entry serving the disliked
+// question. Best-effort and detached from the request: feedback should still
+// succeed even if cache invalidation fails or the client disconnects.
+func (h *RAGHandler) invalidateDislikedAnswer(ctx context.Context, question string) {
+	writeCtx, cancel := detachedWrite(ctx)
+	defer cancel()
+
+	// Embedding is best-effort; ExpireCachedAnswer falls back to trigram-only
+	// matching when it is empty.
+	embedding, err := h.embedQuestion(writeCtx, question)
+	if err != nil {
+		slog.WarnContext(writeCtx, "Failed to embed disliked question; using trigram-only invalidation", "error", err)
+	}
+	if err := h.repo.ExpireCachedAnswer(writeCtx, question, embedding, kbTrigramThreshold, kbVectorThreshold); err != nil {
+		slog.WarnContext(writeCtx, "Failed to invalidate disliked cache answer", "error", err)
+	}
 }
