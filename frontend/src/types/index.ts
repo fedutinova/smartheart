@@ -263,8 +263,15 @@ export interface QRSAxis {
 }
 
 export interface RhythmTiming {
+  PR_ms?: number;
   QRS_ms?: number;
   RR_ms?: number;
+  QT_ms?: number;
+  QTc_bazett_ms?: number;
+  QTc_fridericia_ms?: number;
+  JT_ms?: number;
+  JTc_bazett_ms?: number;
+  JTc_fridericia_ms?: number;
   HR_bpm?: number;
 }
 

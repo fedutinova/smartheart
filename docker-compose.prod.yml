@@ -65,8 +65,11 @@ services:
       QUEUE_MODE: redis
       QUEUE_WORKERS: "4"
       QUEUE_BUFFER: "1024"
-      JOB_MAX_DURATION: 30s
+      JOB_MAX_DURATION: ${JOB_MAX_DURATION:-5m}
+      JOB_CLAIM_TIMEOUT: ${JOB_CLAIM_TIMEOUT:-6m}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+      GPT_MODEL: ${GPT_MODEL:-gpt-5.4}
+      GPT_TIMEOUT: ${GPT_TIMEOUT:-3m}
       RAG_URL: http://rag:8000
       CV_URL: http://cv:8000
       CORS_ORIGINS: ${CORS_ORIGINS}

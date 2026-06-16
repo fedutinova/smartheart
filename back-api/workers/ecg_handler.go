@@ -74,16 +74,19 @@ func (h *ECGWorker) HandleECGJob(ctx context.Context, j *job.Job) error {
 }
 
 func (h *ECGWorker) handleEKGFailure(ctx context.Context, payload *job.ECGJobPayload) {
+	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+	defer cancel()
+
 	// Refund the free analyses counter so failed analyses don't count.
-	if decErr := h.quotaRepo.DecrementFreeAnalysesUsed(ctx, payload.UserID); decErr != nil {
-		slog.WarnContext(ctx, "Failed to decrement free analyses used after EKG failure", "user_id", payload.UserID, "error", decErr)
+	if decErr := h.quotaRepo.DecrementFreeAnalysesUsed(cleanupCtx, payload.UserID); decErr != nil {
+		slog.WarnContext(cleanupCtx, "Failed to decrement free analyses used after EKG failure", "user_id", payload.UserID, "error", decErr)
 	}
 	// Mark request as failed and notify user.
 	if payload.RequestID == uuid.Nil {
 		return
 	}
-	if updErr := h.repo.UpdateRequestStatus(ctx, payload.RequestID, models.StatusFailed); updErr != nil {
-		slog.ErrorContext(ctx, "Failed to update request status to failed", "request_id", payload.RequestID, "error", updErr)
+	if updErr := h.repo.UpdateRequestStatus(cleanupCtx, payload.RequestID, models.StatusFailed); updErr != nil {
+		slog.ErrorContext(cleanupCtx, "Failed to update request status to failed", "request_id", payload.RequestID, "error", updErr)
 	}
 	h.hub.Notify(payload.UserID, notify.Event{
 		Type:      "request_completed",
@@ -152,15 +155,11 @@ func (h *ECGWorker) processEKG(ctx context.Context, j *job.Job, payload *job.ECG
 					"job_id", j.ID, "error", cerr)
 				return nil
 			}
-			// CV succeeded — turn the prediction into a medical-grade text
-			// conclusion via vision LLM. Soft-failure: if the LLM call fails,
-			// we still publish the rhythm code without a narrative block.
-			explanation, lerr := buildRhythmExplanation(egCtx, h.gptClient, imageKey, filename, payload.LayoutLabel, pred)
-			if lerr != nil {
-				slog.WarnContext(egCtx, "Rhythm explanation generation failed; publishing rhythm without explanation",
-					"job_id", j.ID, "error", lerr)
-			}
-			rhythmResult = rhythmFromCV(pred, explanation)
+			// CV succeeded — publish the rhythm classifier output as structured
+			// context. The single clinical interpretation GPT call below uses
+			// this result together with the image and measurements, so we avoid
+			// a separate rhythm-only GPT request.
+			rhythmResult = rhythmFromCV(pred, nil)
 			return nil
 		})
 	}
@@ -178,11 +177,13 @@ func (h *ECGWorker) processEKG(ctx context.Context, j *job.Job, payload *job.ECG
 	if rawMeasurements != nil && len(rawMeasurements.Leads) == 0 {
 		slog.WarnContext(ctx, "GPT returned no measurements", "job_id", j.ID)
 	}
-	if rhythmResult != nil && !hasEnoughECGSignalForRhythm(rawMeasurements) {
+	measuredLeads := countMeasuredLeads(rawMeasurements)
+	hasECGSignal := measuredLeads >= minMeasuredLeadsForRhythm
+	if rhythmResult != nil && !hasECGSignal {
 		slog.WarnContext(ctx, "Suppressing rhythm result because ECG signal was not detected",
 			"job_id", j.ID,
 			"request_id", payload.RequestID,
-			"leads_detected", countMeasuredLeads(rawMeasurements))
+			"leads_detected", measuredLeads)
 		rhythmResult = nil
 	}
 
@@ -196,6 +197,7 @@ func (h *ECGWorker) processEKG(ctx context.Context, j *job.Job, payload *job.ECG
 	}
 
 	measMM := finalizeFromCounts(rawMeasurements, msPerSq)
+	sanitizeRhythmMeasurements(measMM)
 	clampMeasurements(measMM)
 
 	timestamp := time.Now().UTC().Format(time.RFC3339)
@@ -205,14 +207,60 @@ func (h *ECGWorker) processEKG(ctx context.Context, j *job.Job, payload *job.ECG
 		timestamp, j.ID.String(),
 	)
 
+	totalTokens := gptResult.TokensUsed
+	totalProcessingTimeMs := gptResult.ProcessingTimeMs
+	gptInterpretationStatus := string(models.StatusCompleted)
+	var gptInterpretation *string
+	var gptFullResponse *string
+
+	if !hasECGSignal {
+		full := insufficientECGSignalInterpretation(measuredLeads)
+		gptFullResponse = &full
+		gptInterpretation = &full
+		slog.WarnContext(ctx, "Skipping ECG interpretation because ECG signal was not detected",
+			"job_id", j.ID,
+			"request_id", payload.RequestID,
+			"leads_detected", measuredLeads)
+	} else {
+		interpretSystemPrompt, interpretUserPrompt, perr := gpt.BuildECGClinicalInterpretationPrompt(
+			structured,
+			rhythmResult,
+			payload.Notes,
+			payload.PaperSpeedMMS,
+			payload.MmPerMvLimb,
+			payload.MmPerMvChest,
+		)
+		if perr != nil {
+			gptInterpretationStatus = string(models.StatusFailed)
+			slog.WarnContext(ctx, "Failed to build ECG interpretation prompt", "job_id", j.ID, "error", perr)
+		} else {
+			interpretResult, ierr := h.gptClient.InterpretStructuredECG(ctx, []string{imageKey}, interpretSystemPrompt, interpretUserPrompt)
+			if ierr != nil {
+				gptInterpretationStatus = string(models.StatusFailed)
+				slog.WarnContext(ctx, "GPT ECG interpretation failed; saving structured measurements only",
+					"job_id", j.ID, "request_id", payload.RequestID, "error", ierr)
+			} else {
+				full := interpretResult.Content
+				conclusion := models.ExtractConclusion(full)
+				gptFullResponse = &full
+				gptInterpretation = &conclusion
+				totalTokens += interpretResult.TokensUsed
+				totalProcessingTimeMs += interpretResult.ProcessingTimeMs
+			}
+		}
+	}
+
 	// Build response content
 	ecgContent := &models.ECGResponseContent{
-		AnalysisType:     models.ECGModelStructured,
-		Notes:            payload.Notes,
-		Timestamp:        timestamp,
-		JobID:            j.ID.String(),
-		StructuredResult: structured,
-		RhythmResult:     rhythmResult,
+		AnalysisType:            models.ECGModelStructured,
+		Notes:                   payload.Notes,
+		Timestamp:               timestamp,
+		JobID:                   j.ID.String(),
+		GPTInterpretationStatus: gptInterpretationStatus,
+		GPTInterpretation:       gptInterpretation,
+		GPTFullResponse:         gptFullResponse,
+		StructuredResult:        structured,
+		RhythmResult:            rhythmResult,
 	}
 	responseJSON, err := ecgContent.Marshal()
 	if err != nil {
@@ -228,8 +276,8 @@ func (h *ECGWorker) processEKG(ctx context.Context, j *job.Job, payload *job.ECG
 			RequestID:        requestID,
 			Content:          responseJSON,
 			Model:            models.ECGModelStructured,
-			TokensUsed:       gptResult.TokensUsed,
-			ProcessingTimeMs: gptResult.ProcessingTimeMs,
+			TokensUsed:       totalTokens,
+			ProcessingTimeMs: totalProcessingTimeMs,
 		}
 		if err := txRepo.CreateResponse(ctx, response); err != nil {
 			return fmt.Errorf("save response: %w", err)
@@ -257,6 +305,34 @@ func (h *ECGWorker) processEKG(ctx context.Context, j *job.Job, payload *job.ECG
 
 	slog.InfoContext(ctx, "EKG structured analysis completed", "job_id", j.ID)
 	return nil
+}
+
+func insufficientECGSignalInterpretation(measuredLeads int) string {
+	return fmt.Sprintf(`## Техническая проверка
+На изображении не удалось подтвердить наличие пригодного ЭКГ-сигнала: распознано измеримых отведений: %d из минимум %d.
+
+## Ритм и AV-проводимость
+Неопределимо: недостаточно достоверных ЭКГ-данных для оценки ритма, ЧСС, зубцов P и связи P-QRS.
+
+## Ось, QRS и блокады
+Неопределимо: недостаточно измеримых отведений для оценки электрической оси, ширины QRS и признаков блокад.
+
+## Гипертрофия
+Неопределимо: амплитудные критерии гипертрофии не применимы без достоверных отведений.
+
+## ST-T, ишемические и инфарктные паттерны
+Неопределимо: ST-сегмент, T-волны и патологические Q нельзя оценить по этому изображению.
+
+## QT/JT
+Неопределимо: интервалы QT/JT не могут быть надежно измерены.
+
+## Итог
+- Автоматическая ЭКГ-интерпретация по этому изображению невозможна.
+- Результаты ритма и клинические ЭКГ-паттерны не выводятся, чтобы не создавать ложное заключение.
+- Пожалуйста, загрузите изображение ЭКГ с видимой сеткой, калибровкой и отведениями.
+
+## Уверенность
+Высокая для вывода о недостаточности данных: найдено меньше минимального числа измеримых отведений.`, measuredLeads, minMeasuredLeadsForRhythm)
 }
 
 // Close cleans up resources used by the EKG worker.

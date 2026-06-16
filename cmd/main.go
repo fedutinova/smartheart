@@ -65,7 +65,12 @@ func main() {
 		slog.Warn("GPT_MOCK enabled — using simulated responses", "delay", mockDelay)
 		gptClient = &gpt.MockProcessor{Delay: mockDelay}
 	} else {
-		gptClient = gpt.NewClient(cfg.GPT.APIKey, storageService, gpt.WithModel(cfg.GPT.Model))
+		gptClient = gpt.NewClient(
+			cfg.GPT.APIKey,
+			storageService,
+			gpt.WithModel(cfg.GPT.Model),
+			gpt.WithTimeout(cfg.GPT.Timeout),
+		)
 	}
 
 	cvClient := buildCVClient(cfg)

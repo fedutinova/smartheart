@@ -27,11 +27,16 @@ type RAGHandler struct {
 	judgeClient *openai.Client // nil when no API key configured
 }
 
+// ragGenerationTimeout bounds a single RAG generation (upstream LLM call). It
+// also caps the detached generation context so a client disconnect can't leave
+// background work running indefinitely.
+const ragGenerationTimeout = 120 * time.Second
+
 // NewRAGHandler creates a handler that forwards requests to the RAG service.
 func NewRAGHandler(ragURL string, repo repository.Store, apiKey string) *RAGHandler {
 	h := &RAGHandler{
 		ragURL: ragURL,
-		client: &http.Client{Timeout: 120 * time.Second},
+		client: &http.Client{Timeout: ragGenerationTimeout},
 		repo:   repo,
 	}
 	if apiKey != "" {
@@ -147,7 +152,7 @@ func (h *RAGHandler) Query(w http.ResponseWriter, r *http.Request) {
 			"cached_question", cached.QuestionNormalized)
 		cacheBody := []byte(cached.Answer)
 		elapsed := time.Since(start)
-		h.saveRAGResponse(r, requestID, cacheBody, int(elapsed.Milliseconds()), "HIT", cached)
+		h.saveRAGResponse(r.Context(), requestID, cacheBody, int(elapsed.Milliseconds()), "HIT", cached)
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("X-Cache", "HIT")
 		w.WriteHeader(http.StatusOK)
@@ -155,7 +160,13 @@ func (h *RAGHandler) Query(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	upstream, err := http.NewRequestWithContext(r.Context(), http.MethodPost, h.ragURL+"/query", bytes.NewReader(body))
+	// Detach generation from the inbound request: once we commit to a cache MISS
+	// we want the (paid) LLM answer to finish and populate the cache even if the
+	// client disconnects mid-flight. The timeout matches the HTTP client budget.
+	genCtx, cancelGen := context.WithTimeout(context.WithoutCancel(r.Context()), ragGenerationTimeout)
+	defer cancelGen()
+
+	upstream, err := http.NewRequestWithContext(genCtx, http.MethodPost, h.ragURL+"/query", bytes.NewReader(body))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create upstream request")
 		return
@@ -165,7 +176,7 @@ func (h *RAGHandler) Query(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.client.Do(upstream)
 	if err != nil {
 		slog.Error("RAG service request failed", "error", err)
-		h.markRequestFailed(r, requestID)
+		h.markRequestFailed(genCtx, requestID)
 		writeError(w, http.StatusBadGateway, "RAG service unavailable")
 		return
 	}
@@ -174,12 +185,12 @@ func (h *RAGHandler) Query(w http.ResponseWriter, r *http.Request) {
 	if resp.StatusCode != http.StatusOK {
 		respBody, err := io.ReadAll(io.LimitReader(resp.Body, 1024))
 		if err != nil {
-			slog.WarnContext(r.Context(), "Failed to read RAG error response", "status", resp.StatusCode, "error", err)
+			slog.WarnContext(genCtx, "Failed to read RAG error response", "status", resp.StatusCode, "error", err)
 		}
 		if len(respBody) > 0 {
-			slog.WarnContext(r.Context(), "RAG service returned error", "status", resp.StatusCode, "body", string(respBody))
+			slog.WarnContext(genCtx, "RAG service returned error", "status", resp.StatusCode, "body", string(respBody))
 		}
-		h.markRequestFailed(r, requestID)
+		h.markRequestFailed(genCtx, requestID)
 		writeError(w, http.StatusBadGateway, fmt.Sprintf("RAG service error: %d", resp.StatusCode))
 		return
 	}
@@ -188,20 +199,27 @@ func (h *RAGHandler) Query(w http.ResponseWriter, r *http.Request) {
 	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
 		slog.Warn("Failed to read RAG response", "error", err)
-		h.markRequestFailed(r, requestID)
+		h.markRequestFailed(genCtx, requestID)
 		writeError(w, http.StatusBadGateway, "failed to read RAG response")
 		return
 	}
 
 	elapsed := time.Since(start)
 
-	// Persist response record for performance tracking.
-	h.saveRAGResponse(r, requestID, respBody, int(elapsed.Milliseconds()), "MISS", nil)
+	// Persist response record for performance tracking. Uses a detached context
+	// internally so the answer is recorded even if the client already left.
+	h.saveRAGResponse(genCtx, requestID, respBody, int(elapsed.Milliseconds()), "MISS", nil)
 
 	// Store in hybrid cache for future similar questions.
-	if err := h.repo.SaveCacheEntry(r.Context(), req.Question, embedding, string(respBody), ""); err != nil {
+	cacheCtx, cancelCache := detachedWrite(genCtx)
+	defer cancelCache()
+	if err := h.repo.SaveCacheEntry(cacheCtx, req.Question, embedding, string(respBody), ""); err != nil {
 		slog.Warn("Failed to save KB cache entry", "error", err)
 	}
+
+	// The client may have disconnected during generation; the write below is a
+	// best-effort delivery to a still-connected client and fails harmlessly
+	// otherwise. The answer is already persisted and cached above.
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Cache", "MISS")
@@ -209,8 +227,19 @@ func (h *RAGHandler) Query(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(respBody)
 }
 
-func (h *RAGHandler) markRequestFailed(r *http.Request, requestID uuid.UUID) {
-	if err := h.repo.UpdateRequestStatus(r.Context(), requestID, models.StatusFailed); err != nil {
+// detachedWrite returns a context for bookkeeping DB writes that must succeed
+// even when the inbound request was canceled (client disconnect, browser
+// navigation, axios timeout). Reusing the request context for these writes
+// would fail with "context canceled" and leave request rows stuck in
+// "processing". Mirrors the cleanup pattern in workers/ecg_handler.go.
+func detachedWrite(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+}
+
+func (h *RAGHandler) markRequestFailed(ctx context.Context, requestID uuid.UUID) {
+	writeCtx, cancel := detachedWrite(ctx)
+	defer cancel()
+	if err := h.repo.UpdateRequestStatus(writeCtx, requestID, models.StatusFailed); err != nil {
 		slog.Error("Failed to mark RAG request as failed", "request_id", requestID, "error", err)
 	}
 }
@@ -218,13 +247,19 @@ func (h *RAGHandler) markRequestFailed(r *http.Request, requestID uuid.UUID) {
 const ragModel = "rag_query"
 
 func (h *RAGHandler) saveRAGResponse(
-	r *http.Request,
+	ctx context.Context,
 	requestID uuid.UUID,
 	body []byte,
 	elapsedMs int,
 	cacheStatus string,
 	cacheEntry *models.KBCacheEntry,
 ) {
+	// On a cache MISS we already paid the LLM to generate this answer; persist it
+	// with a detached context so a late client disconnect doesn't lose the
+	// response and its cache entry.
+	writeCtx, cancel := detachedWrite(ctx)
+	defer cancel()
+
 	response := &models.Response{
 		ID:               uuid.New(),
 		RequestID:        requestID,
@@ -240,11 +275,11 @@ func (h *RAGHandler) saveRAGResponse(
 		response.CacheCombinedSimilarity = &cacheEntry.CombinedSimilarity
 		response.CacheMatchMethod = cacheEntry.MatchMethod
 	}
-	if err := h.repo.CreateResponse(r.Context(), response); err != nil {
+	if err := h.repo.CreateResponse(writeCtx, response); err != nil {
 		slog.Error("Failed to save RAG response record", "request_id", requestID, "error", err)
 		return
 	}
-	if err := h.repo.UpdateRequestStatus(r.Context(), requestID, models.StatusCompleted); err != nil {
+	if err := h.repo.UpdateRequestStatus(writeCtx, requestID, models.StatusCompleted); err != nil {
 		slog.Error("Failed to mark RAG request completed", "request_id", requestID, "error", err)
 	}
 }
@@ -260,11 +295,9 @@ func (h *RAGHandler) judgeEquivalence(ctx context.Context, incoming, cached stri
 	}
 
 	prompt := fmt.Sprintf(
-		"Question 1: %q\nQuestion 2: %q\n\n"+
-			"Do both questions ask about the same clinical ECG topic and require the same answer?\n"+
-			"If the questions ask about DIFFERENT NAMED diagnostic scoring systems or indices "+
-			"(e.g. one asks about Cornell criteria and the other about Sokolow-Lyon index), answer NO.\n"+
-			"Reply with exactly one word: YES or NO.",
+		"Q1: %q\nQ2: %q\nSame clinical ECG topic requiring the same answer? "+
+			"If different named scores/indices (e.g. Cornell vs Sokolow-Lyon), answer NO. "+
+			"Reply exactly YES or NO.",
 		incoming, cached,
 	)
 
@@ -275,14 +308,13 @@ func (h *RAGHandler) judgeEquivalence(ctx context.Context, incoming, cached stri
 		Model: judgeModel,
 		Messages: []openai.ChatCompletionMessage{
 			{
-				Role: openai.ChatMessageRoleSystem,
-				Content: "You are a medical question classifier for an ECG knowledge base. " +
-					"Your only task is to decide if two questions have the same clinical meaning and would need the same answer.",
+				Role:    openai.ChatMessageRoleSystem,
+				Content: "ECG KB question equivalence classifier. Output only YES or NO.",
 			},
 			{Role: openai.ChatMessageRoleUser, Content: prompt},
 		},
-		MaxTokens:   5,
-		Temperature: 0,
+		MaxCompletionTokens: 5,
+		Temperature:         0,
 	})
 	if err != nil {
 		return false, fmt.Errorf("judge call: %w", err)

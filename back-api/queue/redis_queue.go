@@ -50,9 +50,9 @@ func DefaultConfig() RedisQueueConfig {
 	return RedisQueueConfig{
 		Stream:        "smartheart:jobs",
 		Group:         "workers",
-		MaxJobTime:    30 * time.Second,
+		MaxJobTime:    5 * time.Minute,
 		ClaimInterval: 10 * time.Second,
-		ClaimTimeout:  60 * time.Second,
+		ClaimTimeout:  6 * time.Minute,
 	}
 }
 

@@ -69,7 +69,7 @@ func madFilter(arr []float64, threshold float64) []float64 { //nolint:unparam //
 func robustList(vals []float64) []float64 {
 	var out []float64
 	for _, v := range vals {
-		if !math.IsNaN(v) && !math.IsInf(v, 0) {
+		if !math.IsNaN(v) && !math.IsInf(v, 0) && v != 0 {
 			out = append(out, v)
 		}
 	}
@@ -130,6 +130,55 @@ func finalizeFromCounts(raw *gpt.RawECGMeasurement, msPerSq float64) map[string]
 	return result
 }
 
+// sanitizeRhythmMeasurements drops physiologically impossible rhythm/interval
+// values instead of clamping them. Clamping would turn an implausible reading
+// (e.g. HR 300) into a plausible-looking but fabricated number (220); dropping
+// it to nil keeps the downstream interpretation and the GPT context honest —
+// a missing value is preferable to an invented one.
+//
+// Bounds are intentionally wide (only clearly impossible values are removed):
+//   - PR  must be in (80, 400) ms
+//   - QRS must be in (40, 250) ms
+//   - QT  must be in (200, 700) ms
+//   - RR  must be in [200, 3000] ms (RR < 200 ⇒ HR > 300, treated as noise)
+//   - HR  must be in [20, 300] bpm, and must not contradict a valid RR
+func sanitizeRhythmMeasurements(meas map[string]*float64) {
+	dropOutside := func(key string, lo, hi float64) {
+		v := meas[key]
+		if v == nil {
+			return
+		}
+		if *v <= lo || *v >= hi {
+			delete(meas, key)
+		}
+	}
+	dropOutside("PR_ms", 80, 400)
+	dropOutside("QRS_ms", 40, 250)
+	dropOutside("QT_ms", 200, 700)
+
+	if rr := meas["RR_ms"]; rr != nil && (*rr < 200 || *rr > 3000) {
+		delete(meas, "RR_ms")
+	}
+
+	if hr := meas["HR_bpm"]; hr != nil {
+		switch {
+		case *hr < 20 || *hr > 300:
+			// Outright impossible; drop it.
+			delete(meas, "HR_bpm")
+		default:
+			// Cross-check against RR when available. A measured HR that
+			// disagrees with the RR-derived rate by more than 25% is unreliable;
+			// drop it so computeStructuredResult recomputes HR from RR.
+			if rr := meas["RR_ms"]; rr != nil && *rr > 0 {
+				expected := 60000.0 / *rr
+				if math.Abs(*hr-expected)/expected > 0.25 {
+					delete(meas, "HR_bpm")
+				}
+			}
+		}
+	}
+}
+
 // clampMeasurements clamps values to physiological ranges.
 func clampMeasurements(meas map[string]*float64) {
 	for key, v := range meas {
@@ -155,15 +204,20 @@ func clampRange(key string) (lo, hi float64) {
 	if n > 3 && key[n-3:] == "_mm" {
 		return -80, 80
 	}
-	switch key {
-	case "QRS_ms":
-		return 60, 180
-	case "RR_ms":
-		return 200, 3000
-	case "HR_bpm":
-		return 30, 220
-	}
+	// Rhythm/interval values (PR, QRS, QT, RR, HR) are validated by
+	// sanitizeRhythmMeasurements, which drops implausible readings rather than
+	// clamping them to a fabricated bound.
 	return 0, 0
+}
+
+func correctedIntervals(intervalMs, rrMs *float64) (bazettMs, fridericiaMs *float64) {
+	if intervalMs == nil || rrMs == nil || *intervalMs <= 0 || *rrMs <= 0 {
+		return nil, nil
+	}
+	rrSec := *rrMs / 1000.0
+	bazett := *intervalMs / math.Sqrt(rrSec)
+	fridericia := *intervalMs / math.Cbrt(rrSec)
+	return &bazett, &fridericia
 }
 
 // computeStructuredResult builds the final ECGStructuredResult from mm measurements.
@@ -222,16 +276,42 @@ func computeStructuredResult(
 		return &v
 	}
 
+	// Helper: first non-nil pointer.
+	firstP := func(vals ...*float64) *float64 {
+		for _, v := range vals {
+			if v != nil {
+				return v
+			}
+		}
+		return nil
+	}
+
+	// Helper: deepest S from standard chest leads when GPT did not fill
+	// S_deepest_sq in extras.
+	deepestChestS := func() *float64 {
+		var deepest *float64
+		for _, lead := range []string{"V1", "V2", "V3", "V4", "V5", "V6"} {
+			v := absF(get("S_" + lead + "_mm"))
+			if v == nil {
+				continue
+			}
+			if deepest == nil || *v > *deepest {
+				deepest = v
+			}
+		}
+		return deepest
+	}
+
 	// Convert key measurements to mV
-	sv1 := toMV(absF(get("SV1_mm")), "V1")
-	rv5 := toMV(get("RV5_mm"), "V5")
-	rv6 := toMV(get("RV6_mm"), "V6")
-	ravl := toMV(get("RaVL_mm"), "aVL")
-	sv3 := toMV(absF(get("SV3_mm")), "V3")
-	sv4 := toMV(absF(get("SV4_mm")), "V4")
-	sDeepest := toMV(absF(get("S_deepest_mm")), "V1") // use limb by default but deepest is usually chest
-	sv5 := toMV(absF(get("SV5_mm")), "V5")
-	sv6 := toMV(absF(get("SV6_mm")), "V6")
+	sv1 := toMV(firstP(absF(get("SV1_mm")), absF(get("S_V1_mm"))), "V1")
+	rv5 := toMV(firstP(get("RV5_mm"), get("R_V5_mm")), "V5")
+	rv6 := toMV(firstP(get("RV6_mm"), get("R_V6_mm")), "V6")
+	ravl := toMV(firstP(get("RaVL_mm"), get("R_aVL_mm")), "aVL")
+	sv3 := toMV(firstP(absF(get("SV3_mm")), absF(get("S_V3_mm"))), "V3")
+	sv4 := toMV(firstP(absF(get("SV4_mm")), absF(get("S_V4_mm"))), "V4")
+	sDeepest := toMV(firstP(absF(get("S_deepest_mm")), deepestChestS()), "V1") // deepest is usually chest
+	sv5 := toMV(firstP(absF(get("SV5_mm")), absF(get("S_V5_mm"))), "V5")
+	sv6 := toMV(firstP(absF(get("SV6_mm")), absF(get("S_V6_mm"))), "V6")
 	rv1 := toMV(get("R_V1_mm"), "V1")
 
 	// LVH indices
@@ -289,8 +369,11 @@ func computeStructuredResult(
 
 	// Rhythm
 	rhythm := &models.RhythmTiming{
+		PRms:  get("PR_ms"),
 		QRSms: get("QRS_ms"),
 		RRms:  get("RR_ms"),
+		QTms:  get("QT_ms"),
+		JTms:  get("JT_ms"),
 		HRbpm: get("HR_bpm"),
 	}
 	// Compute HR from RR if missing
@@ -298,6 +381,12 @@ func computeStructuredResult(
 		hr := 60000.0 / *rhythm.RRms
 		rhythm.HRbpm = &hr
 	}
+	if rhythm.JTms == nil && rhythm.QTms != nil && rhythm.QRSms != nil && *rhythm.QTms > *rhythm.QRSms {
+		jt := *rhythm.QTms - *rhythm.QRSms
+		rhythm.JTms = &jt
+	}
+	rhythm.QTcBazettMs, rhythm.QTcFridericiaMs = correctedIntervals(rhythm.QTms, rhythm.RRms)
+	rhythm.JTcBazettMs, rhythm.JTcFridericiaMs = correctedIntervals(rhythm.JTms, rhythm.RRms)
 
 	// Transition zone
 	transition := findTransitionZone(measMM)

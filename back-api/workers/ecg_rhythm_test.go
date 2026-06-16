@@ -3,6 +3,7 @@ package workers
 import (
 	"encoding/json"
 	"math"
+	"strings"
 	"testing"
 
 	"github.com/fedutinova/smartheart/back-api/cv"
@@ -53,6 +54,21 @@ func TestHasEnoughECGSignalForRhythm_AcceptsMeasuredECG(t *testing.T) {
 
 	if !hasEnoughECGSignalForRhythm(raw) {
 		t.Fatal("expected rhythm to be allowed for sufficiently measured ECG")
+	}
+}
+
+func TestInsufficientECGSignalInterpretation(t *testing.T) {
+	got := insufficientECGSignalInterpretation(2)
+
+	for _, want := range []string{
+		"Автоматическая ЭКГ-интерпретация по этому изображению невозможна",
+		"распознано измеримых отведений: 2 из минимум 4",
+		"Ритм и AV-проводимость",
+		"ST-T, ишемические и инфарктные паттерны",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected interpretation to contain %q, got:\n%s", want, got)
+		}
 	}
 }
 

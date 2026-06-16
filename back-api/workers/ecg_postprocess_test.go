@@ -104,10 +104,10 @@ func TestRobustList_FiltersSpecialValues(t *testing.T) {
 	}
 }
 
-func TestRobustList_KeepsZero(t *testing.T) {
+func TestRobustList_FiltersZero(t *testing.T) {
 	out := robustList([]float64{0, 1, 2})
-	if len(out) != 3 {
-		t.Errorf("zero should be kept, got %d values", len(out))
+	if len(out) != 2 {
+		t.Errorf("zero should be treated as missing, got %d values", len(out))
 	}
 }
 
@@ -247,22 +247,75 @@ func TestClampMeasurements_AmplitudeLimits(t *testing.T) {
 	}
 }
 
-func TestClampMeasurements_IntervalLimits(t *testing.T) {
+func TestClampMeasurements_LeavesIntervalsToSanitize(t *testing.T) {
+	// clampMeasurements no longer touches rhythm/interval values; that is the
+	// job of sanitizeRhythmMeasurements. Plausible interval values must pass
+	// through clamp unchanged.
 	meas := map[string]*float64{
-		"QRS_ms": ptr(10),   // below 60
-		"RR_ms":  ptr(5000), // above 3000
-		"HR_bpm": ptr(300),  // above 220
+		"QRS_ms": ptr(110),
+		"RR_ms":  ptr(800),
+		"HR_bpm": ptr(75),
 	}
 	clampMeasurements(meas)
 
-	if *meas["QRS_ms"] != 60 {
-		t.Errorf("QRS_ms: expected 60, got %f", *meas["QRS_ms"])
+	if *meas["QRS_ms"] != 110 || *meas["RR_ms"] != 800 || *meas["HR_bpm"] != 75 {
+		t.Errorf("clamp altered interval values: %+v", meas)
 	}
-	if *meas["RR_ms"] != 3000 {
-		t.Errorf("RR_ms: expected 3000, got %f", *meas["RR_ms"])
+}
+
+// --- sanitizeRhythmMeasurements ---
+
+func TestSanitizeRhythm_DropsImplausible(t *testing.T) {
+	meas := map[string]*float64{
+		"PR_ms":  ptr(0),    // ≤ 80
+		"QT_ms":  ptr(0),    // ≤ 200
+		"RR_ms":  ptr(150),  // < 200 (HR > 300)
+		"HR_bpm": ptr(305),  // > 300
+		"QRS_ms": ptr(110),  // valid, kept
 	}
-	if *meas["HR_bpm"] != 220 {
-		t.Errorf("HR_bpm: expected 220, got %f", *meas["HR_bpm"])
+	sanitizeRhythmMeasurements(meas)
+
+	for _, k := range []string{"PR_ms", "QT_ms", "RR_ms", "HR_bpm"} {
+		if _, ok := meas[k]; ok {
+			t.Errorf("%s should have been dropped, got %v", k, *meas[k])
+		}
+	}
+	if meas["QRS_ms"] == nil || *meas["QRS_ms"] != 110 {
+		t.Errorf("QRS_ms should be kept at 110, got %v", meas["QRS_ms"])
+	}
+}
+
+func TestSanitizeRhythm_DropsHRContradictingRR(t *testing.T) {
+	// RR 800 ms ⇒ ~75 bpm. A measured HR of 150 disagrees by ~100%, so it is
+	// dropped and recomputed from RR downstream.
+	meas := map[string]*float64{
+		"RR_ms":  ptr(800),
+		"HR_bpm": ptr(150),
+	}
+	sanitizeRhythmMeasurements(meas)
+
+	if _, ok := meas["HR_bpm"]; ok {
+		t.Errorf("HR contradicting RR should be dropped, got %v", *meas["HR_bpm"])
+	}
+	if meas["RR_ms"] == nil || *meas["RR_ms"] != 800 {
+		t.Errorf("valid RR should be kept, got %v", meas["RR_ms"])
+	}
+}
+
+func TestSanitizeRhythm_KeepsConsistentValues(t *testing.T) {
+	meas := map[string]*float64{
+		"PR_ms":  ptr(160),
+		"QRS_ms": ptr(90),
+		"QT_ms":  ptr(400),
+		"RR_ms":  ptr(800),
+		"HR_bpm": ptr(75), // consistent with RR
+	}
+	sanitizeRhythmMeasurements(meas)
+
+	for _, k := range []string{"PR_ms", "QRS_ms", "QT_ms", "RR_ms", "HR_bpm"} {
+		if meas[k] == nil {
+			t.Errorf("%s should be kept", k)
+		}
 	}
 }
 
@@ -416,6 +469,22 @@ func TestComputeStructuredResult_SokolowLyon(t *testing.T) {
 	}
 }
 
+func TestComputeStructuredResult_SokolowLyonFromStandardLeads(t *testing.T) {
+	meas := map[string]*float64{
+		"S_V1_mm": ptr(-20),
+		"R_V5_mm": ptr(25),
+		"R_V6_mm": ptr(22),
+	}
+	result := computeStructuredResult(meas, "male", intPtr(45), 10, 10, "2025-01-01T00:00:00Z", "test-job")
+
+	if result.Indices == nil {
+		t.Fatal("Indices is nil")
+	}
+	if !approxEqual(result.Indices.SokolowLyon, ptr(4.5), 0.01) {
+		t.Errorf("Sokolow-Lyon from standard leads: expected ~4.5, got %v", result.Indices.SokolowLyon)
+	}
+}
+
 func TestComputeStructuredResult_CornellVoltage(t *testing.T) {
 	// Cornell = R_aVL + |S_V3|
 	// RaVL = 12mm → 1.2 mV (limb, 10 mm/mV)
@@ -562,8 +631,11 @@ func TestComputeStructuredResult_RightAxisDeviation(t *testing.T) {
 
 func TestComputeStructuredResult_Rhythm(t *testing.T) {
 	meas := map[string]*float64{
+		"PR_ms":  ptr(160),
 		"QRS_ms": ptr(100),
 		"RR_ms":  ptr(800),
+		"QT_ms":  ptr(360),
+		"JT_ms":  ptr(260),
 		"HR_bpm": ptr(75),
 	}
 
@@ -575,8 +647,49 @@ func TestComputeStructuredResult_Rhythm(t *testing.T) {
 	if !approxEqual(result.Rhythm.QRSms, ptr(100), 0.01) {
 		t.Errorf("QRS_ms: expected 100, got %v", result.Rhythm.QRSms)
 	}
+	if !approxEqual(result.Rhythm.PRms, ptr(160), 0.01) {
+		t.Errorf("PR_ms: expected 160, got %v", result.Rhythm.PRms)
+	}
+	if !approxEqual(result.Rhythm.QTms, ptr(360), 0.01) {
+		t.Errorf("QT_ms: expected 360, got %v", result.Rhythm.QTms)
+	}
+	if !approxEqual(result.Rhythm.QTcBazettMs, ptr(402.49), 0.01) {
+		t.Errorf("QTc Bazett: expected 402.49, got %v", result.Rhythm.QTcBazettMs)
+	}
+	if !approxEqual(result.Rhythm.QTcFridericiaMs, ptr(387.79), 0.01) {
+		t.Errorf("QTc Fridericia: expected 387.79, got %v", result.Rhythm.QTcFridericiaMs)
+	}
+	if !approxEqual(result.Rhythm.JTms, ptr(260), 0.01) {
+		t.Errorf("JT_ms: expected 260, got %v", result.Rhythm.JTms)
+	}
+	if !approxEqual(result.Rhythm.JTcBazettMs, ptr(290.69), 0.01) {
+		t.Errorf("JTc Bazett: expected 290.69, got %v", result.Rhythm.JTcBazettMs)
+	}
 	if !approxEqual(result.Rhythm.HRbpm, ptr(75), 0.01) {
 		t.Errorf("HR_bpm: expected 75, got %v", result.Rhythm.HRbpm)
+	}
+}
+
+func TestComputeStructuredResult_ComputesJTFromQTAndQRS(t *testing.T) {
+	meas := map[string]*float64{
+		"QRS_ms": ptr(130),
+		"RR_ms":  ptr(1000),
+		"QT_ms":  ptr(420),
+	}
+
+	result := computeStructuredResult(meas, "", nil, 10, 10, "2025-01-01T00:00:00Z", "test-job")
+
+	if result.Rhythm == nil {
+		t.Fatal("Rhythm is nil")
+	}
+	if !approxEqual(result.Rhythm.JTms, ptr(290), 0.01) {
+		t.Errorf("JT_ms from QT-QRS: expected 290, got %v", result.Rhythm.JTms)
+	}
+	if !approxEqual(result.Rhythm.JTcBazettMs, ptr(290), 0.01) {
+		t.Errorf("JTc Bazett: expected 290 at RR=1000ms, got %v", result.Rhythm.JTcBazettMs)
+	}
+	if !approxEqual(result.Rhythm.JTcFridericiaMs, ptr(290), 0.01) {
+		t.Errorf("JTc Fridericia: expected 290 at RR=1000ms, got %v", result.Rhythm.JTcFridericiaMs)
 	}
 }
 

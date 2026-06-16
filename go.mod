@@ -20,7 +20,8 @@ require (
 	github.com/sashabaranov/go-openai v1.41.1
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/crypto v0.46.0
-	golang.org/x/sync v0.19.0
+	golang.org/x/image v0.42.0
+	golang.org/x/sync v0.21.0
 )
 
 require (
@@ -54,6 +55,6 @@ require (
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/zeebo/xxh3 v1.0.2 // indirect
 	golang.org/x/sys v0.39.0 // indirect
-	golang.org/x/text v0.32.0 // indirect
+	golang.org/x/text v0.38.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

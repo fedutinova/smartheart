@@ -19,6 +19,15 @@ func TestExtractConclusion_FindsConclusionHeader(t *testing.T) {
 	}
 }
 
+func TestExtractConclusion_FindsSummaryHeader(t *testing.T) {
+	in := "## Ритм\nТекст\n\n## Итог\n- Первый вывод\n- Второй вывод\n\n## Уверенность\nСредняя"
+	out := ExtractConclusion(in)
+	exp := "- Первый вывод\n- Второй вывод"
+	if out != exp {
+		t.Fatalf("expected %q, got %q", exp, out)
+	}
+}
+
 func TestExtractConclusion_NoMarkerReturnsTrimmed(t *testing.T) {
 	in := "   Просто текст без маркера   "
 	out := ExtractConclusion(in)

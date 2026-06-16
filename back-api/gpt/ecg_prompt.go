@@ -9,53 +9,42 @@ import (
 
 // BuildECGMeasurementPrompt returns system and user messages for structured ECG measurement.
 func BuildECGMeasurementPrompt(paperSpeedMMS float64) (system, user string) {
-	system = `Ты эксперт по измерению ЭКГ на бумажных плёнках. Твоя задача: точно посчитать количество МАЛЫХ клеток (1мм) для амплитуд зубцов и интервалов. Возвращай только JSON.`
+	system = `You are an ECG measurement engine.
+Return ONLY valid JSON matching the schema. No prose, no diagnosis.
+Measure only visible ECG grid values in small squares. If the image is not an ECG, a lead is not visible, quality is poor, or a value is uncertain, use null or [].
+Never use 0 as "missing". Use 0 only if a clearly visible ECG deflection is truly isoelectric.
+Check calibration/speed when visible; otherwise use the supplied speed.`
 
 	schema := ecgSchemaTemplate()
-	schemaJSON, _ := json.MarshalIndent(schema, "", "  ")
+	schemaJSON, _ := json.Marshal(schema)
 
-	user = fmt.Sprintf(`ЗАДАЧА: Измерь ЭКГ по сетке. Верни ТОЛЬКО JSON строго по схеме.
+	user = fmt.Sprintf(`Task: measure the ECG grid and return JSON only.
 
-СЕТКА ЭКГ:
-- Малая клетка = 1мм (тонкие линии)
-- Большая клетка = 5 малых = 5мм (толстые линии)
-- Калибровочный импульс (обычно слева): 10мм = 1мВ
+Grid: 1 small square = 1 mm; 5 small = 1 large; calibration pulse usually 10 mm = 1 mV.
+Baseline: isoelectric TP segment.
 
-КАК ИЗМЕРЯТЬ:
-1. Найди изоэлектрическую линию (baseline) — горизонтальный участок между зубцами T и P
-2. R_up_sq: количество МАЛЫХ клеток от baseline ВВЕРХ до вершины зубца R (всегда положительное число)
-3. S_down_sq: количество МАЛЫХ клеток от baseline ВНИЗ до дна зубца S (всегда отрицательное число)
-4. Измеряй 3-5 последовательных комплексов в каждом видимом отведении
-5. Разрешены половинки клетки (0.5)
-6. Если отведение не видно или не удается измерить — верни null (НЕ 0)
+Leads:
+- R_up_sq: small squares from baseline up to R peak, positive number.
+- S_down_sq: small squares from baseline down to S nadir, negative number.
+- Prefer 3-5 complexes per visible lead; halves allowed (0.5).
+- Invisible/uncertain lead or value: null/[]; do NOT output 0 for missing.
 
-ТИПИЧНЫЕ ЗНАЧЕНИЯ (для самопроверки):
-- R в V1: обычно 1-6 малых клеток (маленький зубец)
-- S в V1: обычно 8-20 малых клеток (глубокий зубец, отрицательный)
-- R в V5-V6: обычно 10-25 малых клеток (высокий зубец)
-- S в V5-V6: обычно 0-5 малых клеток (маленький или отсутствует)
-- R нарастает от V1 к V4-V5, затем уменьшается к V6
-- S уменьшается от V1 к V6
-- Если все отведения показывают одинаковую амплитуду — скорее всего ошибка измерения
+Intervals in small squares:
+- PR: P onset to QRS onset.
+- QRS: QRS width; normal usually 2-4 sq. If uncertain, [].
+- RR: consecutive R-to-R; for irregular rhythm return >=3 values.
+- QT: QRS onset to T end; exclude U wave.
+- JT: J point to T end; useful if QRS is wide.
+- If T/U merge or T end unclear, leave QT/JT empty.
 
-ИНТЕРВАЛЫ:
-- QRS: ширина комплекса QRS в малых клетках (обычно 2-4 клетки)
-- RR: расстояние между двумя соседними R-зубцами в малых клетках
+Extras when visible: SV1_sq, RV5_sq, RV6_sq, RaVL_sq, SV3_sq, SV4_sq, SV5_sq, SV6_sq, S_deepest_sq.
+Expected paper speed: %.0f mm/s; set calibration if visibly different.
+HR_bpm only if reliable.
 
-EXTRAS:
-- SV1_sq: глубина S в V1 (отрицательное число)
-- RV5_sq, RV6_sq: высота R в V5 и V6
-- RaVL_sq: высота R в aVL
-- SV3_sq, SV4_sq: глубина S в V3 и V4
-- S_deepest_sq: самый глубокий S среди всех грудных отведений
-
-Скорость плёнки: %.0f мм/с (если видишь другую калибровку — укажи в calibration).
-HR_bpm: частота сердечных сокращений, если можно определить.
-
-СХЕМА:
+Schema:
 %s
 
-Верни один JSON.`, paperSpeedMMS, string(schemaJSON))
+Return one JSON object.`, paperSpeedMMS, string(schemaJSON))
 
 	return system, user
 }
@@ -74,7 +63,7 @@ func ecgSchemaTemplate() map[string]any {
 			"S_deepest_sq": []any{}, "SV5_sq": []any{}, "SV6_sq": []any{},
 		},
 		"intervals_sq": map[string]any{
-			"QRS": []any{}, "RR": []any{},
+			"PR": []any{}, "QRS": []any{}, "RR": []any{}, "QT": []any{}, "JT": []any{},
 		},
 		"HR_bpm": nil,
 		"calibration": map[string]any{

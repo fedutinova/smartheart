@@ -67,9 +67,16 @@ type QRSAxis struct {
 
 // RhythmTiming holds basic rhythm measurements.
 type RhythmTiming struct {
-	QRSms *float64 `json:"QRS_ms,omitempty"`
-	RRms  *float64 `json:"RR_ms,omitempty"`
-	HRbpm *float64 `json:"HR_bpm,omitempty"`
+	PRms            *float64 `json:"PR_ms,omitempty"`
+	QRSms           *float64 `json:"QRS_ms,omitempty"`
+	RRms            *float64 `json:"RR_ms,omitempty"`
+	QTms            *float64 `json:"QT_ms,omitempty"`
+	QTcBazettMs     *float64 `json:"QTc_bazett_ms,omitempty"`
+	QTcFridericiaMs *float64 `json:"QTc_fridericia_ms,omitempty"`
+	JTms            *float64 `json:"JT_ms,omitempty"`
+	JTcBazettMs     *float64 `json:"JTc_bazett_ms,omitempty"`
+	JTcFridericiaMs *float64 `json:"JTc_fridericia_ms,omitempty"`
+	HRbpm           *float64 `json:"HR_bpm,omitempty"`
 }
 
 // PatientInfo holds submitted patient demographics.

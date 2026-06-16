@@ -78,8 +78,9 @@ type RateLimitConfig struct {
 
 // GPTConfig holds OpenAI/GPT settings.
 type GPTConfig struct {
-	APIKey string
-	Model  string
+	APIKey  string
+	Model   string
+	Timeout time.Duration
 }
 
 // QuotaConfig holds per-user submission quota settings.
@@ -323,8 +324,8 @@ func Load() Config {
 			Mode:         envString("QUEUE_MODE", "redis"),
 			Stream:       envString("QUEUE_STREAM", "smartheart:jobs"),
 			Group:        envString("QUEUE_GROUP", "workers"),
-			MaxDuration:  envDuration("JOB_MAX_DURATION", 30*time.Second),
-			ClaimTimeout: envDuration("JOB_CLAIM_TIMEOUT", 60*time.Second),
+			MaxDuration:  envDuration("JOB_MAX_DURATION", 5*time.Minute),
+			ClaimTimeout: envDuration("JOB_CLAIM_TIMEOUT", 6*time.Minute),
 		},
 		DB: DBConfig{
 			URL:          dbURL,
@@ -346,8 +347,9 @@ func Load() Config {
 			LocalURL: envString("LOCAL_STORAGE_URL", "http://localhost:8080/files"),
 		},
 		GPT: GPTConfig{
-			APIKey: envString("OPENAI_API_KEY", ""),
-			Model:  envString("GPT_MODEL", "gpt-4o"),
+			APIKey:  envString("OPENAI_API_KEY", ""),
+			Model:   envString("GPT_MODEL", "gpt-5.4"),
+			Timeout: envDuration("GPT_TIMEOUT", 3*time.Minute),
 		},
 		Cookie: CookieConfig{
 			Secure: envBool("COOKIE_SECURE", true),

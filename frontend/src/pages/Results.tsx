@@ -10,12 +10,7 @@ import { RequestImage } from '@/components/RequestImage';
 import { ECGChat } from '@/components/ECGChat';
 import { useEventSource } from '@/hooks/useEventSource';
 import { usePendingJobs } from '@/hooks/usePendingJobs';
-import type { ECGAnalysisResult, ECGFeedbackRating, ECGRhythmResult, ECGStructuredResult, InterpretationItem } from '@/types';
-
-function fmt(v: number | null | undefined, decimals = 1): string {
-  if (v == null) return '—';
-  return v.toFixed(decimals);
-}
+import type { ECGAnalysisResult, ECGFeedbackRating, ECGRhythmResult, ECGStructuredResult, InterpretationItem, RequestStatus } from '@/types';
 
 export function Results() {
   const { id } = useParams<{ id: string }>();
@@ -79,7 +74,9 @@ export function Results() {
   }
 
   const gptContent = ecgResult
-    ? ecgResult.gpt_full_response || null
+    ? isStructured
+      ? ecgResult.gpt_interpretation || ecgResult.gpt_full_response || null
+      : ecgResult.gpt_full_response || ecgResult.gpt_interpretation || null
     : (request?.response && request.response.model !== 'ekg_direct_v2')
       ? request.response.content
       : null;
@@ -218,7 +215,7 @@ export function Results() {
 
         <div className="mb-5 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
           <div className="grid gap-3 p-3 sm:gap-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.75fr)]">
-            <RhythmResultView result={ecgResult?.rhythm_result ?? null} />
+            <RhythmResultView result={ecgResult?.rhythm_result ?? null} status={request.status} />
 
             {formatECGParams(request) && (
               <div className="rounded-lg bg-gray-50 p-3 sm:border sm:border-gray-200">
@@ -259,16 +256,13 @@ export function Results() {
           )}
 
           <div>
-            {/* Structured ECG Results */}
-            {isStructured && ecgResult?.structured_result && (
-              <StructuredResultView result={ecgResult.structured_result} />
-            )}
-
-            {/* GPT Interpretation / Analysis Result (old format) */}
-            {!isStructured && gptContent && (
+            {/* GPT Interpretation / Analysis Result */}
+            {gptContent && (
               <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 shadow-sm rounded-xl p-4 sm:p-5 mb-4 sm:mb-6">
                 <div className="flex items-center mb-3 sm:mb-4">
-                  <h2 className="text-lg sm:text-xl font-bold text-gray-900">Заключение</h2>
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+                    {isStructured ? 'Интерпретация ЭКГ' : 'Заключение'}
+                  </h2>
                 </div>
                 <div className="bg-white rounded-lg p-3 sm:p-4 border border-purple-100 mb-3 sm:mb-4">
                   <ReactMarkdown className="prose prose-sm max-w-none prose-gray">
@@ -276,6 +270,11 @@ export function Results() {
                   </ReactMarkdown>
                 </div>
               </div>
+            )}
+
+            {/* Structured ECG Results */}
+            {isStructured && ecgResult?.structured_result && (
+              <StructuredResultView result={ecgResult.structured_result} />
             )}
 
             {/* GPT interpretation pending/failed message for old EKG requests */}
@@ -286,6 +285,15 @@ export function Results() {
                   {ecgResult.gpt_interpretation_status === 'failed'
                     ? 'GPT-интерпретация не удалась. Попробуйте повторить запрос.'
                     : 'GPT-интерпретация в обработке...'}
+                </p>
+              </div>
+            )}
+
+            {isStructured && ecgResult && !gptContent && ecgResult.gpt_interpretation_status === 'failed' && (
+              <div className="bg-yellow-50 border border-yellow-200 shadow-sm rounded-xl p-4 sm:p-5 mb-4 sm:mb-6">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">Интерпретация ЭКГ</h2>
+                <p className="text-sm text-yellow-800">
+                  Интерпретация не удалась, ниже сохранены структурированные измерения.
                 </p>
               </div>
             )}
@@ -332,8 +340,9 @@ function RecordParamChip({ children }: { children: ReactNode }) {
   );
 }
 
-function RhythmResultView({ result }: { result: ECGRhythmResult | null }) {
+function RhythmResultView({ result, status }: { result: ECGRhythmResult | null; status: RequestStatus }) {
   const copyText = result?.pred_label_ru ?? '';
+  const label = result?.pred_label_ru ?? (status === 'pending' || status === 'processing' ? 'Ожидает обработки' : 'Ритм не определён');
 
   return (
     <div className="rounded-lg border border-rose-100 bg-gradient-to-br from-rose-50 to-orange-50 p-3 sm:p-4">
@@ -341,7 +350,7 @@ function RhythmResultView({ result }: { result: ECGRhythmResult | null }) {
         <div className="min-w-0">
           <p className="text-xs text-gray-500 mb-1">Предполагаемый ритм:</p>
           <p className="break-words text-xl font-semibold leading-snug text-gray-950 sm:text-2xl">
-            {result?.pred_label_ru ?? 'Ожидает обработки'}
+            {label}
           </p>
         </div>
         {copyText && (
@@ -517,6 +526,7 @@ function FeedbackButtons({ requestId }: { requestId: string }) {
 function StructuredResultView({ result }: { result: ECGStructuredResult }) {
   const hasMeasurements = Object.values(result.measurements).some((v) => v != null);
   const summary = result.interpretation?.summary ?? [];
+  const intervalRows = getIntervalRows(result.rhythm);
 
   return (
     <>
@@ -552,25 +562,55 @@ function StructuredResultView({ result }: { result: ECGStructuredResult }) {
         </div>
       )}
 
-      {/* Computed indices — numeric values + thresholds for each clinical formula.
-          Threshold strings are clinical defaults; status badges come from the
-          backend's summary block above. */}
+      {/* Computed indices — numeric values + thresholds for each clinical formula. */}
       <IndicesCard indices={result.indices} rvh={result.rvh} />
 
-      {/* Rhythm & Intervals */}
-      {result.rhythm && (result.rhythm.QRS_ms != null || result.rhythm.RR_ms != null || result.rhythm.HR_bpm != null) && (
+      {intervalRows.length > 0 && (
         <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 sm:p-5 mb-4 sm:mb-6">
           <h2 className="text-sm font-medium text-gray-900 mb-3">Интервалы и ритм</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-center">
-            <MetricCard label="QRS" value={fmt(result.rhythm.QRS_ms, 0)} unit="мс" />
-            <MetricCard label="RR" value={fmt(result.rhythm.RR_ms, 0)} unit="мс" />
-            <MetricCard label="ЧСС" value={fmt(result.rhythm.HR_bpm, 0)} unit="уд/мин" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 text-center">
+            {intervalRows.map((row) => (
+              <MetricCard key={row.label} {...row} />
+            ))}
           </div>
         </div>
       )}
 
     </>
   );
+}
+
+type MetricRow = {
+  label: string;
+  value: string;
+  unit?: string;
+};
+
+function validRange(v: number | null | undefined, min: number, max: number): number | null {
+  if (v == null || !Number.isFinite(v) || v <= 0 || v < min || v > max) return null;
+  return v;
+}
+
+function metric(label: string, value: number | null | undefined, min: number, max: number, unit: string): MetricRow | null {
+  const v = validRange(value, min, max);
+  if (v == null) return null;
+  return { label, value: v.toFixed(0), unit };
+}
+
+function getIntervalRows(rhythm: ECGStructuredResult['rhythm']): MetricRow[] {
+  if (!rhythm) return [];
+  return [
+    metric('PR', rhythm.PR_ms, 80, 320, 'мс'),
+    metric('QRS', rhythm.QRS_ms, 60, 240, 'мс'),
+    metric('RR', rhythm.RR_ms, 300, 3000, 'мс'),
+    metric('QT', rhythm.QT_ms, 200, 700, 'мс'),
+    metric('QTc Bazett', rhythm.QTc_bazett_ms, 250, 700, 'мс'),
+    metric('QTc Fridericia', rhythm.QTc_fridericia_ms, 250, 700, 'мс'),
+    metric('JT', rhythm.JT_ms, 100, 550, 'мс'),
+    metric('JTc Bazett', rhythm.JTc_bazett_ms, 150, 650, 'мс'),
+    metric('JTc Fridericia', rhythm.JTc_fridericia_ms, 150, 650, 'мс'),
+    metric('ЧСС', rhythm.HR_bpm, 30, 220, 'уд/мин'),
+  ].filter((row): row is MetricRow => row != null);
 }
 
 type IndexRow = {
@@ -743,7 +783,7 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-function MetricCard({ label, value, unit }: { label: string; value: string; unit?: string }) {
+function MetricCard({ label, value, unit }: MetricRow) {
   return (
     <div className="bg-gray-50 rounded-lg border border-gray-200 p-3 transition-colors duration-150 hover:bg-gray-100">
       <p className="text-xs text-gray-500 mb-1">{label}</p>

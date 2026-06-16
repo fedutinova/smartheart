@@ -60,6 +60,10 @@ func ExtractConclusion(gptResponse string) string {
 
 	// Try to find conclusion section
 	markers := []string{
+		"### Итог\n",
+		"### Итог",
+		"## Итог\n",
+		"## Итог",
 		"### Заключение\n",
 		"### Заключение",
 		"## Заключение\n",
@@ -67,12 +71,18 @@ func ExtractConclusion(gptResponse string) string {
 		"Заключение:\n",
 		"Заключение:",
 		"Заключение\n",
+		"Итог:\n",
+		"Итог:",
+		"Итог\n",
 	}
 
 	for _, marker := range markers {
 		idx := strings.Index(response, marker)
 		if idx != -1 {
 			conclusion := strings.TrimSpace(response[idx+len(marker):])
+			if nextHeader := strings.Index(conclusion, "\n## "); nextHeader != -1 {
+				conclusion = strings.TrimSpace(conclusion[:nextHeader])
+			}
 			// Remove disclaimer at the end if present
 			disclaimers := []string{
 				"\n\nИнтерпретация носит информационный характер",

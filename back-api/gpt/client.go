@@ -21,12 +21,7 @@ import (
 type Processor interface {
 	ProcessRequest(ctx context.Context, textQuery string, fileKeys []string) (*ProcessResult, error)
 	ProcessStructuredECG(ctx context.Context, fileKeys []string, systemPrompt, userPrompt string) (*ProcessResult, error)
-	// ExplainECGRhythm builds a vision-LLM call that turns the CV rhythm
-	// classification result + the original image into a four-field medical
-	// narrative. systemPrompt and userPrompt come from BuildRhythmExplainPrompt.
-	// Returns the same ProcessResult shape as ProcessStructuredECG so callers
-	// can uniformly parse Content via ParseRhythmExplanation.
-	ExplainECGRhythm(ctx context.Context, fileKey, systemPrompt, userPrompt string) (*ProcessResult, error)
+	InterpretStructuredECG(ctx context.Context, fileKeys []string, systemPrompt, userPrompt string) (*ProcessResult, error)
 }
 
 type Client struct {
@@ -93,18 +88,9 @@ func (c *Client) ProcessRequest(ctx context.Context, textQuery string, fileKeys 
 	messages := []openai.ChatCompletionMessage{
 		{
 			Role: openai.ChatMessageRoleSystem,
-			Content: "You are an expert assistant for analyzing ECG/EKG (electrocardiogram) images. " +
-				"You will receive an image of an ECG recording. " +
-				"Your task is to describe what you observe in Russian language.\n\n" +
-				"Provide a structured analysis in Russian:\n" +
-				"1. Качество изображения: четкость, наличие артефактов, видимость отведений и калибровки\n" +
-				"2. Ритм: регулярный/нерегулярный, приблизительная ЧСС если видна разметка\n" +
-				"3. Зубцы и интервалы: P, QRS, T — форма, амплитуда, длительность\n" +
-				"4. Сегменты: ST-сегмент, PR-интервал, QT-интервал\n" +
-				"5. Особенности: отклонения от нормального синусового ритма\n\n" +
-				"This is a technical image analysis task for educational purposes. " +
-				"Describe what you observe without making diagnostic conclusions. " +
-				"If you cannot see certain details or measurements, state that clearly.",
+			Content: "You analyze ECG/EKG images. Answer in Russian Markdown. " +
+				"Describe only visible technical ECG findings: image quality/calibration, rhythm/approx HR, P/QRS/T, PR/ST/QT, notable abnormalities. " +
+				"Do not make clinical diagnoses or treatment advice. If data is unclear or missing, say so.",
 		},
 	}
 
@@ -144,9 +130,9 @@ func (c *Client) ProcessRequest(ctx context.Context, textQuery string, fileKeys 
 		"content_parts", len(content))
 
 	resp, err := c.openAI.CreateChatCompletion(reqCtx, openai.ChatCompletionRequest{
-		Model:     c.model,
-		Messages:  messages,
-		MaxTokens: 2000,
+		Model:               c.model,
+		Messages:            messages,
+		MaxCompletionTokens: 2000,
 	})
 	if err != nil {
 		return nil, classifyOpenAIError(reqCtx, err, c.timeout)
@@ -229,6 +215,21 @@ func (c *Client) createMessagePartFromFile(ctx context.Context, key string) (*op
 
 // buildImagePart creates an image message part, preferring presigned URL over base64.
 func (c *Client) buildImagePart(ctx context.Context, key string, data []byte, contentType string) (*openai.ChatMessagePart, error) {
+	// Server-side downscale: cap the long side before the vision call to cut
+	// latency and payload size. When the image is actually resized we must send
+	// the compressed bytes inline (base64); a presigned URL would serve the
+	// original full-size image from storage and defeat the compression.
+	if isResizableImageType(contentType) {
+		resized, changed, derr := downscaleImage(data)
+		if derr != nil {
+			slog.WarnContext(ctx, "Image downscale failed; using original", "key", key, "error", derr)
+		} else if changed {
+			slog.InfoContext(ctx, "Downscaled image for vision call",
+				"key", key, "original_size", len(data), "downscaled_size", len(resized))
+			return c.base64ImagePart(ctx, key, resized, "image/jpeg")
+		}
+	}
+
 	// Try presigned URL first — avoids base64 overhead
 	presignedURL, err := c.storage.GetPresignedURL(ctx, key, 10*time.Minute)
 	if err == nil && !isLocalhostURL(presignedURL) {
@@ -243,6 +244,13 @@ func (c *Client) buildImagePart(ctx context.Context, key string, data []byte, co
 	}
 
 	// Fall back to base64 encoding
+	return c.base64ImagePart(ctx, key, data, contentType)
+}
+
+// base64ImagePart encodes image bytes inline as a data URL. Used as a fallback
+// when no usable presigned URL is available, and as the delivery path for
+// server-side downscaled images (whose bytes are not in storage).
+func (c *Client) base64ImagePart(ctx context.Context, key string, data []byte, contentType string) (*openai.ChatMessagePart, error) {
 	const maxBase64Size = 20 * 1024 * 1024
 	estimatedBase64Size := (len(data) * 4) / 3
 	if estimatedBase64Size > maxBase64Size {
@@ -303,16 +311,18 @@ func (c *Client) ProcessStructuredECG(ctx context.Context, fileKeys []string, sy
 	slog.InfoContext(ctx, "Sending structured ECG request to OpenAI",
 		"model", c.model, "files", len(fileKeys))
 
-	temp := float32(0.0)
-	resp, err := c.openAI.CreateChatCompletion(reqCtx, openai.ChatCompletionRequest{
-		Model:       c.model,
-		Messages:    messages,
-		MaxTokens:   4000,
-		Temperature: temp,
+	req := openai.ChatCompletionRequest{
+		Model:               c.model,
+		Messages:            messages,
+		MaxCompletionTokens: 4000,
 		ResponseFormat: &openai.ChatCompletionResponseFormat{
 			Type: openai.ChatCompletionResponseFormatTypeJSONObject,
 		},
-	})
+	}
+	if supportsSamplingParams(c.model) {
+		req.Temperature = 0.0
+	}
+	resp, err := c.openAI.CreateChatCompletion(reqCtx, req)
 	if err != nil {
 		return nil, classifyOpenAIError(reqCtx, err, c.timeout)
 	}
@@ -337,11 +347,9 @@ func (c *Client) ProcessStructuredECG(ctx context.Context, fileKeys []string, sy
 	}, nil
 }
 
-// ExplainECGRhythm calls the vision LLM to produce a medical explanation on
-// top of the CV rhythm result. Uses a low (but non-zero) temperature so the
-// wording is natural, and forces JSON response_format so callers can rely on
-// ParseRhythmExplanation.
-func (c *Client) ExplainECGRhythm(ctx context.Context, fileKey, systemPrompt, userPrompt string) (*ProcessResult, error) {
+// InterpretStructuredECG asks the vision LLM for the patient-facing ECG
+// interpretation using the source image plus already extracted measurements.
+func (c *Client) InterpretStructuredECG(ctx context.Context, fileKeys []string, systemPrompt, userPrompt string) (*ProcessResult, error) {
 	start := time.Now()
 
 	reqCtx, cancel := context.WithTimeout(ctx, c.timeout)
@@ -352,12 +360,21 @@ func (c *Client) ExplainECGRhythm(ctx context.Context, fileKey, systemPrompt, us
 	}
 
 	var content []openai.ChatMessagePart
-	filePart, err := c.createMessagePartFromFile(reqCtx, fileKey)
-	if err != nil {
-		return nil, fmt.Errorf("rhythm explain: prepare image: %w", err)
+	for _, key := range fileKeys {
+		filePart, err := c.createMessagePartFromFile(reqCtx, key)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to process file for ECG interpretation", "key", key, "error", err)
+			continue
+		}
+		if filePart != nil {
+			content = append(content, *filePart)
+		}
 	}
-	if filePart != nil {
-		content = append(content, *filePart)
+	// Refuse to run an image-less interpretation: without any ECG image the model
+	// would confidently hallucinate findings. Fail instead so the caller can
+	// soft-degrade to the structured measurements only.
+	if len(fileKeys) > 0 && len(content) == 0 {
+		return nil, fmt.Errorf("ECG interpretation: no usable image from %d file(s)", len(fileKeys))
 	}
 	content = append(content, openai.ChatMessagePart{
 		Type: openai.ChatMessagePartTypeText,
@@ -369,19 +386,18 @@ func (c *Client) ExplainECGRhythm(ctx context.Context, fileKey, systemPrompt, us
 		MultiContent: content,
 	})
 
-	slog.InfoContext(ctx, "Sending rhythm-explain request to OpenAI",
-		"model", c.model, "file_key", fileKey)
+	slog.InfoContext(ctx, "Sending structured ECG interpretation request to OpenAI",
+		"model", c.model, "files", len(fileKeys))
 
-	temp := float32(0.18) // mirrors the bundle's BothubECGExplainer temperature.
-	resp, err := c.openAI.CreateChatCompletion(reqCtx, openai.ChatCompletionRequest{
-		Model:       c.model,
-		Messages:    messages,
-		MaxTokens:   1200,
-		Temperature: temp,
-		ResponseFormat: &openai.ChatCompletionResponseFormat{
-			Type: openai.ChatCompletionResponseFormatTypeJSONObject,
-		},
-	})
+	req := openai.ChatCompletionRequest{
+		Model:               c.model,
+		Messages:            messages,
+		MaxCompletionTokens: 2600,
+	}
+	if supportsSamplingParams(c.model) {
+		req.Temperature = 0.1
+	}
+	resp, err := c.openAI.CreateChatCompletion(reqCtx, req)
 	if err != nil {
 		return nil, classifyOpenAIError(reqCtx, err, c.timeout)
 	}
@@ -392,10 +408,10 @@ func (c *Client) ExplainECGRhythm(ctx context.Context, fileKey, systemPrompt, us
 
 	responseContent := resp.Choices[0].Message.Content
 	if IsRefusal(responseContent) {
-		slog.WarnContext(ctx, "OpenAI returned refusal for rhythm explain", "tokens", resp.Usage.TotalTokens)
+		slog.WarnContext(ctx, "OpenAI returned refusal for ECG interpretation", "tokens", resp.Usage.TotalTokens)
 	}
 
-	slog.InfoContext(ctx, "Rhythm explain response received",
+	slog.InfoContext(ctx, "Structured ECG interpretation response received",
 		"model", resp.Model, "tokens", resp.Usage.TotalTokens, "response_len", len(responseContent))
 
 	return &ProcessResult{
@@ -404,6 +420,14 @@ func (c *Client) ExplainECGRhythm(ctx context.Context, fileKey, systemPrompt, us
 		TokensUsed:       resp.Usage.TotalTokens,
 		ProcessingTimeMs: int(time.Since(start).Milliseconds()),
 	}, nil
+}
+
+// supportsSamplingParams reports whether the model accepts custom sampling
+// parameters such as temperature. The GPT-5 family fixes temperature, top_p
+// and n at 1 (and the penalties at 0), rejecting any explicit override; for
+// those models the parameter must be omitted entirely.
+func supportsSamplingParams(model string) bool {
+	return !strings.HasPrefix(model, "gpt-5") && !strings.HasPrefix(model, "o1") && !strings.HasPrefix(model, "o3")
 }
 
 // isLocalhostURL checks whether a URL points to a local address that OpenAI cannot reach.
