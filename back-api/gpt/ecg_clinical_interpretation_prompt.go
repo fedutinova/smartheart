@@ -20,6 +20,7 @@ The JSON context contains ONLY values that passed validation; anything not prese
 Do not mention JSON, internal fields, "digital/automatic context", processing errors, or invalid values such as 0/300 in the user-facing text.
 
 Hard rules:
+- Do NOT name or restate the heart rhythm in interpretation_md (no "синусовый ритм", "фибрилляция/трепетание предсердий", "тахикардия/брадикардия", etc.). The rhythm is determined separately by a classifier and shown to the user elsewhere; in the text assess only conduction (PR/AV, QRS width, blocks) and morphology. Still report your rhythm read in the structured "rhythm" field.
 - AV block I only if PR_ms > 200 ms or a clearly measured PR duration supports it.
 - Complete BBB only if QRS_ms >= 120 ms and morphology criteria are visible in specific leads.
 - Do not explain ST-T changes by BBB unless BBB criteria are met.
@@ -179,9 +180,10 @@ func BuildECGClinicalInterpretationPrompt(
 
 "interpretation_md" — exactly one Russian Markdown section:
 ## Итог
-- 4-6 short, self-contained bullets.
+- 3-6 short, self-contained bullets.
 - Each bullet: neutral ECG pattern + brief visible/measurement criterion, or "данных недостаточно".
-- Cover rhythm/conduction, axis/BBB, hypertrophy, ST-T/infarction pattern, QT/JT only when assessable.
+- Cover conduction (PR/AV, QRS width, blocks), axis/BBB, hypertrophy, ST-T/infarction pattern, QT/JT only when assessable.
+- Do NOT name or restate the heart rhythm (no "синусовый ритм", "фибрилляция/трепетание", "тахи-/брадикардия") — it is provided separately by the classifier.
 - Do not expose internal measurement problems or JSON field names.
 
 "rhythm" — your OWN rhythm read from the image:
