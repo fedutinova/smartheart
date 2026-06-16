@@ -14,6 +14,14 @@ type ECGRhythmResult struct {
 	Top3           []RhythmClassProb     `json:"top3"`
 	BinaryFlags    []RhythmBinaryFlag    `json:"binary_flags"`
 	Explanation    *ECGRhythmExplanation `json:"explanation,omitempty"`
+
+	// Confidence is the classifier's top-1 probability (Top3[0].Prob),
+	// surfaced as a dedicated field for analytics and display.
+	Confidence float64 `json:"confidence,omitempty"`
+	// Suppressed is set when the rhythm badge must NOT be shown: the classifier
+	// was not confident (Confidence below threshold) and the GPT interpretation
+	// disagreed on the rhythm. The block is still persisted for analytics.
+	Suppressed bool `json:"suppressed,omitempty"`
 }
 
 // ECGRhythmExplanation is the four-field narrative the vision LLM produces on

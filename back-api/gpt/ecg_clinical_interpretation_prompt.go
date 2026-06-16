@@ -4,13 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/fedutinova/smartheart/back-api/models"
 )
 
 const ecgClinicalInterpretationSystemPrompt = `You are a cardiologist-electrophysiologist interpreting an ECG image.
 
-Output MUST be in Russian Markdown only.
+Output MUST be a single JSON object, no prose and no code fences, shaped exactly:
+{"interpretation_md": "<Russian Markdown>", "rhythm": {"code": "<RHYTHM_CODE>", "label_ru": "<short Russian rhythm name>", "agrees_with_classifier": <true|false>}}
+The interpretation_md value MUST be Russian Markdown.
 Use AHA/ACC/HRS and ESC-style ECG criteria. Describe ECG patterns, not clinical diagnoses.
 Use the image first; use JSON measurements only when plausible. Never invent missing values.
 The JSON context contains ONLY values that passed validation; anything not present was unmeasurable — treat it as unknown, do not guess it.
@@ -172,17 +175,68 @@ func BuildECGClinicalInterpretationPrompt(
 		return "", "", fmt.Errorf("marshal ECG interpretation payload: %w", err)
 	}
 
-	user = fmt.Sprintf(`Analyze the ECG image and compact JSON context.
+	user = fmt.Sprintf(`Analyze the ECG image and compact JSON context. Return ONE JSON object, nothing else.
 
-Return exactly one Russian Markdown section:
+"interpretation_md" — exactly one Russian Markdown section:
 ## Итог
 - 4-6 short, self-contained bullets.
 - Each bullet: neutral ECG pattern + brief visible/measurement criterion, or "данных недостаточно".
 - Cover rhythm/conduction, axis/BBB, hypertrophy, ST-T/infarction pattern, QT/JT only when assessable.
 - Do not expose internal measurement problems or JSON field names.
 
+"rhythm" — your OWN rhythm read from the image:
+- "code": one of SINUS_GROUP, AFIB, AFLT, SVTAC, VTAC, VFIB_VFLT, PACE, or UNCLEAR if you cannot tell.
+- "label_ru": short Russian name of the rhythm you see.
+- "agrees_with_classifier": true if your read is the SAME rhythm as context.rhythm_classifier.pred_code, OR a clinically compatible broader/narrower form of it (a cautious umbrella term such as "ширококомплексная тахикардия" agrees with "желудочковая тахикардия"; "наджелудочковый ритм" agrees with a specific supraventricular code). Set false only if it is genuinely a different rhythm. If context has no rhythm_classifier prediction, set false.
+
 Context JSON:
 %s`, string(b))
 
 	return ecgClinicalInterpretationSystemPrompt, user, nil
+}
+
+// ECGInterpretedRhythm is GPT's own rhythm read, returned alongside the
+// interpretation so the worker can arbitrate against the CV classifier when CV
+// confidence is low. AgreesWithClassifier is GPT's clinical-compatibility
+// judgement (it sees the classifier prediction in context), so an umbrella
+// term like "ширококомплексная тахикардия" can still agree with "VTAC".
+type ECGInterpretedRhythm struct {
+	Code                 string `json:"code"`
+	LabelRU              string `json:"label_ru"`
+	AgreesWithClassifier bool   `json:"agrees_with_classifier"`
+}
+
+// ECGInterpretationResult is the parsed structured output of
+// InterpretStructuredECG: the patient-facing Markdown plus GPT's structured
+// rhythm read.
+type ECGInterpretationResult struct {
+	InterpretationMD string                `json:"interpretation_md"`
+	Rhythm           *ECGInterpretedRhythm `json:"rhythm,omitempty"`
+}
+
+// ParseECGInterpretation parses the JSON the interpretation model returns,
+// tolerating ``` fences. Returns an error (so callers can fall back to the raw
+// text) when the payload is not the expected JSON object.
+func ParseECGInterpretation(raw string) (*ECGInterpretationResult, error) {
+	text := stripCodeFences(strings.TrimSpace(raw))
+	var r ECGInterpretationResult
+	if err := json.Unmarshal([]byte(text), &r); err != nil {
+		return nil, fmt.Errorf("parse ECG interpretation JSON: %w", err)
+	}
+	if strings.TrimSpace(r.InterpretationMD) == "" {
+		return nil, fmt.Errorf("ECG interpretation JSON missing interpretation_md")
+	}
+	return &r, nil
+}
+
+// stripCodeFences removes a leading ```/```json fence line and a trailing ```
+// fence, if present, so JSON wrapped in a Markdown code block still parses.
+func stripCodeFences(s string) string {
+	if !strings.HasPrefix(s, "```") {
+		return s
+	}
+	if i := strings.IndexByte(s, '\n'); i != -1 {
+		s = s[i+1:]
+	}
+	return strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(s), "```"))
 }

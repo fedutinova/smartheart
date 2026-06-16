@@ -215,7 +215,11 @@ export function Results() {
 
         <div className="mb-5 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
           <div className="grid gap-3 p-3 sm:gap-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.75fr)]">
-            <RhythmResultView result={ecgResult?.rhythm_result ?? null} status={request.status} />
+            {/* Hide the rhythm badge when the classifier was unconfident and the
+                GPT interpretation disagreed — defer to the interpretation text. */}
+            {!ecgResult?.rhythm_result?.suppressed && (
+              <RhythmResultView result={ecgResult?.rhythm_result ?? null} status={request.status} />
+            )}
 
             {formatECGParams(request) && (
               <div className="rounded-lg bg-gray-50 p-3 sm:border sm:border-gray-200">

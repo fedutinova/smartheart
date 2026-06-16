@@ -181,6 +181,11 @@ export interface ECGRhythmResult {
   // Absent when the LLM call failed (graceful degradation) — frontend shows
   // pred_label_ru alone in that case.
   explanation?: ECGRhythmExplanation;
+  // confidence is the classifier's top-1 probability (0..1).
+  confidence?: number;
+  // suppressed: hide the rhythm badge — the classifier was not confident and
+  // the GPT interpretation disagreed; rely on the interpretation text instead.
+  suppressed?: boolean;
 }
 
 export interface ECGRhythmExplanation {

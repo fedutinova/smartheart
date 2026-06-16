@@ -240,9 +240,21 @@ func (h *ECGWorker) processEKG(ctx context.Context, j *job.Job, payload *job.ECG
 				slog.WarnContext(ctx, "GPT ECG interpretation failed; saving structured measurements only",
 					"job_id", j.ID, "request_id", payload.RequestID, "error", ierr)
 			} else {
-				full := interpretResult.Content
-				conclusion := models.ExtractConclusion(full)
-				gptFullResponse = &full
+				// The interpretation model returns JSON: a Markdown block plus
+				// GPT's own structured rhythm read. Fall back to the raw payload
+				// as Markdown if it is not the expected JSON.
+				interpretationMD := interpretResult.Content
+				parsed, perr2 := gpt.ParseECGInterpretation(interpretResult.Content)
+				if perr2 != nil {
+					slog.WarnContext(ctx, "Failed to parse structured ECG interpretation; using raw content",
+						"job_id", j.ID, "error", perr2)
+				} else {
+					interpretationMD = parsed.InterpretationMD
+				}
+				conclusion := models.ExtractConclusion(interpretationMD)
+				conclusion = arbitrateRhythmDisplay(rhythmResult, parsed, conclusion)
+
+				gptFullResponse = &interpretationMD
 				gptInterpretation = &conclusion
 				totalTokens += interpretResult.TokensUsed
 				totalProcessingTimeMs += interpretResult.ProcessingTimeMs

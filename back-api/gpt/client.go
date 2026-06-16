@@ -393,6 +393,9 @@ func (c *Client) InterpretStructuredECG(ctx context.Context, fileKeys []string, 
 		Model:               c.model,
 		Messages:            messages,
 		MaxCompletionTokens: 2600,
+		ResponseFormat: &openai.ChatCompletionResponseFormat{
+			Type: openai.ChatCompletionResponseFormatTypeJSONObject,
+		},
 	}
 	if supportsSamplingParams(c.model) {
 		req.Temperature = 0.1

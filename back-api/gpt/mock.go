@@ -124,13 +124,11 @@ func (m *MockProcessor) InterpretStructuredECG(ctx context.Context, _ []string, 
 	if err := simulateWork(ctx, m.Delay); err != nil {
 		return nil, err
 	}
+	// Mirror the real interpretation prompt: a single JSON object with the
+	// Markdown "## Итог" section plus a structured rhythm read (incl. the
+	// agrees-with-classifier flag), so GPT_MOCK output matches prod shape.
 	return &ProcessResult{
-		// Mirror the real interpretation prompt, which asks for exactly one
-		// "## Итог" section of bullets, so GPT_MOCK output matches prod shape.
-		Content: "## Итог\n" +
-			"- Тестовая интерпретация для режима GPT_MOCK без клинических выводов.\n" +
-			"- Данные демонстрационные; реальная оценка ритма и ЭКГ-паттернов не выполняется.\n" +
-			"- Уверенность низкая: это фиктивный ответ mock-сервиса.",
+		Content:          `{"interpretation_md":"## Итог\n- Тестовая интерпретация для режима GPT_MOCK без клинических выводов.\n- Данные демонстрационные; реальная оценка ритма и ЭКГ-паттернов не выполняется.\n- Уверенность низкая: это фиктивный ответ mock-сервиса.","rhythm":{"code":"UNCLEAR","label_ru":"ритм не оценивается (mock)","agrees_with_classifier":true}}`,
 		Model:            "mock",
 		TokensUsed:       120,
 		ProcessingTimeMs: int(m.Delay.Milliseconds()),
