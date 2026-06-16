@@ -597,20 +597,33 @@ function metric(label: string, value: number | null | undefined, min: number, ma
   return { label, value: v.toFixed(0), unit };
 }
 
+// Below this QRS width (ms) the JT family adds noise rather than signal: JT/JTc
+// exist to assess repolarization independent of a prolonged QRS, so they are
+// only shown when QRS is wide.
+const WIDE_QRS_MS = 120;
+
 function getIntervalRows(rhythm: ECGStructuredResult['rhythm']): MetricRow[] {
   if (!rhythm) return [];
-  return [
+
+  // Core intervals, always shown. RR is omitted (redundant with ЧСС) and only
+  // one QTc correction (Bazett, the clinical default) is surfaced.
+  const rows = [
     metric('PR', rhythm.PR_ms, 80, 320, 'мс'),
     metric('QRS', rhythm.QRS_ms, 60, 240, 'мс'),
-    metric('RR', rhythm.RR_ms, 300, 3000, 'мс'),
     metric('QT', rhythm.QT_ms, 200, 700, 'мс'),
-    metric('QTc Bazett', rhythm.QTc_bazett_ms, 250, 700, 'мс'),
-    metric('QTc Fridericia', rhythm.QTc_fridericia_ms, 250, 700, 'мс'),
-    metric('JT', rhythm.JT_ms, 100, 550, 'мс'),
-    metric('JTc Bazett', rhythm.JTc_bazett_ms, 150, 650, 'мс'),
-    metric('JTc Fridericia', rhythm.JTc_fridericia_ms, 150, 650, 'мс'),
+    metric('QTc', rhythm.QTc_bazett_ms, 250, 700, 'мс'),
     metric('ЧСС', rhythm.HR_bpm, 30, 220, 'уд/мин'),
-  ].filter((row): row is MetricRow => row != null);
+  ];
+
+  const qrs = validRange(rhythm.QRS_ms, 60, 240);
+  if (qrs != null && qrs >= WIDE_QRS_MS) {
+    rows.push(
+      metric('JT', rhythm.JT_ms, 100, 550, 'мс'),
+      metric('JTc', rhythm.JTc_bazett_ms, 150, 650, 'мс'),
+    );
+  }
+
+  return rows.filter((row): row is MetricRow => row != null);
 }
 
 type IndexRow = {
