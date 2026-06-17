@@ -253,6 +253,27 @@ func TestRegister_MissingFields(t *testing.T) {
 	}
 }
 
+func TestRegister_RequiresConsent(t *testing.T) {
+	d := newTestDeps(t)
+	h := d.handler()
+
+	// Valid fields but no consent — must be rejected before the service is called.
+	body, _ := json.Marshal(map[string]any{
+		"username": "alice",
+		"email":    "alice@example.com",
+		"password": "securepassword123",
+		"consent":  false,
+	})
+	req := httptest.NewRequest("POST", "/v1/auth/register", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Auth.Register(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 without consent, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 func TestRegister_InvalidEmail(t *testing.T) {
 	d := newTestDeps(t)
 	h := d.handler()
@@ -322,10 +343,11 @@ func TestRegister_Conflict(t *testing.T) {
 		Register(mock.Anything, "alice", "alice@example.com", "securepassword123").
 		Return(uuid.Nil, apperr.ErrConflict)
 
-	body, _ := json.Marshal(map[string]string{
+	body, _ := json.Marshal(map[string]any{
 		"username": "alice",
 		"email":    "alice@example.com",
 		"password": "securepassword123",
+		"consent":  true,
 	})
 	req := httptest.NewRequest("POST", "/v1/auth/register", bytes.NewReader(body))
 	w := httptest.NewRecorder()

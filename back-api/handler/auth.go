@@ -13,6 +13,8 @@ type registerRequest struct {
 	Username string `json:"username" validate:"required,max=100"`
 	Email    string `json:"email"    validate:"required,email"`
 	Password string `json:"password" validate:"required,min=10,max=72"`
+	// Consent must be true: the user agrees to personal-data processing (152-ФЗ).
+	Consent bool `json:"consent"`
 }
 
 type loginRequest struct {
@@ -32,6 +34,11 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	var req registerRequest
 	if !decodeAndValidate(w, r, &req) {
+		return
+	}
+	// Block registration without explicit consent to personal-data processing.
+	if !req.Consent {
+		writeError(w, http.StatusBadRequest, "consent to personal data processing is required")
 		return
 	}
 

@@ -20,11 +20,12 @@ func (r *Repository) CreateUser(ctx context.Context, user *models.User) error {
 	}
 
 	query := `
-		INSERT INTO users (id, username, email, password_hash, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, NOW(), NOW())
+		INSERT INTO users (id, username, email, password_hash, consent_given_at, consent_version, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
 	`
 
-	_, err := r.querier.Exec(ctx, query, user.ID, user.Username, user.Email, user.PasswordHash)
+	_, err := r.querier.Exec(ctx, query, user.ID, user.Username, user.Email, user.PasswordHash,
+		user.ConsentGivenAt, user.ConsentVersion)
 	if err != nil {
 		if isUniqueViolation(err) {
 			return fmt.Errorf("user with this email already exists: %w", apperr.ErrConflict)

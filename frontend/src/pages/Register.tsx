@@ -21,7 +21,7 @@ export function Register() {
   const { isAuthenticated, isInitializing } = useAuthStore();
 
   const registerMutation = useMutation({
-    mutationFn: () => authAPI.register({ username, email, password }),
+    mutationFn: () => authAPI.register({ username, email, password, consent: agreed }),
     onSuccess: () => {
       navigate(ROUTES.LOGIN);
     },

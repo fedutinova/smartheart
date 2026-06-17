@@ -19,6 +19,11 @@ import (
 	"github.com/fedutinova/smartheart/back-api/repository"
 )
 
+// ConsentPolicyVersion identifies the personal-data processing policy the user
+// agrees to at registration. Bump it (and re-prompt users) when the published
+// privacy policy changes materially. Matches the policy's publication date.
+const ConsentPolicyVersion = "2026-03-22"
+
 // AuthService handles authentication business logic.
 type AuthService interface {
 	Register(ctx context.Context, username, email, password string) (uuid.UUID, error)
@@ -70,10 +75,16 @@ func (s *authService) Register(ctx context.Context, username, email, password st
 		return uuid.Nil, apperr.WrapInternal("hash password", err)
 	}
 
+	// Reaching registration implies the user accepted personal-data processing
+	// (the handler rejects requests without consent). Record proof of consent —
+	// the moment it was given and the policy version agreed to.
+	now := time.Now().UTC()
 	user := &models.User{
-		Username:     username,
-		Email:        email,
-		PasswordHash: passwordHash,
+		Username:       username,
+		Email:          email,
+		PasswordHash:   passwordHash,
+		ConsentGivenAt: &now,
+		ConsentVersion: ConsentPolicyVersion,
 	}
 
 	if err := s.repo.RunTx(ctx, func(tx pgx.Tx) error {

@@ -16,6 +16,10 @@ type User struct {
 	UpdatedAt             time.Time  `json:"updated_at"                        db:"updated_at"`
 	Roles                 []Role     `json:"roles,omitempty"`
 	SubscriptionExpiresAt *time.Time `json:"subscription_expires_at,omitempty" db:"subscription_expires_at"`
+	// ConsentGivenAt / ConsentVersion record the user's consent to personal-data
+	// processing (152-ФЗ): when it was given and which policy version was agreed.
+	ConsentGivenAt *time.Time `json:"consent_given_at,omitempty" db:"consent_given_at"`
+	ConsentVersion string     `json:"consent_version,omitempty"  db:"consent_version"`
 }
 
 // Role represents a user role.

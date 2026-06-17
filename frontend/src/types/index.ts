@@ -22,6 +22,8 @@ export interface RegisterRequest {
   username: string;
   email: string;
   password: string;
+  // consent to personal-data processing (152-ФЗ); the backend rejects false.
+  consent: boolean;
 }
 
 // ECGLayoutLabel selects how cv_service slices the page into per-lead crops.
