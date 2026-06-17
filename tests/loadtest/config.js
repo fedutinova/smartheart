@@ -2,7 +2,9 @@
 
 export const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
 export const POLL_INTERVAL_MS = 2000;
-export const POLL_TIMEOUT_MS = 35000;
+// Overridable: under queue saturation the true e2e time exceeds 35s, so capacity
+// runs raise this to measure real completion time instead of false timeouts.
+export const POLL_TIMEOUT_MS = Number(__ENV.POLL_TIMEOUT_MS) || 35000;
 export const TARGET_THRESHOLD_MS = 30000; // Common target: result under 30s
 
 // Test user credentials (created during setup).

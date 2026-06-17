@@ -94,6 +94,9 @@ services:
       RATE_LIMIT_RPM: ${RATE_LIMIT_RPM:-100}
       GPT_MOCK: ${GPT_MOCK:-false}
       GPT_MOCK_DELAY: ${GPT_MOCK_DELAY:-5s}
+      GPT_MOCK_MEASURE_DELAY: ${GPT_MOCK_MEASURE_DELAY:-}
+      GPT_MOCK_INTERPRET_DELAY: ${GPT_MOCK_INTERPRET_DELAY:-}
+      GPT_MOCK_JITTER: ${GPT_MOCK_JITTER:-}
       MIGRATIONS_DIR: /app/migrations
       CV_URL: http://cv:8000
     volumes:
