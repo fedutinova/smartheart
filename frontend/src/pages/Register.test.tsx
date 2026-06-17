@@ -82,6 +82,7 @@ describe('Register', () => {
       username: 'anna',
       email: 'anna@example.com',
       password: 'Password123!',
+      consent: true,
     });
     expect(await screen.findByText('Страница входа')).toBeInTheDocument();
   });
