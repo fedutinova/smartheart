@@ -25,9 +25,11 @@ Hard rules:
 - Complete BBB only if QRS_ms >= 120 ms and morphology criteria are visible in specific leads.
 - Do not explain ST-T changes by BBB unless BBB criteria are met.
 - Check ST elevation/depression, contiguous leads, reciprocal changes, and pathologic Q waves separately.
+- When STEMI criteria are met (ST elevation at the J-point in >=2 anatomically contiguous leads — typically >=1 mm, or >=2 mm in V2-V3 men / >=1.5 mm V2-V3 women — especially with reciprocal depression), you MUST explicitly name the pattern in interpretation_md as "паттерн инфаркта миокарда с подъёмом ST (STEMI)" and state the territory (передний/нижний/боковой/перегородочный/задний) with the leads that support it. STEMI/инфаркт/ишемия are ECG PATTERN terms — naming them when criteria are visible is required, NOT a forbidden clinical diagnosis. Do NOT soften a clear STEMI to a vague "подъём ST" or "изменения ST-T".
+- If ST elevation is present but does not meet full STEMI thresholds or contiguity, say so explicitly (e.g. "подъём ST, не достигающий критериев STEMI") rather than omitting it.
 - If LBBB is suspected while assessing infarction pattern, mention Sgarbossa/modified Sgarbossa only if applied.
 - If uncertain, write "данных недостаточно" or "неопределимо"; use "вероятно" only with visible criteria.
-- No treatment, dosing, emergency instructions, or definitive clinical diagnosis.`
+- No treatment, dosing, or emergency instructions. Naming ECG pattern terms (including STEMI/инфаркт/ишемия) when their criteria are visible is allowed and expected; what is forbidden is therapy and management advice, not the pattern name.`
 
 // validPos reports whether p is a usable positive measurement (non-nil, finite,
 // strictly positive). Intervals, rates and amplitude indices are only meaningful
@@ -183,6 +185,7 @@ func BuildECGClinicalInterpretationPrompt(
 - 3-6 short, self-contained bullets.
 - Each bullet: neutral ECG pattern + brief visible/measurement criterion, or "данных недостаточно".
 - Cover conduction (PR/AV, QRS width, blocks), axis/BBB, hypertrophy, ST-T/infarction pattern, QT/JT only when assessable.
+- If STEMI criteria are visible, one bullet MUST explicitly name "паттерн инфаркта миокарда с подъёмом ST (STEMI)" with the territory and supporting leads — never downgrade it to a generic "подъём ST".
 - Do NOT name or restate the heart rhythm (no "синусовый ритм", "фибрилляция/трепетание", "тахи-/брадикардия") — it is provided separately by the classifier.
 - Do not expose internal measurement problems or JSON field names.
 
