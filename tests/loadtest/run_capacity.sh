@@ -26,6 +26,13 @@ export GPT_MOCK=true
 export GPT_MOCK_MEASURE_DELAY="${GPT_MOCK_MEASURE_DELAY:-5.3s}"
 export GPT_MOCK_INTERPRET_DELAY="${GPT_MOCK_INTERPRET_DELAY:-4.3s}"
 export GPT_MOCK_JITTER="${GPT_MOCK_JITTER:-0.4}"
+
+# Disable the business gates — they are intentional policy limits, NOT the
+# pipeline capacity we are measuring. Without this the test would just hit the
+# 3-free-analysis quota and the per-IP/per-user rate limits.
+export QUOTA_FREE_LIMIT="${QUOTA_FREE_LIMIT:-0}"          # 0 = unlimited analyses
+export RATE_LIMIT_RPM="${RATE_LIMIT_RPM:-1000000}"        # per-IP (k6 = one IP)
+export RATE_LIMIT_ANALYZE_RPM="${RATE_LIMIT_ANALYZE_RPM:-1000000}" # per-user
 # Poll long enough to record true e2e even when the queue is saturated.
 POLL_TIMEOUT_MS="${POLL_TIMEOUT_MS:-180000}"
 
@@ -35,8 +42,19 @@ PROFILES=("$@")
 mkdir -p "$RESULTS_DIR"
 log() { echo "[run_capacity] $*"; }
 
+# Resolve the Compose command: prefer the v2 plugin, fall back to standalone.
+if docker compose version >/dev/null 2>&1; then
+  COMPOSE=(docker compose)
+elif command -v docker-compose >/dev/null 2>&1; then
+  COMPOSE=(docker-compose)
+else
+  log "ERROR: need 'docker compose' (plugin) or 'docker-compose' (standalone)."
+  exit 1
+fi
+log "Using compose: ${COMPOSE[*]}"
+
 log "Recreating app with calibrated GPT mock (measure=$GPT_MOCK_MEASURE_DELAY interpret=$GPT_MOCK_INTERPRET_DELAY jitter=$GPT_MOCK_JITTER)..."
-( cd "$ROOT_DIR" && docker compose up -d --force-recreate app )
+( cd "$ROOT_DIR" && "${COMPOSE[@]}" up -d --force-recreate app )
 
 log "Waiting for $BASE_URL/health ..."
 for _ in $(seq 1 30); do
@@ -47,6 +65,7 @@ done
 for prof in "${PROFILES[@]}"; do
   log "=== profile: $prof ==="
   docker run --rm -i --network host \
+    --user "$(id -u):$(id -g)" \
     -v "$SCRIPT_DIR":/tests \
     grafana/k6:latest run /tests/ecg_scenario.js \
     -e BASE_URL="$BASE_URL" \
