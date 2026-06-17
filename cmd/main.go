@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -62,8 +63,19 @@ func main() {
 		if mockDelay == 0 {
 			mockDelay = 5 * time.Second
 		}
-		slog.Warn("GPT_MOCK enabled — using simulated responses", "delay", mockDelay)
-		gptClient = &gpt.MockProcessor{Delay: mockDelay}
+		// Per-call latency + jitter let load tests reproduce real GPT wall times
+		// (calibrate from prod responses.processing_time_ms). Zero → use mockDelay.
+		measureDelay, _ := time.ParseDuration(os.Getenv("GPT_MOCK_MEASURE_DELAY"))
+		interpretDelay, _ := time.ParseDuration(os.Getenv("GPT_MOCK_INTERPRET_DELAY"))
+		jitter, _ := strconv.ParseFloat(os.Getenv("GPT_MOCK_JITTER"), 64)
+		slog.Warn("GPT_MOCK enabled — using simulated responses",
+			"delay", mockDelay, "measure_delay", measureDelay, "interpret_delay", interpretDelay, "jitter", jitter)
+		gptClient = &gpt.MockProcessor{
+			Delay:          mockDelay,
+			MeasureDelay:   measureDelay,
+			InterpretDelay: interpretDelay,
+			Jitter:         jitter,
+		}
 	} else {
 		gptClient = gpt.NewClient(
 			cfg.GPT.APIKey,

@@ -3,16 +3,43 @@ package gpt
 import (
 	"context"
 	"crypto/sha256"
+	"math/rand"
 	"sync/atomic"
 	"time"
 )
 
-// MockProcessor simulates GPT responses with a fixed delay.
-// Activated via GPT_MOCK=true for load testing without OpenAI API calls.
+// MockProcessor simulates GPT responses with prod-calibrated latency, so load
+// tests can measure the real queue/worker behaviour without spending OpenAI
+// quota. Activated via GPT_MOCK=true.
 type MockProcessor struct {
-	Delay      time.Duration
+	// Delay is the baseline simulated latency and the fallback when a per-call
+	// delay below is zero (also used by ProcessRequest).
+	Delay time.Duration
+	// MeasureDelay / InterpretDelay model the two sequential ECG GPT calls with
+	// their real wall times (calibrate from responses.processing_time_ms in prod).
+	MeasureDelay   time.Duration
+	InterpretDelay time.Duration
+	// Jitter varies each simulated delay by ±Jitter (fraction 0..1) so the queue
+	// saturates under realistic, non-uniform latency instead of a flat constant.
+	Jitter float64
+
 	concurrent int64 // current number of in-flight calls
 	MaxConc    int64 // high-water mark — max observed concurrent calls
+}
+
+// sampleDelay returns base (or Delay when base is zero) varied by ±Jitter.
+func (m *MockProcessor) sampleDelay(base time.Duration) time.Duration {
+	if base <= 0 {
+		base = m.Delay
+	}
+	if m.Jitter <= 0 || base <= 0 {
+		return base
+	}
+	factor := 1 + m.Jitter*(2*rand.Float64()-1) //nolint:gosec // load-test jitter, not security-sensitive
+	if factor < 0 {
+		factor = 0
+	}
+	return time.Duration(float64(base) * factor)
 }
 
 // ConcurrentMax returns the peak number of concurrent GPT calls observed.
@@ -93,35 +120,38 @@ func simulateWork(ctx context.Context, d time.Duration) error {
 func (m *MockProcessor) ProcessRequest(ctx context.Context, _ string, _ []string) (*ProcessResult, error) {
 	done := m.trackConcurrency()
 	defer done()
-	if err := simulateWork(ctx, m.Delay); err != nil {
+	d := m.sampleDelay(0)
+	if err := simulateWork(ctx, d); err != nil {
 		return nil, err
 	}
 	return &ProcessResult{
 		Content:          "Mock GPT response for load testing.",
 		Model:            "mock",
 		TokensUsed:       100,
-		ProcessingTimeMs: int(m.Delay.Milliseconds()),
+		ProcessingTimeMs: int(d.Milliseconds()),
 	}, nil
 }
 
 func (m *MockProcessor) ProcessStructuredECG(ctx context.Context, _ []string, _, _ string) (*ProcessResult, error) {
 	done := m.trackConcurrency()
 	defer done()
-	if err := simulateWork(ctx, m.Delay); err != nil {
+	d := m.sampleDelay(m.MeasureDelay)
+	if err := simulateWork(ctx, d); err != nil {
 		return nil, err
 	}
 	return &ProcessResult{
 		Content:          mockECGResponse,
 		Model:            "mock",
 		TokensUsed:       200,
-		ProcessingTimeMs: int(m.Delay.Milliseconds()),
+		ProcessingTimeMs: int(d.Milliseconds()),
 	}, nil
 }
 
 func (m *MockProcessor) InterpretStructuredECG(ctx context.Context, _ []string, _, _ string) (*ProcessResult, error) {
 	done := m.trackConcurrency()
 	defer done()
-	if err := simulateWork(ctx, m.Delay); err != nil {
+	d := m.sampleDelay(m.InterpretDelay)
+	if err := simulateWork(ctx, d); err != nil {
 		return nil, err
 	}
 	// Mirror the real interpretation prompt: a single JSON object with the
@@ -131,6 +161,6 @@ func (m *MockProcessor) InterpretStructuredECG(ctx context.Context, _ []string, 
 		Content:          `{"interpretation_md":"## Итог\n- Тестовая интерпретация для режима GPT_MOCK без клинических выводов.\n- Данные демонстрационные; реальная оценка ритма и ЭКГ-паттернов не выполняется.\n- Уверенность низкая: это фиктивный ответ mock-сервиса.","rhythm":{"code":"UNCLEAR","label_ru":"ритм не оценивается (mock)","agrees_with_classifier":true}}`,
 		Model:            "mock",
 		TokensUsed:       120,
-		ProcessingTimeMs: int(m.Delay.Milliseconds()),
+		ProcessingTimeMs: int(d.Milliseconds()),
 	}, nil
 }
