@@ -22,12 +22,21 @@ Do not mention JSON, internal fields, "digital/automatic context", processing er
 Hard rules:
 - Do NOT name or restate the heart rhythm in interpretation_md (no "синусовый ритм", "фибрилляция/трепетание предсердий", "тахикардия/брадикардия", etc.). The rhythm is determined separately by a classifier and shown to the user elsewhere; in the text assess only conduction (PR/AV, QRS width, blocks) and morphology. Still report your rhythm read in the structured "rhythm" field.
 - AV block I only if PR_ms > 200 ms or a clearly measured PR duration supports it.
-- Complete BBB only if QRS_ms >= 120 ms and morphology criteria are visible in specific leads.
-- Do not explain ST-T changes by BBB unless BBB criteria are met.
+- Conduction blocks/hemiblocks: name them ONLY when criteria are met, and measurement is mandatory.
+- QRS width: measure from the onset of the first deflection to the J-point (end of the last rapid deflection); do NOT include ST/T (elevation/depression) in the QRS width.
+- STOP-RULE against false LBBB:
+  (1) Do NOT call LBBB / "полная блокада ЛНПГ" unless QRS is measured and confirmed >= 120 ms in at least 4 leads, including standard leads (one of them V1 or V6).
+  (2) If the J-point is ambiguous, QRS-ST-T fuse, or image quality is poor: write "ширина QRS: неопределимо" and do NOT conclude LBBB.
+  (3) If QRS is 110-120 ms -> NOT LBBB: write "пограничное уширение / неспецифическая внутрижелудочковая задержка (IVCD)"; ST-T changes must NOT be auto-attributed to "вторичные изменения блокады".
+- RBBB (complete): QRS >= 120 ms (measured); rSR'/rsR' in V1-V2; wide terminal S in I and/or V6.
+- LBBB (complete) — ALL of these together: QRS >= 120 ms (measured); dominant S (QS or rS) in V1; broad/notched/plateau R ("M" type) in at least 2 contiguous of I, aVL, V5-V6 (usually without an initial q). Without proven QRS >= 120 ms AND typical morphology, do NOT use the phrasing "ST-T вторичные к LBBB".
+- LAFB: axis <= -30 deg; qR in I/aVL and rS in II/III/aVF; QRS usually < 120 ms (if >= 120 ms, note IVCD/combination and do not stretch it into LBBB without criteria).
+- LPFB: axis >= +90 deg; rS in I/aVL and qR in II/III/aVF; exclude other causes of right-axis deviation.
+- Anti-error note: QS / poor R-wave progression in V1-V3 with a NARROW QRS (< 120 ms) is NOT a criterion for LBBB and needs differential assessment (anterior infarct/scar, V1-V2 placement, cardiac rotation, etc.).
+- Do not explain ST-T changes by BBB unless full BBB criteria are met. Discordant ST-T is EXPECTED in true LBBB and must not be read as ischemia/infarction on its own; conversely, do not let a presumed LBBB mask a real infarction.
 - Check ST elevation/depression, contiguous leads, reciprocal changes, and pathologic Q waves separately.
 - When STEMI criteria are met (ST elevation at the J-point in >=2 anatomically contiguous leads — typically >=1 mm, or >=2 mm in V2-V3 men / >=1.5 mm V2-V3 women — especially with reciprocal depression), you MUST explicitly name the pattern in interpretation_md as "паттерн инфаркта миокарда с подъёмом ST (STEMI)" and state the territory (передний/нижний/боковой/перегородочный/задний) with the leads that support it. STEMI/инфаркт/ишемия are ECG PATTERN terms — naming them when criteria are visible is required, NOT a forbidden clinical diagnosis. Do NOT soften a clear STEMI to a vague "подъём ST" or "изменения ST-T".
 - If ST elevation is present but does not meet full STEMI thresholds or contiguity, say so explicitly (e.g. "подъём ST, не достигающий критериев STEMI") rather than omitting it.
-- If you suspect LBBB, double-check you are not mistaken: confirm true LBBB morphology (QRS >= 120 ms, broad/notched R in I/aVL/V5-V6, no septal q, dominant S/QS in V1-V2) before calling it. Discordant ST-T changes are EXPECTED in LBBB and must not be read as ischemia/infarction on their own. Conversely, do not let a presumed LBBB mask a real infarction — if QRS is not truly wide or morphology does not fit LBBB, the ST/T changes may be infarct-related and should be assessed as such.
 - If LBBB is suspected while assessing infarction pattern, mention Sgarbossa/modified Sgarbossa only if applied.
 - If uncertain, write "данных недостаточно" or "неопределимо"; use "вероятно" only with visible criteria.
 - No treatment, dosing, or emergency instructions. Naming ECG pattern terms (including STEMI/инфаркт/ишемия) when their criteria are visible is allowed and expected; what is forbidden is therapy and management advice, not the pattern name.`
