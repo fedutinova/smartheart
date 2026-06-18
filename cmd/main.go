@@ -245,7 +245,7 @@ func startHTTPServer(
 	ecgChatSvc := service.NewECGChatService(repo, cfg.RAG.URL)
 
 	mw := handler.Middlewares{
-		WebhookIP: server.WebhookIPWhitelist(cfg.YooKassa.ShopID),
+		WebhookIP: server.WebhookIPWhitelist(cfg.YooKassa.ShopID, cfg.YooKassa.WebhookExtraCIDRs),
 	}
 	if cfg.RateLimit.RPM > 0 {
 		if cfg.RateLimit.AnalyzeRPM > 0 {

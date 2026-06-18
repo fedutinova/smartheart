@@ -9,6 +9,13 @@ import (
 
 // yooKassaCIDRs is the list of IP ranges that YooKassa sends webhooks from.
 // https://yookassa.ru/developers/using-api/webhooks#ip
+//
+// NOTE: this list goes stale when YooKassa adds sender IPs — when that happens
+// real webhooks get 403'd and payments silently never confirm. Prefer adding
+// new ranges via the YOOKASSA_WEBHOOK_EXTRA_CIDRS env (no redeploy) and keep
+// this list in sync with the official docs. The webhook is additionally
+// protected by re-fetching the payment status from the YooKassa API before
+// confirming, so the IP check is defense-in-depth, not the sole gate.
 var yooKassaCIDRs = []string{
 	"185.71.76.0/27",
 	"185.71.77.0/27",
@@ -17,24 +24,36 @@ var yooKassaCIDRs = []string{
 	"77.75.156.35/32",
 	"77.75.154.128/25",
 	"2a02:5180::/32",
+	// Observed in production 2026-06 (retry pattern from YooKassa); not yet in
+	// the published doc list above. Reconcile with official ranges.
+	"159.194.220.0/24",
 }
 
-// yooKassaNets is the parsed list, built once at init.
-var yooKassaNets []*net.IPNet
-
-func init() {
-	for _, cidr := range yooKassaCIDRs {
+// parseCIDRs parses the given CIDR strings, skipping (and logging) invalid ones
+// so a bad operator-supplied entry can't take the webhook down.
+func parseCIDRs(cidrs []string) []*net.IPNet {
+	var nets []*net.IPNet
+	for _, cidr := range cidrs {
 		_, network, err := net.ParseCIDR(cidr)
 		if err != nil {
-			panic("invalid YooKassa CIDR: " + cidr)
+			slog.Warn("Ignoring invalid webhook CIDR", "cidr", cidr, "error", err)
+			continue
 		}
-		yooKassaNets = append(yooKassaNets, network)
+		nets = append(nets, network)
 	}
+	return nets
 }
 
-// WebhookIPWhitelist returns middleware that only allows requests from YooKassa IPs.
-// In development mode (when shopID is empty), all IPs are allowed.
-func WebhookIPWhitelist(shopID string) func(http.Handler) http.Handler {
+// WebhookIPWhitelist returns middleware that only allows requests from YooKassa
+// IPs (built-in ranges plus extraCIDRs from config). In development mode (when
+// shopID is empty), all IPs are allowed.
+func WebhookIPWhitelist(shopID string, extraCIDRs []string) func(http.Handler) http.Handler {
+	allowed := parseCIDRs(yooKassaCIDRs)
+	allowed = append(allowed, parseCIDRs(extraCIDRs)...)
+	if len(extraCIDRs) > 0 {
+		slog.Info("Webhook IP allowlist loaded extra CIDRs", "count", len(extraCIDRs))
+	}
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Skip IP check in dev mode (no YooKassa configured).
@@ -51,7 +70,7 @@ func WebhookIPWhitelist(shopID string) func(http.Handler) http.Handler {
 				return
 			}
 
-			for _, network := range yooKassaNets {
+			for _, network := range allowed {
 				if network.Contains(ip) {
 					next.ServeHTTP(w, r)
 					return

@@ -98,6 +98,10 @@ type YooKassaConfig struct {
 	PriceKopecks int
 	// Price in kopecks for a monthly subscription (unlimited analyses).
 	SubscriptionPriceKopecks int
+	// WebhookExtraCIDRs are additional source IP ranges (CIDR) allowed to call
+	// the payment webhook, on top of the built-in YooKassa ranges. Lets ops
+	// react to YooKassa adding sender IPs without a code change.
+	WebhookExtraCIDRs []string
 }
 
 // SMTPConfig holds SMTP email settings.
@@ -383,6 +387,7 @@ func Load() Config {
 			ReturnURL:                envString("YOOKASSA_RETURN_URL", "http://localhost:3000/dashboard"),
 			PriceKopecks:             envInt("YOOKASSA_PRICE_KOPECKS", 4900),                // 49 rub default
 			SubscriptionPriceKopecks: envInt("YOOKASSA_SUBSCRIPTION_PRICE_KOPECKS", 199000), // 1990 rub default
+			WebhookExtraCIDRs:        envStringList("YOOKASSA_WEBHOOK_EXTRA_CIDRS", nil),
 		},
 		SMTP: SMTPConfig{
 			Host:     envString("SMTP_HOST", "smtp.timeweb.ru"),
