@@ -203,6 +203,43 @@ func TestCreateSubscription_AllowsExpiredSubscription(t *testing.T) {
 	assert.NotErrorIs(t, err, apperr.ErrConflict)
 }
 
+// TestCreateSubscription_RequestsImmediateCapture guards the fix for payments
+// stuck in waiting_for_capture ("Ожидает подтверждения"): the YooKassa create
+// request MUST set capture=true so the payment completes to succeeded and emits
+// payment.succeeded.
+func TestCreateSubscription_RequestsImmediateCapture(t *testing.T) {
+	svc, repo := newPaymentService(t)
+	ctx := context.Background()
+	userID := uuid.New()
+
+	var gotCapture bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		gotCapture, _ = req["capture"].(bool)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"id":     "yk-cap-1",
+			"status": "pending",
+			"confirmation": map[string]string{
+				"type":             "redirect",
+				"confirmation_url": "https://yookassa.test/checkout",
+			},
+		})
+	}))
+	defer srv.Close()
+	svc.yookassaAPIURL = srv.URL
+
+	repo.EXPECT().GetSubscriptionExpiresAt(mock.Anything, userID).Return(nil, nil)
+	repo.EXPECT().HasPendingPayment(mock.Anything, userID, models.PaymentTypeSubscription).Return(false, nil)
+	repo.EXPECT().CreatePayment(mock.Anything, mock.Anything).Return(nil)
+
+	result, err := svc.CreateSubscription(ctx, userID, "")
+	require.NoError(t, err)
+	assert.Equal(t, "https://yookassa.test/checkout", result.ConfirmationURL)
+	assert.True(t, gotCapture, "create request must set capture=true (single-stage payment)")
+}
+
 // --- checkQuota (via submission service) ---
 
 func TestCheckQuota_ActiveSubscription_Unlimited(t *testing.T) {

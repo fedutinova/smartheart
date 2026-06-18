@@ -119,8 +119,14 @@ type yooKassaConfirmation struct {
 type yooKassaCreateRequest struct {
 	Amount       yooKassaAmount       `json:"amount"`
 	Confirmation yooKassaConfirmation `json:"confirmation"`
-	Description  string               `json:"description"`
-	Metadata     map[string]string    `json:"metadata,omitempty"`
+	// Capture=true makes this a single-stage payment: YooKassa charges the funds
+	// immediately and emits payment.succeeded. Without it the payment is
+	// two-stage (authorize-then-capture) and gets stuck in waiting_for_capture
+	// ("Ожидает подтверждения"), which we never capture — so the subscription is
+	// never activated.
+	Capture     bool              `json:"capture"`
+	Description string            `json:"description"`
+	Metadata    map[string]string `json:"metadata,omitempty"`
 }
 
 type yooKassaPaymentResponse struct {
@@ -155,6 +161,7 @@ func (s *paymentService) createYooKassaPayment(ctx context.Context, payment *mod
 			Type:      "redirect",
 			ReturnURL: s.cfg.ReturnURL,
 		},
+		Capture:     true,
 		Description: payment.Description,
 		Metadata:    metadata,
 	}
