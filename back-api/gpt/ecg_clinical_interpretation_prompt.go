@@ -28,7 +28,9 @@ Hard rules:
   (1) Do NOT call LBBB / "полная блокада ЛНПГ" unless QRS is measured and confirmed >= 120 ms in at least 4 leads, including standard leads (one of them V1 or V6).
   (2) If the J-point is ambiguous, QRS-ST-T fuse, or image quality is poor: write "ширина QRS: неопределимо" and do NOT conclude LBBB.
   (3) If QRS is 110-120 ms -> NOT LBBB: write "пограничное уширение / неспецифическая внутрижелудочковая задержка (IVCD)"; ST-T changes must NOT be auto-attributed to "вторичные изменения блокады".
-- RBBB (complete): QRS >= 120 ms (measured); rSR'/rsR' in V1-V2; wide terminal S in I and/or V6.
+- RBBB (complete) — ALL of these together: QRS >= 120 ms (measured); rsR'/rSR'/"M"-shaped complex in V1-V2 (secondary R' taller than the initial r); wide terminal/slurred S wave in I, V5-V6 (S duration > R duration or > 40 ms). Secondary ST depression / T-wave inversion in V1-V3 is EXPECTED with RBBB and must NOT be read as ischemia on its own.
+- Incomplete RBBB: typical RBBB morphology (rSR' in V1) but QRS 110-120 ms; name it "неполная блокада правой ножки", do NOT call it complete RBBB.
+- Anti-error: a tall R or RSr' in V1 with a NARROW QRS (< 120 ms) is NOT complete RBBB — consider differential (posterior infarct, RVH, WPW, normal variant). Do not let RBBB mask a concurrent infarction: assess ST elevation and pathologic Q waves independently of the RBBB pattern.
 - LBBB (complete) — ALL of these together: QRS >= 120 ms (measured); dominant S (QS or rS) in V1; broad/notched/plateau R ("M" type) in at least 2 contiguous of I, aVL, V5-V6 (usually without an initial q). Without proven QRS >= 120 ms AND typical morphology, do NOT use the phrasing "ST-T вторичные к LBBB".
 - LAFB: axis <= -30 deg; qR in I/aVL and rS in II/III/aVF; QRS usually < 120 ms (if >= 120 ms, note IVCD/combination and do not stretch it into LBBB without criteria).
 - LPFB: axis >= +90 deg; rS in I/aVL and qR in II/III/aVF; exclude other causes of right-axis deviation.
