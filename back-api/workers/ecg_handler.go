@@ -254,6 +254,11 @@ func (h *ECGWorker) processEKG(ctx context.Context, j *job.Job, payload *job.ECG
 				conclusion := models.ExtractConclusion(interpretationMD)
 				conclusion = arbitrateRhythmDisplay(rhythmResult, parsed, conclusion)
 
+				// Append the medical disclaimer to every GPT interpretation shown
+				// to the user (both the full text and the extracted conclusion).
+				interpretationMD = models.WithECGDisclaimer(interpretationMD)
+				conclusion = models.WithECGDisclaimer(conclusion)
+
 				gptFullResponse = &interpretationMD
 				gptInterpretation = &conclusion
 				totalTokens += interpretResult.TokensUsed

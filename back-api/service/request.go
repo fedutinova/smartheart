@@ -136,8 +136,8 @@ func enrichECGResponse(ctx context.Context, repo repository.RequestRepo, request
 
 	ekg.GPTInterpretationStatus = gptRequest.Status
 	if gptRequest.Status == models.StatusCompleted && gptRequest.Response != nil {
-		gptContent := gptRequest.Response.Content
-		conclusion := models.ExtractConclusion(gptContent)
+		gptContent := models.WithECGDisclaimer(gptRequest.Response.Content)
+		conclusion := models.WithECGDisclaimer(models.ExtractConclusion(gptRequest.Response.Content))
 		ekg.GPTInterpretation = &conclusion
 		ekg.GPTFullResponse = &gptContent
 	} else if gptRequest.Status == models.StatusFailed {

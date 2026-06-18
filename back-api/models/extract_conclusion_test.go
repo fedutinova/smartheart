@@ -1,6 +1,9 @@
 package models
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestExtractConclusion_AlreadyStructured(t *testing.T) {
 	in := "1. Пункт один\n2. Пункт два"
@@ -34,5 +37,27 @@ func TestExtractConclusion_NoMarkerReturnsTrimmed(t *testing.T) {
 	exp := "Просто текст без маркера"
 	if out != exp {
 		t.Fatalf("expected %q, got %q", exp, out)
+	}
+}
+
+func TestWithECGDisclaimer_AppendsOnce(t *testing.T) {
+	in := "## Итог\n- Синусовая морфология без блокад."
+	out := WithECGDisclaimer(in)
+	if !strings.Contains(out, ecgDisclaimerMarker) {
+		t.Fatalf("disclaimer not appended: %q", out)
+	}
+	if !strings.HasPrefix(out, in) {
+		t.Fatalf("original interpretation must be preserved, got %q", out)
+	}
+	// Idempotent: a second call must not duplicate the disclaimer.
+	twice := WithECGDisclaimer(out)
+	if strings.Count(twice, ecgDisclaimerMarker) != 1 {
+		t.Fatalf("disclaimer duplicated on second call: %q", twice)
+	}
+}
+
+func TestWithECGDisclaimer_EmptyUnchanged(t *testing.T) {
+	if out := WithECGDisclaimer("   \n"); strings.Contains(out, ecgDisclaimerMarker) {
+		t.Fatalf("empty interpretation must not get a disclaimer, got %q", out)
 	}
 }

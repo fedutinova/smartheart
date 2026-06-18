@@ -101,3 +101,27 @@ func ExtractConclusion(gptResponse string) string {
 	// If no marker found, return full response (it should already be structured)
 	return response
 }
+
+// ecgDisclaimerMarker is a stable substring used to detect an already-present
+// disclaimer so WithECGDisclaimer stays idempotent.
+const ecgDisclaimerMarker = "требует обязательной проверки врачом"
+
+// ECGInterpretationDisclaimer is appended to every GPT-produced ECG
+// interpretation shown to the user, making explicit that it is not a medical
+// conclusion and must be reviewed by a doctor.
+const ECGInterpretationDisclaimer = "\n\n---\n\n> ⚠️ **Важно:** это автоматическая интерпретация ЭКГ, а не медицинское заключение. " +
+	"Она может содержать ошибки и **требует обязательной проверки врачом**. " +
+	"Не используйте результат для самостоятельной постановки диагноза или лечения."
+
+// WithECGDisclaimer appends the medical disclaimer to a non-empty interpretation.
+// It is idempotent: the disclaimer is not added if it is already present.
+func WithECGDisclaimer(md string) string {
+	trimmed := strings.TrimRight(md, " \t\n")
+	if trimmed == "" {
+		return md
+	}
+	if strings.Contains(trimmed, ecgDisclaimerMarker) {
+		return trimmed
+	}
+	return trimmed + ECGInterpretationDisclaimer
+}
